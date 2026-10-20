@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "newses": [
+    {
+      "id": "wici-synthetic-1",
+      "title": "WICI - syntetyczny komunikat",
+      "content": "Przykładowa informacja o fikcyjnym zbiorniku Testowym.",
+      "created_at": "2026-10-12 09:00:00",
+      "updated_at": "2026-10-12 10:00:00",
+      "valid_from": "2026-10-12 08:00:00",
+      "valid_to": "2026-10-14 18:00:00",
+      "provinces": {
+        "test": {
+          "slug_name": "mazowieckie",
+          "name": "mazowieckie"
+        }
+      }
+    },
+    {
+      "id": "wici-synthetic-2",
+      "title": "WICI - ćwiczenia testowe",
+      "content": "Ćwiczenia w fikcyjnej miejscowości Testowo. Dane syntetyczne.",
+      "created_at": "2026-10-12 09:00:00",
+      "updated_at": "2026-10-12 10:00:00",
+      "valid_from": "2026-10-12 08:00:00",
+      "valid_to": "2026-10-14 18:00:00",
+      "provinces": {
+        "test": {
+          "slug_name": "mazowieckie",
+          "name": "mazowieckie"
+        }
+      }
+    }
+  ],
+  "pagination": {
+    "totalitems": 2
+  }
+}

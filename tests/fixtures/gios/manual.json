@@ -1,0 +1,8 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "error_code": "API-ERR-100003",
+  "error_reason": "Syntetyczny przypadek stanowiska manualnego"
+}

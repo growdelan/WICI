@@ -1,0 +1,45 @@
+WICI - SYNTETYCZNE DANE TESTOWE. NIE JEST TO OSTRZEŻENIE.
+WOJEWÓDZTWO opolskie OSTRZEŻENIA METEOROLOGICZNE ZBIORCZO NR 1
+WYKAZ OBOWIĄZUJĄCYCH OSTRZEŻEŃ
+Zjawisko/Stopień zagrożenia
+Intensywne opady deszczu/1
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: brzeski(600), głubczycki(600), kędzierzyńsko-kozielski(600)
+Ważność
+od godz. 10:00 dnia 16.09.2026 do godz. 20:00 dnia 16.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 08:00 dnia 16.09.2026
+Zjawisko/Stopień zagrożenia
+Burze/2
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: brzeski(601), głubczycki(601)
+Ważność
+od godz. 10:00 dnia 16.09.2026 do godz. 20:00 dnia 16.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 08:00 dnia 16.09.2026
+Zjawisko/Stopień zagrożenia
+Silny wiatr/3 ZMIANA
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: brzeski(602), głubczycki(602)
+Ważność
+od godz. 10:00 dnia 16.09.2026 do godz. 20:00 dnia 16.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 08:00 dnia 16.09.2026

@@ -1,0 +1,17 @@
+WICI - SYNTETYCZNE DANE TESTOWE. NIE JEST TO OSTRZEŻENIE.
+WOJEWÓDZTWO pomorskie OSTRZEŻENIA METEOROLOGICZNE ZBIORCZO NR 1
+WYKAZ OBOWIĄZUJĄCYCH OSTRZEŻEŃ
+Zjawisko/Stopień zagrożenia
+Intensywne opady deszczu/1
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: bytowski(100), chojnicki(100), człuchowski(100), gdański(100), kartuski(100), kościerski(100), kwidzyński(100), lęborski(100), malborski(100), nowodworski(100), pucki(100), słupski(100), starogardzki(100), tczewski(100), wejherowski(100), sztumski(100), Gdańsk(100), Gdynia(100), Słupsk(100), Sopot(100)
+Ważność
+od godz. 10:00 dnia 04.09.2026 do godz. 20:00 dnia 04.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 08:00 dnia 03.09.2026

@@ -1,0 +1,15 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "totalPages": 1,
+  "AqIndex": {
+    "Identyfikator stacji pomiarowej": 9001,
+    "Wartość indeksu": 1,
+    "Nazwa kategorii indeksu": "Dobry",
+    "Status indeksu ogólnego dla stacji pomiarowej": true,
+    "Data danych źródłowych, z których policzono wartość indeksu dla wskaźnika st": "2026-10-17 08:00:00",
+    "Data wykonania obliczeń indeksu": "2026-10-17 08:15:00"
+  }
+}

@@ -1,0 +1,32 @@
+[project]
+name = "wici"
+version = "0.29.0"
+description = "Lokalne publikacje i ostrzeżenia dotyczące Polski"
+# Distribution SPDX expression awaits resolution of bundled assets; see docs/license-audit.md.
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "httpx>=0.28,<1",
+    "beautifulsoup4>=4.13,<5",
+    "pydantic>=2.10,<3",
+    "pypdf>=6,<7",
+    "websockets>=15,<16",
+    "gtfs-realtime-bindings>=1,<2",
+    "rasterio>=1.4,<2",
+    "numpy>=2,<3",
+]
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]
+geo = ["pyproj>=3.7,<4", "shapely>=2.1,<3"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[tool.hatch.build.targets.wheel]
+packages = ["src/wici"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+[tool.ruff]
+line-length = 110

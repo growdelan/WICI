@@ -1,0 +1,148 @@
+{
+  "type": "entities.lookup",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "sixteen mapped regions and one fictional unmapped region"
+  },
+  "data": [
+    {
+      "type": "region",
+      "code": "3288",
+      "name": "Warmian-Masurian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3289",
+      "name": "Pomeranian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3290",
+      "name": "Lower Silesian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3291",
+      "name": "West Pomeranian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3292",
+      "name": "Lubusz",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3293",
+      "name": "Greater Poland",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3294",
+      "name": "Kuyavian-Pomeranian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3295",
+      "name": "Silesian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3296",
+      "name": "Łódź",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3297",
+      "name": "Masovian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3298",
+      "name": "Świętokrzyskie",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3299",
+      "name": "Podlachian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3300",
+      "name": "Lublin",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3301",
+      "name": "Subcarpathian",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3302",
+      "name": "Opole",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "3303",
+      "name": "Lesser Poland",
+      "attrs": {
+        "country_code": "PL"
+      }
+    },
+    {
+      "type": "region",
+      "code": "999999",
+      "name": "Synthetic unmapped region",
+      "attrs": {
+        "country_code": "PL"
+      }
+    }
+  ],
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

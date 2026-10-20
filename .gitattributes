@@ -1,0 +1,2 @@
+# PDFs are binary assets, including uncompressed synthetic test documents.
+*.pdf binary

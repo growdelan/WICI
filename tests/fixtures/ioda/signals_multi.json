@@ -1,0 +1,43 @@
+{
+  "type": "signals",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "independent nested groups for two mapped regions"
+  },
+  "data": [
+    [
+      {
+        "entityType": "region",
+        "entityCode": "3296",
+        "datasource": "bgp",
+        "from": 1792222800,
+        "until": 1792223400,
+        "step": 300,
+        "nativeStep": 300,
+        "values": [
+          4,
+          null,
+          0
+        ]
+      }
+    ],
+    [
+      {
+        "entityType": "region",
+        "entityCode": "3297",
+        "datasource": "bgp",
+        "from": 1792222800,
+        "until": 1792223100,
+        "step": 300,
+        "nativeStep": 300,
+        "values": [
+          3,
+          6
+        ]
+      }
+    ]
+  ],
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

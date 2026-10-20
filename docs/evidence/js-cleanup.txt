@@ -1,0 +1,14 @@
+✔ interrupted GET retries and returns communications (153.192333ms)
+✔ interrupted JSON body also retries the map read (152.477875ms)
+✔ permanent interruption is bounded and explains which view failed (454.197709ms)
+✔ interrupted source-refresh POST is never replayed (1.817958ms)
+✔ HTTP error and malformed JSON do not trigger network retries (1.056167ms)
+✔ timeout aborts the request and remains bounded (19.400125ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 827.1065

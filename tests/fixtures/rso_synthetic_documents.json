@@ -1,0 +1,584 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "cases": [
+    {
+      "case_id": "synthetic-0",
+      "source_document_id": "wici-case-0",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-0",
+        "source_document_id": "wici-case-0",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 0",
+        "text": "Syntetyczna treść komunikatu 0; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-1",
+      "source_document_id": "wici-case-1",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-1",
+        "source_document_id": "wici-case-1",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 1",
+        "text": "Syntetyczna treść komunikatu 1; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-2",
+      "source_document_id": "wici-case-2",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-2",
+        "source_document_id": "wici-case-2",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 2",
+        "text": "Syntetyczna treść komunikatu 2; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-3",
+      "source_document_id": "wici-case-3",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-3",
+        "source_document_id": "wici-case-3",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 3",
+        "text": "Syntetyczna treść komunikatu 3; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-4",
+      "source_document_id": "wici-case-4",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-4",
+        "source_document_id": "wici-case-4",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 4",
+        "text": "Syntetyczna treść komunikatu 4; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-5",
+      "source_document_id": "wici-case-5",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-5",
+        "source_document_id": "wici-case-5",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 5",
+        "text": "Syntetyczna treść komunikatu 5; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-6",
+      "source_document_id": "wici-case-6",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-6",
+        "source_document_id": "wici-case-6",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 6",
+        "text": "Syntetyczna treść komunikatu 6; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-7",
+      "source_document_id": "wici-case-7",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-7",
+        "source_document_id": "wici-case-7",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 7",
+        "text": "Syntetyczna treść komunikatu 7; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-8",
+      "source_document_id": "wici-case-8",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-8",
+        "source_document_id": "wici-case-8",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 8",
+        "text": "Syntetyczna treść komunikatu 8; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-9",
+      "source_document_id": "wici-case-9",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-9",
+        "source_document_id": "wici-case-9",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 9",
+        "text": "Syntetyczna treść komunikatu 9; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-10",
+      "source_document_id": "wici-case-10",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-10",
+        "source_document_id": "wici-case-10",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 10",
+        "text": "Syntetyczna treść komunikatu 10; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-11",
+      "source_document_id": "wici-case-11",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-11",
+        "source_document_id": "wici-case-11",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 11",
+        "text": "Syntetyczna treść komunikatu 11; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-12",
+      "source_document_id": "wici-case-12",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-12",
+        "source_document_id": "wici-case-12",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 12",
+        "text": "Syntetyczna treść komunikatu 12; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-13",
+      "source_document_id": "wici-case-13",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-13",
+        "source_document_id": "wici-case-13",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 13",
+        "text": "Syntetyczna treść komunikatu 13; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-14",
+      "source_document_id": "wici-case-14",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-14",
+        "source_document_id": "wici-case-14",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 14",
+        "text": "Syntetyczna treść komunikatu 14; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-15",
+      "source_document_id": "wici-case-15",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-15",
+        "source_document_id": "wici-case-15",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 15",
+        "text": "Syntetyczna treść komunikatu 15; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-16",
+      "source_document_id": "wici-case-16",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-16",
+        "source_document_id": "wici-case-16",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 16",
+        "text": "Syntetyczna treść komunikatu 16; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "pomorskie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "22",
+                "geometry_ref": "22",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    },
+    {
+      "case_id": "synthetic-17",
+      "source_document_id": "wici-case-17",
+      "document": {
+        "source_id": "rso",
+        "identity_key": "wici-case-17",
+        "source_document_id": "wici-case-17",
+        "url": "https://example.invalid/rso",
+        "title": "WICI test 17",
+        "text": "Syntetyczna treść komunikatu 17; nie opisuje rzeczywistego zdarzenia.",
+        "fields": {
+          "event": {
+            "locations": [
+              {
+                "name": "mazowieckie",
+                "role": "notification_area",
+                "precision": "administrative",
+                "admin_code": "14",
+                "geometry_ref": "14",
+                "source": "WICI synthetic",
+                "note": null
+              }
+            ]
+          },
+          "validation_issues": [],
+          "contract_validated": true,
+          "access_allowed": true
+        },
+        "parser_version": "2-source-only",
+        "source_published_at": "2026-10-13T08:00:00Z"
+      }
+    }
+  ]
+}

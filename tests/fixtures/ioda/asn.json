@@ -1,0 +1,20 @@
+{
+  "type": "entities.lookup",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "fictional private-use network with no province geometry"
+  },
+  "data": [
+    {
+      "type": "asn",
+      "code": "64512",
+      "name": "WICI synthetic network",
+      "attrs": {
+        "country_code": "PL"
+      }
+    }
+  ],
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

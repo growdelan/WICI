@@ -1,0 +1,1397 @@
+{
+  "package": "cesium",
+  "version": "1.146.0",
+  "archive_url": "https://registry.npmjs.org/cesium/-/cesium-1.146.0.tgz",
+  "archive_sha256": "9e4166f2d61e1088c94c1161ab92493750959160e5a37893a8b8c50c494048d5",
+  "selection": "Build/Cesium browser IIFE and runtime directories; no index modules or source maps",
+  "patches": [
+    "Knockout global object lookup: replace eval(\"this\") with globalThis (strict CSP)",
+    "Add a prominent WICI modification notice to Cesium.js"
+  ],
+  "files": {
+    "Assets/IAU2006_XYS/IAU2006_XYS_0.json": {
+      "bytes": 67428,
+      "sha256": "eacde1b661c07ae81779214f2ee1c840dd24ea56cdba38735d9f63bb51d3f534"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_1.json": {
+      "bytes": 67313,
+      "sha256": "687cb449340f43ed67ccdb59e009c76642ec4a7dda63504c537f6c8b03371632"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_10.json": {
+      "bytes": 65984,
+      "sha256": "3337da09252e812c2609fe17966824d9387600b16b5faeca3b279121ce951a55"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_11.json": {
+      "bytes": 65007,
+      "sha256": "1213a76851024f19bedb1f1177099cc867876c9477214ce25c4aca5922ae0c59"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_12.json": {
+      "bytes": 64663,
+      "sha256": "ecea15bed860ca0dd962e427ddc929c356c8de4f5ea0599dd4a4d117c9ba5fdc"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_13.json": {
+      "bytes": 65854,
+      "sha256": "a7f459cda58803d906bb3e63d98f250c9211c16e99a964b39cab1af20c3c54a7"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_14.json": {
+      "bytes": 65547,
+      "sha256": "051627ca694ce9a0585eea402b11a7e74b70c4a941863ee731e1537da77354b8"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_15.json": {
+      "bytes": 65709,
+      "sha256": "ef41a0fb36667716e1aac3ed84c1e92fc0b80697a11434a08dfec80c10fa3b38"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_16.json": {
+      "bytes": 66030,
+      "sha256": "17c2ec764a2b2d4a93558009e1eb02912757999f3dedea775c961d689bec6155"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_17.json": {
+      "bytes": 65622,
+      "sha256": "95bbcd68070cff4725867054f6da18e6d79d1e7876efd116f046f6d99b6ffec7"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_18.json": {
+      "bytes": 65310,
+      "sha256": "19ec8e50b7a8604bcd93bf20850f033e153242663107f372e3af09194f903497"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_19.json": {
+      "bytes": 65537,
+      "sha256": "9d33b633af09f381d2aeabf1c08a80b327fea00105145310f706a7a2f3f3b395"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_2.json": {
+      "bytes": 67802,
+      "sha256": "79e5007d0f7d284035286ff31e7959f1d8c5654261ffb5a01ec298fc7ecfdaf2"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_20.json": {
+      "bytes": 65328,
+      "sha256": "d4a6ee787228e9ca38799199a6d69aaaf1a2401d0bad5f9b3ff30c30a6e35685"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_21.json": {
+      "bytes": 64843,
+      "sha256": "deab5998d0e85929227c82fd4267f179940b77ac9fe3d9da51ee222745658773"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_22.json": {
+      "bytes": 64977,
+      "sha256": "cbc988d6f44052aae9bea4d437b74f97a9a11d1370137cf3944d7a3dfdb00c28"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_23.json": {
+      "bytes": 66084,
+      "sha256": "fe1cbcb3177839ba821ae202184f4862a17321525556c06e3c000ab02d449645"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_24.json": {
+      "bytes": 64894,
+      "sha256": "336a61b2b5c63a31b169f19c95dfa4607874f2a2cdca3f5f6b995a2526e8090f"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_25.json": {
+      "bytes": 64953,
+      "sha256": "7b9d89953db4bb5d4d51b287cbf01b2c1c0a4d1d2fcf3696b4682f77cb9a12c5"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_26.json": {
+      "bytes": 65311,
+      "sha256": "03c47eff883b79a9863011ba286dea815320f274049ec9f71649c9a45b52db95"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_27.json": {
+      "bytes": 27595,
+      "sha256": "d9d755dd689d6af3d117c82e5e07c2f9986e43fe966cd3520d4a8e28201d7c6e"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_3.json": {
+      "bytes": 66400,
+      "sha256": "2c9ad7c9ca22e45f93354a078be51e63579cc67d960df3fb9cddd237a0fa7d05"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_4.json": {
+      "bytes": 65900,
+      "sha256": "2019a8459a5795b4203d58cedc5ab54e0ab17c66084198106da4755ccd89321e"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_5.json": {
+      "bytes": 65378,
+      "sha256": "b5cd2ed128bb530e920633cee2f9131687dc46673116fa482a59916945ab5e5e"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_6.json": {
+      "bytes": 65596,
+      "sha256": "775adc76b9497c0abfb6a71ec77149abf1f160aeb6dd1380056391916dc9d3c6"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_7.json": {
+      "bytes": 67099,
+      "sha256": "f3e330690aad3c977a66f3bb98952bcedd3c73886502e9477df9fe27855dd0cd"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_8.json": {
+      "bytes": 66931,
+      "sha256": "5da58dafb2a105234978e29f659dbb75ca716222cdf35dae975a9f380fa97fb6"
+    },
+    "Assets/IAU2006_XYS/IAU2006_XYS_9.json": {
+      "bytes": 66857,
+      "sha256": "36dc6631c6018fc9cd3df3f649b74308bb5c6a3303ac7b59067c4b4fe1e564c0"
+    },
+    "Assets/Images/bing_maps_credit.png": {
+      "bytes": 18831,
+      "sha256": "e5c3467a2532a0986ca0f90189e9bdae3222d3f1580d2e8c0261fb2bc2b4417f"
+    },
+    "Assets/Images/cesium_credit.png": {
+      "bytes": 4242,
+      "sha256": "20dadec44d030ec7de6193b0ee98329a896c4dcb4ed8f7a26d4781127b6fa989"
+    },
+    "Assets/Images/google_earth_credit.png": {
+      "bytes": 7703,
+      "sha256": "d4c3719a707ca487d847d7c8ea8ffc590f1297f987e95d1acf88d433b92c1c3f"
+    },
+    "Assets/Images/ion-credit.png": {
+      "bytes": 6028,
+      "sha256": "721870c1417e20d25e2d1b834e80c66908418e459dcf76c95bf2997dc0733289"
+    },
+    "Assets/Textures/LensFlare/DirtMask.jpg": {
+      "bytes": 113718,
+      "sha256": "3d06a15d04154f027e0b2b110c7c9952329b385682c327cdeb71e0e3c720f3d4"
+    },
+    "Assets/Textures/LensFlare/StarBurst.jpg": {
+      "bytes": 195728,
+      "sha256": "c42ecef9345e34549fb9528e25cac8f38c9f8c43f73d812c2ccaf5909ab249a5"
+    },
+    "Assets/Textures/NaturalEarthII/0/0/0.jpg": {
+      "bytes": 12067,
+      "sha256": "919864197d2f27a165420331d47458614a056c36dcdf306ce89ed2248bd0041d"
+    },
+    "Assets/Textures/NaturalEarthII/0/1/0.jpg": {
+      "bytes": 14055,
+      "sha256": "f336509772ab57ee14e15c72579dd9fb0297c779c853d4c65db04bef78305b48"
+    },
+    "Assets/Textures/NaturalEarthII/1/0/0.jpg": {
+      "bytes": 7278,
+      "sha256": "3f40b94a0adb4efe212899374d3dd2bc7abe0491ce3a30d89f4392f498a328cf"
+    },
+    "Assets/Textures/NaturalEarthII/1/0/1.jpg": {
+      "bytes": 11399,
+      "sha256": "76393f9322c791564a9dc9529822637fdcc8b63418be502f4ef0ab9ca2708664"
+    },
+    "Assets/Textures/NaturalEarthII/1/1/0.jpg": {
+      "bytes": 10652,
+      "sha256": "cec03089c65ac612ef0655739fd1c66e068a98739aec325ba8743aca7338e6f1"
+    },
+    "Assets/Textures/NaturalEarthII/1/1/1.jpg": {
+      "bytes": 13142,
+      "sha256": "b1b860b99fd3fdc1a91eb09576563efd5cc91d95f4e869fb436a35c4ff8994c6"
+    },
+    "Assets/Textures/NaturalEarthII/1/2/0.jpg": {
+      "bytes": 9643,
+      "sha256": "7c59ff20319379afea17d029fca11ea497fd16a4f9da574137948b0631c71c63"
+    },
+    "Assets/Textures/NaturalEarthII/1/2/1.jpg": {
+      "bytes": 15312,
+      "sha256": "ed0209ef589d9cc34a26663f8c9ecdd63de705482692290328cfd2fff984451d"
+    },
+    "Assets/Textures/NaturalEarthII/1/3/0.jpg": {
+      "bytes": 10532,
+      "sha256": "d7fa5cd581a7b1d004d6dfcf329a09cd51859dd503f864a85756a35a456a0030"
+    },
+    "Assets/Textures/NaturalEarthII/1/3/1.jpg": {
+      "bytes": 13262,
+      "sha256": "8637acf2981f7209ec449a5812c855650a7eeeca5bd8a9d328310bb2a5295b39"
+    },
+    "Assets/Textures/NaturalEarthII/2/0/0.jpg": {
+      "bytes": 8157,
+      "sha256": "d12e2e52ae4d2e0c23ec15de8a1e006ccae0d3142b286578670cb4a8fd3f2311"
+    },
+    "Assets/Textures/NaturalEarthII/2/0/1.jpg": {
+      "bytes": 9307,
+      "sha256": "87a7ea00d62fe0517680cb58953e46faf9b325b9ce8e982c5a68b7e6c6c46822"
+    },
+    "Assets/Textures/NaturalEarthII/2/0/2.jpg": {
+      "bytes": 7891,
+      "sha256": "eecc7078cc54ec05f96cdf472519d5f159797015afaad23c2e56bed2fb79b481"
+    },
+    "Assets/Textures/NaturalEarthII/2/0/3.jpg": {
+      "bytes": 10341,
+      "sha256": "3d4dc525adaed0c3ddf5e5047bd1b348f2df473449c50b6b8175d5d073e7d88b"
+    },
+    "Assets/Textures/NaturalEarthII/2/1/0.jpg": {
+      "bytes": 7852,
+      "sha256": "e586e2884f6fe3a78291776b5bd4b190ffa0c9129c146ef78c7918e570e40e07"
+    },
+    "Assets/Textures/NaturalEarthII/2/1/1.jpg": {
+      "bytes": 6850,
+      "sha256": "bd0b39a8e734b137e8017cb02f1bae541452bea034be5bc7e2bf8a6cb8a220ae"
+    },
+    "Assets/Textures/NaturalEarthII/2/1/2.jpg": {
+      "bytes": 11581,
+      "sha256": "af8eb0a43423d28c7cb3a92553967205d9e3ced5738bd75f773d653fa5849c90"
+    },
+    "Assets/Textures/NaturalEarthII/2/1/3.jpg": {
+      "bytes": 15862,
+      "sha256": "48450e09b99e3283945bda85be1513a5ed28a4b1e58cd0b299c295d16c25935c"
+    },
+    "Assets/Textures/NaturalEarthII/2/2/0.jpg": {
+      "bytes": 10657,
+      "sha256": "4615813c56a8ee304d78d3768c489a4e00a5c4542f2d937b6be7db7c12b42b28"
+    },
+    "Assets/Textures/NaturalEarthII/2/2/1.jpg": {
+      "bytes": 12456,
+      "sha256": "66df8171de54015866691a00fd03ad8c5c11dc75466a70d11a43b2020eb63dba"
+    },
+    "Assets/Textures/NaturalEarthII/2/2/2.jpg": {
+      "bytes": 12262,
+      "sha256": "669649edf6e1e0e66ee03224a792d5fb09e8aef7a7a187697a3c10f9a7904c5c"
+    },
+    "Assets/Textures/NaturalEarthII/2/2/3.jpg": {
+      "bytes": 14940,
+      "sha256": "21585c5a2551120948ec5d0f04a533805b2ba63b7a5b961ad722fca25cf6299f"
+    },
+    "Assets/Textures/NaturalEarthII/2/3/0.jpg": {
+      "bytes": 9531,
+      "sha256": "640f7fd8fd3e5923ef1b021476f13c1e6919f339b17e539b9e20fe6bc16240f7"
+    },
+    "Assets/Textures/NaturalEarthII/2/3/1.jpg": {
+      "bytes": 10234,
+      "sha256": "e418706ca6c844a67aa71e448ef97e703d5c3a9e3791db255366dad49b4adeb9"
+    },
+    "Assets/Textures/NaturalEarthII/2/3/2.jpg": {
+      "bytes": 11678,
+      "sha256": "79d04283b385d193bbf5bd84d40744c8f5bc8d6f52dfab8d965b647fdb61d72f"
+    },
+    "Assets/Textures/NaturalEarthII/2/3/3.jpg": {
+      "bytes": 10754,
+      "sha256": "4e693d36407dab81266071edbca5915872284532498dfa29472cc71b2810482d"
+    },
+    "Assets/Textures/NaturalEarthII/2/4/0.jpg": {
+      "bytes": 8474,
+      "sha256": "46e6a0608fc8261bbeaad8fffa995ee3c85fddebb3b463f3e391634ea8a2a9ec"
+    },
+    "Assets/Textures/NaturalEarthII/2/4/1.jpg": {
+      "bytes": 12265,
+      "sha256": "0f341c2ace1b0b1803aa22c09c2ab8fde4c3a1a7cb013a963e750997deb6b1c2"
+    },
+    "Assets/Textures/NaturalEarthII/2/4/2.jpg": {
+      "bytes": 16477,
+      "sha256": "13a22c18a223ba4d8c2689793a5dff83e4e50b3790ddcb2a32ac5a97b8e1e0c8"
+    },
+    "Assets/Textures/NaturalEarthII/2/4/3.jpg": {
+      "bytes": 11888,
+      "sha256": "93c5f45d481111b4cd2d38792cfb049e5176be566b622028e0704151c0c23aaf"
+    },
+    "Assets/Textures/NaturalEarthII/2/5/0.jpg": {
+      "bytes": 7540,
+      "sha256": "7fbb096ff03dd162ae965a6c7e1c47e29599e7f3f1031ce59fb07ff669ca3995"
+    },
+    "Assets/Textures/NaturalEarthII/2/5/1.jpg": {
+      "bytes": 10274,
+      "sha256": "70b04e7e362cb4c80d8c7cce1a9401ef9c7606bb2c4b9de011dea58d79b8b4e6"
+    },
+    "Assets/Textures/NaturalEarthII/2/5/2.jpg": {
+      "bytes": 16112,
+      "sha256": "8d03e07689c97fff91497250f1cbeb19fbe5331f38bd91b38a44bb69745bb29b"
+    },
+    "Assets/Textures/NaturalEarthII/2/5/3.jpg": {
+      "bytes": 11877,
+      "sha256": "17b46ab558da6e9fa715a8ab365109bd808d897c53a9f5401da55dd6b9566a7a"
+    },
+    "Assets/Textures/NaturalEarthII/2/6/0.jpg": {
+      "bytes": 6636,
+      "sha256": "e25e95c8a6dcb21f6668541c925ee670c42fdc0c0d409c520bf29542a2b3fc52"
+    },
+    "Assets/Textures/NaturalEarthII/2/6/1.jpg": {
+      "bytes": 11564,
+      "sha256": "0a57813b25a70cf86a09bb251018e488b87e795cd2dbcaee7f8a9e80e7c449bf"
+    },
+    "Assets/Textures/NaturalEarthII/2/6/2.jpg": {
+      "bytes": 16411,
+      "sha256": "f0e9d28b216838c7c30375bb50a7c285203d4bad20eb581c2ee0b2468da20f8a"
+    },
+    "Assets/Textures/NaturalEarthII/2/6/3.jpg": {
+      "bytes": 12756,
+      "sha256": "c2a663dcf812d9a7034d48707a33a2f341d22a99aa277f69b0e06f064de26fab"
+    },
+    "Assets/Textures/NaturalEarthII/2/7/0.jpg": {
+      "bytes": 9032,
+      "sha256": "65c1f1b10a04387f2f64b3c4bc111803ddbf32dd2708f02eabca048e88e8edf3"
+    },
+    "Assets/Textures/NaturalEarthII/2/7/1.jpg": {
+      "bytes": 12957,
+      "sha256": "11ac8ae6af861b966d25ed660549d2a9ce164cb9e327a247655e949f967fbc2b"
+    },
+    "Assets/Textures/NaturalEarthII/2/7/2.jpg": {
+      "bytes": 11362,
+      "sha256": "59ca5b5264df0421c42cc9d3e6369d91ff9f5f387fc8fd578c25b113cae52b78"
+    },
+    "Assets/Textures/NaturalEarthII/2/7/3.jpg": {
+      "bytes": 11859,
+      "sha256": "7064a9817de3f19fbfc66c36d575fdd10a8d976a93f655b7b1bee591b07314b7"
+    },
+    "Assets/Textures/NaturalEarthII/tilemapresource.xml": {
+      "bytes": 780,
+      "sha256": "23f2983b716914e8fb3f011c62d975e67b3ad72c17c92657cd956315d6694529"
+    },
+    "Assets/Textures/SkyBox/tycho2t3_80_mx.jpg": {
+      "bytes": 118775,
+      "sha256": "7eb5dfe95bebe58aaeff1a29f1e435e2e9985c7007d32397f63f1aa798062435"
+    },
+    "Assets/Textures/SkyBox/tycho2t3_80_my.jpg": {
+      "bytes": 152501,
+      "sha256": "ee944d55d7abe7799f54768f59d6a3da6b802fabd50d20d3ceb898e888b6ca7a"
+    },
+    "Assets/Textures/SkyBox/tycho2t3_80_mz.jpg": {
+      "bytes": 167980,
+      "sha256": "958b3d7779bf39e93dbb3373379a696c1b1d5660535d2ff963ab3c7f86d8042e"
+    },
+    "Assets/Textures/SkyBox/tycho2t3_80_px.jpg": {
+      "bytes": 122746,
+      "sha256": "075509b5c76a3db76baf219c71d1156c90bd87a201e4402e80d4fb1f16b526da"
+    },
+    "Assets/Textures/SkyBox/tycho2t3_80_py.jpg": {
+      "bytes": 152999,
+      "sha256": "62404c604baff09b6293e79d83a6c851428452a07568aca2f4b69cfd67c8a25a"
+    },
+    "Assets/Textures/SkyBox/tycho2t3_80_pz.jpg": {
+      "bytes": 152537,
+      "sha256": "8a367b21469de9c3d41dec0a9b1aaf80472b5945e7f6827fb3a403707333e13b"
+    },
+    "Assets/Textures/maki/airfield.png": {
+      "bytes": 1188,
+      "sha256": "9607228765a05a29c5feb0ded034ee7f2aa2e9641faf512fb122fba03e443b29"
+    },
+    "Assets/Textures/maki/airport.png": {
+      "bytes": 1554,
+      "sha256": "fbdde1b757753fbf54811a7733e78d43af43ffee204fa8169b295a3610e889fa"
+    },
+    "Assets/Textures/maki/alcohol-shop.png": {
+      "bytes": 1293,
+      "sha256": "920cc1449428757a73aee044d07e72a9c5e17535feb5754cfc43b4a1e6652cf6"
+    },
+    "Assets/Textures/maki/america-football.png": {
+      "bytes": 2595,
+      "sha256": "ed7a66dc97a71fb689cb1b5c1f5d2832644152668be8d011aee23310e34bbd3b"
+    },
+    "Assets/Textures/maki/art-gallery.png": {
+      "bytes": 3159,
+      "sha256": "b57e75127fe217af9fc0b9cfc67f53b3db7aa72b06b30ce443be89c0764b2b4a"
+    },
+    "Assets/Textures/maki/bakery.png": {
+      "bytes": 2714,
+      "sha256": "7f8fa5241c76569cee88f34bd21afc54d1cdcbffe8a1633fe91df23b28a3486a"
+    },
+    "Assets/Textures/maki/bank.png": {
+      "bytes": 936,
+      "sha256": "fcb114b2229e1c2b01a21032958c49f405ef04e106b27cf91512852944b610d4"
+    },
+    "Assets/Textures/maki/bar.png": {
+      "bytes": 1435,
+      "sha256": "be2709f48516f1b4203d3f10a9a24159e7761d91fe8f2276f860259d0ea73851"
+    },
+    "Assets/Textures/maki/baseball.png": {
+      "bytes": 1838,
+      "sha256": "24db293dfeabe9e77c3e1cd2f5ca26b61b8919961cf3415880d017be1aa0d3b3"
+    },
+    "Assets/Textures/maki/basketball.png": {
+      "bytes": 1318,
+      "sha256": "96bae0a41bccd20ccd8b496376df9415364dfc008b8eb6aaddff68371b5d0e96"
+    },
+    "Assets/Textures/maki/beer.png": {
+      "bytes": 1403,
+      "sha256": "8ad8f0c1414f5574103cb7e0d14c136292e847583ef06154c27f7765b6208474"
+    },
+    "Assets/Textures/maki/bicycle.png": {
+      "bytes": 3989,
+      "sha256": "d998b6e08bbcaa658ae6679e7197349518cf4cfd610ec1f69c8643a4f007186d"
+    },
+    "Assets/Textures/maki/building.png": {
+      "bytes": 1765,
+      "sha256": "d4375df9fc15b0eeb0b54680e27423a2d6d60ad17f515f99236510dbc246c6af"
+    },
+    "Assets/Textures/maki/bus.png": {
+      "bytes": 998,
+      "sha256": "834a867a10afd8078f3ddee6d4231bf136b46c603afe31f6c089dfb55e47a9de"
+    },
+    "Assets/Textures/maki/cafe.png": {
+      "bytes": 1518,
+      "sha256": "07ff7a0dd1da1496aeff569291ae3add49ede31dd35674858bf5fcf9d21d5728"
+    },
+    "Assets/Textures/maki/camera.png": {
+      "bytes": 1976,
+      "sha256": "c6dfe806ebed73bd168fbace390d6402a64c54bb7cdccd17ba5813d4469f90d6"
+    },
+    "Assets/Textures/maki/campsite.png": {
+      "bytes": 2411,
+      "sha256": "e3ed13ecf426166fded98e86057423ca2333ce3c3795a0efa5f8c3b8063475cb"
+    },
+    "Assets/Textures/maki/car.png": {
+      "bytes": 1498,
+      "sha256": "189c871c1ed9a60000276fcc375b368f06d0a72b2c1de1032ba1caddbc04f8f6"
+    },
+    "Assets/Textures/maki/cemetery.png": {
+      "bytes": 967,
+      "sha256": "d066f21dea8cb8e667326b5c7399bc55c293881cc8b731acdc621b804a508d79"
+    },
+    "Assets/Textures/maki/cesium.png": {
+      "bytes": 3610,
+      "sha256": "d5857cc955c248b95c0c12f2c533629e9c83f324b89eb56aa1b12a68a1f64256"
+    },
+    "Assets/Textures/maki/chemist.png": {
+      "bytes": 1603,
+      "sha256": "d4852a72e3baaa9efd61293963db89a72d4d0c910aec0419e92af630a1cd6390"
+    },
+    "Assets/Textures/maki/cinema.png": {
+      "bytes": 1492,
+      "sha256": "eba78ccef08d317d931b796b5630db396a4c6647f8d4b57764357e5e24d2599b"
+    },
+    "Assets/Textures/maki/circle-stroked.png": {
+      "bytes": 2126,
+      "sha256": "4a609e3399a2fad31b9e75bfdd17c4cc95e5b2f260f1d902aa1cb5b040c66523"
+    },
+    "Assets/Textures/maki/circle.png": {
+      "bytes": 1459,
+      "sha256": "05b7a313a6d4e47d7e13591f06dae1c4fc706146632fc7d9758d59f687d84ea9"
+    },
+    "Assets/Textures/maki/city.png": {
+      "bytes": 788,
+      "sha256": "92539b16e075cb79b26daffffbff2bafaf1f09c91d5cda5b6a9ef8cbb4327341"
+    },
+    "Assets/Textures/maki/clothing-store.png": {
+      "bytes": 2037,
+      "sha256": "34a527cd4f0d4ae5759e98921dbfe23699b4708288985f85b64ff75353b3ca97"
+    },
+    "Assets/Textures/maki/college.png": {
+      "bytes": 2502,
+      "sha256": "26a9bd248ba058414c36f7d140ff148c513b72170432b892c3ec5ce0f12bd146"
+    },
+    "Assets/Textures/maki/commercial.png": {
+      "bytes": 1002,
+      "sha256": "0deb24e319298a2d2890e76b44c4120c29ec89f6daf73cc2151bf28dbd960946"
+    },
+    "Assets/Textures/maki/cricket.png": {
+      "bytes": 1677,
+      "sha256": "07cc9f8540e7574d426cdd05fdab1bb71cdbe3b22c59f88ce6c9f20929d8ecaf"
+    },
+    "Assets/Textures/maki/cross.png": {
+      "bytes": 1888,
+      "sha256": "fb878dd32c44ca83370a944d766b0e992ee5a01accb54d81b19867beef03a2d0"
+    },
+    "Assets/Textures/maki/dam.png": {
+      "bytes": 1703,
+      "sha256": "2ab3ed160681f8894b76e6640de3c103caedb65f14e4565dcf123ed413502345"
+    },
+    "Assets/Textures/maki/danger.png": {
+      "bytes": 2429,
+      "sha256": "c268ee6d675c9db3562f44aaa7b46bca2815124f520365d3f517ccf3430e9e43"
+    },
+    "Assets/Textures/maki/disability.png": {
+      "bytes": 3437,
+      "sha256": "b2293d6411ae95ed7113bb6b7de19b5863164a697212d9642ddddef23634da45"
+    },
+    "Assets/Textures/maki/dog-park.png": {
+      "bytes": 3146,
+      "sha256": "6b3b662c50623e31e69e44b6ab80aad116a9cbe406814acc60920e7bb8b46c31"
+    },
+    "Assets/Textures/maki/embassy.png": {
+      "bytes": 1680,
+      "sha256": "83c902b90a4f5de175631f7b91ec2b1c3f461e0395f34507cb007572e1550137"
+    },
+    "Assets/Textures/maki/emergency-telephone.png": {
+      "bytes": 1533,
+      "sha256": "2b374c00679109719202b61c5f1ca4b108ba859318e4a12d27d9d65081491b5c"
+    },
+    "Assets/Textures/maki/entrance.png": {
+      "bytes": 1307,
+      "sha256": "ee93d08539b460126b32691e71781e26585003390dbab05ff9037d2b41722edc"
+    },
+    "Assets/Textures/maki/farm.png": {
+      "bytes": 1686,
+      "sha256": "a1ea51ae83cb6db984bda6f451de81b232cf1c193176142cb44f0664692f0772"
+    },
+    "Assets/Textures/maki/fast-food.png": {
+      "bytes": 2019,
+      "sha256": "24d42a6409ff1f518c776997ef7b07ecb76c4cf446248551f22814d8bbf4e99b"
+    },
+    "Assets/Textures/maki/ferry.png": {
+      "bytes": 2879,
+      "sha256": "97fcf2915ffe3ef62e8ee5a05672ae6dbdabd24d6aa1b4cb709302487ee06b2a"
+    },
+    "Assets/Textures/maki/fire-station.png": {
+      "bytes": 2228,
+      "sha256": "9e17c8f458a6e7a525eace12875c4f16acd4e6750a19271448bd0e926da860b2"
+    },
+    "Assets/Textures/maki/fuel.png": {
+      "bytes": 1741,
+      "sha256": "9e59bcba3f758998a6a55bf15174727e779207abf5a4f324c2cf5593fbac983a"
+    },
+    "Assets/Textures/maki/garden.png": {
+      "bytes": 2057,
+      "sha256": "9c860cde4e54fbec8709b243052f37700e0d64fb9aa61f33818b0fe838b7a8ae"
+    },
+    "Assets/Textures/maki/gift.png": {
+      "bytes": 1606,
+      "sha256": "4814551df01639c36c1333de3a99fb9b5a9d758dab186fc7132579d984ebcf96"
+    },
+    "Assets/Textures/maki/golf.png": {
+      "bytes": 1999,
+      "sha256": "9e447b620baddad979776dc4fa4634f6cc96c0e00682282e008f2041c6f98e57"
+    },
+    "Assets/Textures/maki/grocery.png": {
+      "bytes": 1425,
+      "sha256": "6970b52af4509ab118d1d898a959bf631ae21e457803214fa9fab337770e8ca5"
+    },
+    "Assets/Textures/maki/hairdresser.png": {
+      "bytes": 3301,
+      "sha256": "ea92df398c4ced256fa144958d3a8b7d60ece46c226dcb8832868ffb1df7f7d5"
+    },
+    "Assets/Textures/maki/harbor.png": {
+      "bytes": 2048,
+      "sha256": "506545526fcfa6655206d840da1392b14d8a53ed63bb40ba907c1e503834fd90"
+    },
+    "Assets/Textures/maki/heart.png": {
+      "bytes": 1745,
+      "sha256": "f648f8d38ae47696c6596c106c6ef4b3984cfbbab2a83a82b911f5be7621067f"
+    },
+    "Assets/Textures/maki/heliport.png": {
+      "bytes": 2059,
+      "sha256": "4c5ec82bae0ef3ed3b38bd8089ce0ae64b4a9a2de6202855b22c736281f65440"
+    },
+    "Assets/Textures/maki/hospital.png": {
+      "bytes": 909,
+      "sha256": "0ba68595b4d670a16c953894b2c1a0c342c072a2003cec4dbe630aa10efa1568"
+    },
+    "Assets/Textures/maki/ice-cream.png": {
+      "bytes": 1602,
+      "sha256": "9ee2b16f1ae408f624d79cdbde704284579238c9daadda5938382abe1c4d543e"
+    },
+    "Assets/Textures/maki/industrial.png": {
+      "bytes": 1092,
+      "sha256": "4bc573a1d392c228c94d8a397a830cbb7093cb969469eda44019634e3885d5a1"
+    },
+    "Assets/Textures/maki/land-use.png": {
+      "bytes": 1773,
+      "sha256": "261d7de6098521628cc6c6bfa02a47d17931fe521cc8e47dc56bc5d83aa28443"
+    },
+    "Assets/Textures/maki/laundry.png": {
+      "bytes": 2407,
+      "sha256": "303c0bd8319b88b139997cabfba201eccb5afd1f7d5401eabd90c2c66ca2a43b"
+    },
+    "Assets/Textures/maki/library.png": {
+      "bytes": 1355,
+      "sha256": "511b7f8d3b1a2ea2205d8466b5d5129855a12af6cf1f5baba2f4b8a4dd5e562c"
+    },
+    "Assets/Textures/maki/lighthouse.png": {
+      "bytes": 1944,
+      "sha256": "dbccce865f1789f5326566145401366fa94913b6462672c5f252be803014c714"
+    },
+    "Assets/Textures/maki/lodging.png": {
+      "bytes": 1362,
+      "sha256": "02c1d81ef957255d27cb5fce70ef4f3bee79f4f8ec3b222f559f4375ef7ea6ac"
+    },
+    "Assets/Textures/maki/logging.png": {
+      "bytes": 1378,
+      "sha256": "056e8893c58ba30f5a0d9905194b0e60e4f31d9c1a59b5711d53647e4749528c"
+    },
+    "Assets/Textures/maki/london-underground.png": {
+      "bytes": 2979,
+      "sha256": "f8a41f09994d53d27335bbc70aab29a3d042583bb6b4520afaaffd0dd3f8e2fa"
+    },
+    "Assets/Textures/maki/marker-stroked.png": {
+      "bytes": 3414,
+      "sha256": "e21d955606f5911a981e4674ba1a491b68bdf37c7ed698be2bc210d7e86c9bc1"
+    },
+    "Assets/Textures/maki/marker.png": {
+      "bytes": 2448,
+      "sha256": "f8fcf45e3b3355ed9fba1050a26380927732300b54d8bb00b80fecf7bdcfc7d7"
+    },
+    "Assets/Textures/maki/minefield.png": {
+      "bytes": 1907,
+      "sha256": "aa1634ca37adee2849fba655285fed160763f53b7c5163f2753609c506312d64"
+    },
+    "Assets/Textures/maki/mobilephone.png": {
+      "bytes": 1474,
+      "sha256": "07e26f366da18b3fdeb53b6f29ff5bacdab5513758bbd6217ac41ebe5fdc104e"
+    },
+    "Assets/Textures/maki/monument.png": {
+      "bytes": 1376,
+      "sha256": "707a32e0c3b943941c396b18d6caa08fb0620a0ed07d84496ffad42cdb2d57e6"
+    },
+    "Assets/Textures/maki/museum.png": {
+      "bytes": 2578,
+      "sha256": "384ccd2fe0977c7b7a51635c6a16e81f6c906a355635ccda2ff33d897c16bd93"
+    },
+    "Assets/Textures/maki/music.png": {
+      "bytes": 1371,
+      "sha256": "c6bd30e02b950aeb2f5da711011d9b0bd5dbec687adc39a2f8f27025c8fb8508"
+    },
+    "Assets/Textures/maki/oil-well.png": {
+      "bytes": 3357,
+      "sha256": "f0c99b3662e9f1abe63a387c1da5cadd5336b155650d3daf678a8f18401c2fd5"
+    },
+    "Assets/Textures/maki/park.png": {
+      "bytes": 2059,
+      "sha256": "b5ee53a16dd03e32630218a2453065f3f6435ec9246028fa08785eb1d52ef54a"
+    },
+    "Assets/Textures/maki/park2.png": {
+      "bytes": 2284,
+      "sha256": "7fd262afad32b6d2aabeb0839b746468671e131b234a6265b40cb284a4003c4f"
+    },
+    "Assets/Textures/maki/parking-garage.png": {
+      "bytes": 1563,
+      "sha256": "251d73325620f24a16357f542967dc0112dce10679b27db3e7f489fd05ab9ded"
+    },
+    "Assets/Textures/maki/parking.png": {
+      "bytes": 1250,
+      "sha256": "3e62ecf1573c7b13d7be9cc28ffe9576e6e30963fb5d1df6dace01acd72dd447"
+    },
+    "Assets/Textures/maki/pharmacy.png": {
+      "bytes": 2258,
+      "sha256": "d382d9b8a06ac3a089b35a8137848c74fd41bf465b5d4b1a975ecebe4a992163"
+    },
+    "Assets/Textures/maki/pitch.png": {
+      "bytes": 3288,
+      "sha256": "abe872e09e244eab94237c254926b866dc1685a999833d95f443ac013fc976f3"
+    },
+    "Assets/Textures/maki/place-of-worship.png": {
+      "bytes": 1111,
+      "sha256": "03755fe12b0b412835dc807fde64973e6316df623d6a6e81ca052d750d85d344"
+    },
+    "Assets/Textures/maki/playground.png": {
+      "bytes": 3856,
+      "sha256": "0fac0aa78869da09e39e88632af82177d98723dd38141e81ab6b09a29129a7d8"
+    },
+    "Assets/Textures/maki/police.png": {
+      "bytes": 2194,
+      "sha256": "51592091904f75f4a25e37f87b326dc576bfacac9317aa6dfae2d0e0a8f117ba"
+    },
+    "Assets/Textures/maki/polling-place.png": {
+      "bytes": 1772,
+      "sha256": "0c4c8a5d1bbc1cc0f137cc1a357d418a442ad0bd3074a32819e9704fcbb265be"
+    },
+    "Assets/Textures/maki/post.png": {
+      "bytes": 1273,
+      "sha256": "cff1c2c20e77dece1eecf3dfb0fe10f139309ac78a2523bc9f01b4279e98e291"
+    },
+    "Assets/Textures/maki/prison.png": {
+      "bytes": 1371,
+      "sha256": "64636c8abe45f5cb8c3dc9ab73111683c4aa345691a5f17c327f909c774c0a0e"
+    },
+    "Assets/Textures/maki/rail-above.png": {
+      "bytes": 2071,
+      "sha256": "1b4555bb2169307c5ee1bc8afbd9ad97cfb36121e87e6413ae6ae137fb501109"
+    },
+    "Assets/Textures/maki/rail-light.png": {
+      "bytes": 2816,
+      "sha256": "e989ebe529a979dd7600f5a6c8039c32972bf424b70558baf134f779901f1703"
+    },
+    "Assets/Textures/maki/rail-metro.png": {
+      "bytes": 2249,
+      "sha256": "b89c202b5fdea739ce812932a22a3a15ab921a1aa2ceb0d801d4913f763095a5"
+    },
+    "Assets/Textures/maki/rail-underground.png": {
+      "bytes": 1996,
+      "sha256": "2be6c183a1b8604551a8c88d6437e826680da8b5fc75237b5e7108f38f347e11"
+    },
+    "Assets/Textures/maki/rail.png": {
+      "bytes": 2073,
+      "sha256": "4965beb812449d4abc1cdb9e30a3d1a5f7c18999571794e38eb92c8ad98cb048"
+    },
+    "Assets/Textures/maki/religious-christian.png": {
+      "bytes": 948,
+      "sha256": "a74c5e18bacf1469c22e6ff84736a63187b0c21048799885acabd5fac25d5cc0"
+    },
+    "Assets/Textures/maki/religious-jewish.png": {
+      "bytes": 2384,
+      "sha256": "fe5d53b2f1cc5e80a2e2fb6b9163ca27748c2a031ea2df4d0c614ffd338adba1"
+    },
+    "Assets/Textures/maki/religious-muslim.png": {
+      "bytes": 3925,
+      "sha256": "5b06c277d3638ee79172fb4ff89d84f1e475a1b25434953f19cb343e2b7c9fd1"
+    },
+    "Assets/Textures/maki/restaurant.png": {
+      "bytes": 2499,
+      "sha256": "85031df6b2174e72ec76dc0de6f4e54ab348426c7f738b11d8b7eb22bb72722e"
+    },
+    "Assets/Textures/maki/roadblock.png": {
+      "bytes": 1312,
+      "sha256": "d455530701e372698538f32a4d71029897e297e6124fb68550e5f323fee40bb0"
+    },
+    "Assets/Textures/maki/rocket.png": {
+      "bytes": 1653,
+      "sha256": "a167e92802b80e5bc5f78bea77d051007524782979a1b89eab9288d1e80ff5db"
+    },
+    "Assets/Textures/maki/school.png": {
+      "bytes": 3838,
+      "sha256": "1cc6087b652577de5e60525b5daa20c07cc126b526fd461f04381ae586a7025d"
+    },
+    "Assets/Textures/maki/scooter.png": {
+      "bytes": 2942,
+      "sha256": "4aa704ae97edb9bc514c0fc0ebe7adf2aa3f515ba3a15c6c17c25e17c8c1b8d6"
+    },
+    "Assets/Textures/maki/shop.png": {
+      "bytes": 1544,
+      "sha256": "1742dceb33d3ecd6dc66e5f5f1e637c65da7f4d92b066a2379dcb7e7e642ffc0"
+    },
+    "Assets/Textures/maki/skiing.png": {
+      "bytes": 3345,
+      "sha256": "576d29be1492b2973ffbaf688c7e8b8044f350c29317ad29060e3db29c3dc751"
+    },
+    "Assets/Textures/maki/slaughterhouse.png": {
+      "bytes": 2270,
+      "sha256": "69a20fc6dff36897cf3152a525d36752799d5805bf5f01ae5bcdeaa55abdd84c"
+    },
+    "Assets/Textures/maki/soccer.png": {
+      "bytes": 2420,
+      "sha256": "34308b14fe61df1608ddae5a8cd42e246487f11368f91867cb80e43590bfd4a0"
+    },
+    "Assets/Textures/maki/square-stroked.png": {
+      "bytes": 650,
+      "sha256": "2b48882145df7a64dcfa5f94789875a3818eb5976494198a72dcfbd2ecc2984c"
+    },
+    "Assets/Textures/maki/square.png": {
+      "bytes": 582,
+      "sha256": "68ba096d343037fed0dd1271ef8cc0bad600a134ec6082ff613f1a340f3c0ed8"
+    },
+    "Assets/Textures/maki/star-stroked.png": {
+      "bytes": 3460,
+      "sha256": "41f15812c35881118eee7b8eb3487538f2617ef8523f22ca738e2901e5752469"
+    },
+    "Assets/Textures/maki/star.png": {
+      "bytes": 2703,
+      "sha256": "58e516f3e338a1784198a5d3c05a486d41b55dca4122bf5c40986a9e0528460a"
+    },
+    "Assets/Textures/maki/suitcase.png": {
+      "bytes": 1129,
+      "sha256": "066e75d3303b4edf97086acd70e6e9aebf1165faf9c40adbf58f6585bc04552c"
+    },
+    "Assets/Textures/maki/swimming.png": {
+      "bytes": 2106,
+      "sha256": "3e7e12dc1197399ee43900a77444e7d8cfeba04732a7547f5b13d0e99fe70b63"
+    },
+    "Assets/Textures/maki/telephone.png": {
+      "bytes": 1702,
+      "sha256": "3d6da688ab5735a1137207e041fb0023dbb1d6d40e328c63664c8a2c737c5391"
+    },
+    "Assets/Textures/maki/tennis.png": {
+      "bytes": 1658,
+      "sha256": "7138863b8e10b5e78f5f0a02cf78b5f1f8912a97da433fe2df2c60f3b18ed556"
+    },
+    "Assets/Textures/maki/theatre.png": {
+      "bytes": 3233,
+      "sha256": "cb45d9d94385e3d164fddceb40c00cd6f3654de4fd44df0fa9d539ce1f68fecd"
+    },
+    "Assets/Textures/maki/toilets.png": {
+      "bytes": 2917,
+      "sha256": "e08a3ff947299d4f110fd7fd4ff30719d433d95cd52337341915f0e06c2f2f74"
+    },
+    "Assets/Textures/maki/town-hall.png": {
+      "bytes": 2005,
+      "sha256": "33b7f1bcd10f771f821de464367d785c20545075142bf341b250e5822124795e"
+    },
+    "Assets/Textures/maki/town.png": {
+      "bytes": 1125,
+      "sha256": "1402be94a92ac7884d0e0b0344db84f1b74170ed7012b7d95982e072b38eab59"
+    },
+    "Assets/Textures/maki/triangle-stroked.png": {
+      "bytes": 2837,
+      "sha256": "880ea63998f0cbe79730df17e22d2b6f87941a535408b06d5ef62df4b3d6fdba"
+    },
+    "Assets/Textures/maki/triangle.png": {
+      "bytes": 2137,
+      "sha256": "6ccfb06da43d5969424510d418e75b18c9c06fbbac2c6531105ccee98d26c551"
+    },
+    "Assets/Textures/maki/village.png": {
+      "bytes": 2145,
+      "sha256": "3e73ebd0f5c2bfa83764a1fd74a4e4de855e43a38acc9b75aaf423a8a63342d2"
+    },
+    "Assets/Textures/maki/warehouse.png": {
+      "bytes": 1908,
+      "sha256": "90fe8a1799906e59ed8fe7e0b35ca2ec66a39a592c3a8e5c8fe8f93a06eef387"
+    },
+    "Assets/Textures/maki/waste-basket.png": {
+      "bytes": 1917,
+      "sha256": "5ef33ea09aaf66f1f429efb735cd0b2fcc7b8372305f9acdc2d27f621b8fb889"
+    },
+    "Assets/Textures/maki/water.png": {
+      "bytes": 2411,
+      "sha256": "a1b40fc3d50e119865ed8b98fccee6b0d2d1da2133731074d3df8f1f5f5b38c9"
+    },
+    "Assets/Textures/maki/wetland.png": {
+      "bytes": 2151,
+      "sha256": "bdbb392ad5fd31edcc9973f72e1ebc03911204d98c2e786b07bb4adae65ca7b2"
+    },
+    "Assets/Textures/maki/zoo.png": {
+      "bytes": 2681,
+      "sha256": "3c8d46e2412476547805180fb62d0c5fc23d7cbd65c71a6738ecb668effbcdcb"
+    },
+    "Assets/Textures/moonSmall.jpg": {
+      "bytes": 18196,
+      "sha256": "380fa69424e1cd2268816e346dc56393bd1c809b8e0cb078e705ec469a5847db"
+    },
+    "Assets/Textures/pin.svg": {
+      "bytes": 348,
+      "sha256": "0d80bf787ae3b97d010f50195605d541501c08740994fb0b403f76449c007019"
+    },
+    "Assets/Textures/waterNormals.jpg": {
+      "bytes": 294196,
+      "sha256": "9ab17625d9a2b0541c14a1b24ae8e3e192b40882cc77729c46b5de5648a991a8"
+    },
+    "Assets/Textures/waterNormalsSmall.jpg": {
+      "bytes": 34121,
+      "sha256": "ef35a21e3cbff36032d118ff1df951ad88c023c39562c44f5b2d46f308e98858"
+    },
+    "Assets/approximateTerrainHeights.json": {
+      "bytes": 299471,
+      "sha256": "36466e2dc84f6c173b609ffc704bc021cd9fdb33c287570bf57e4f566b58e6a6"
+    },
+    "Cesium.js": {
+      "bytes": 6080666,
+      "sha256": "d9d0b9d835f0385271cf4536040a99c991da19705a63bb0ca14e80d3e881c553"
+    },
+    "LICENSE.md": {
+      "bytes": 55679,
+      "sha256": "721844bc0cdaa9b1a9a145dbca1f981e2de15a7e200a5d1fd9f5f1eed8e5d030"
+    },
+    "ThirdParty.extra.json": {
+      "bytes": 1532,
+      "sha256": "5fff210f16bcbe0d414a4f634ceb2b0564dad92065733c26ec3ee4aff89a4b10"
+    },
+    "ThirdParty.json": {
+      "bytes": 3616,
+      "sha256": "c9b447829d8489798e7bb74624e0308bbb0d0f974b9ff6e369dc21878a1cb45c"
+    },
+    "ThirdParty/Workers/package.json": {
+      "bytes": 19,
+      "sha256": "fa6944a20ca5e6fbaf98fd202eb8c7004d5b4ab786e36b9ed02ee31dbe196c9f"
+    },
+    "ThirdParty/Workers/zip-web-worker.js": {
+      "bytes": 28430,
+      "sha256": "7a3d1908dd32dde8be0902f9729b45f73ebb7de5f4e367ed04f4de7596390d69"
+    },
+    "ThirdParty/basis_transcoder.wasm": {
+      "bytes": 500839,
+      "sha256": "96849a2719b431008533806199ad4e513ef5a5f632b87e452fb1eea961d5730e"
+    },
+    "ThirdParty/draco_decoder.wasm": {
+      "bytes": 285948,
+      "sha256": "2516a4e43526d71787bf2f678f951329f7f858f8f15f42d4bc9e370b31a0da3a"
+    },
+    "ThirdParty/google-earth-dbroot-parser.js": {
+      "bytes": 218747,
+      "sha256": "cced3e7fdc467edf0722347e7913fdb9680a9e4f32d52b622c01a9970e9a0fc8"
+    },
+    "ThirdParty/wasm_splats_bg.wasm": {
+      "bytes": 26522,
+      "sha256": "530cb068ddd94b7267db1e1690ebdfcd94c552b2886d79398438841c42a1a14d"
+    },
+    "ThirdParty/zip-module.wasm": {
+      "bytes": 55126,
+      "sha256": "1ebaf6e62f247a005189493097f460bc9050f248755c55ecba34fd54257a6bb2"
+    },
+    "Widgets/Animation/Animation.css": {
+      "bytes": 2748,
+      "sha256": "ef37c1157734f55c8ebf932359f43dc233e3334d38cc722045fdf2c89aa914da"
+    },
+    "Widgets/Animation/lighter.css": {
+      "bytes": 1919,
+      "sha256": "93d0422a375d1740515bc74e36b7148c0a7ea2cab2b57a4c72d33e9470c2e655"
+    },
+    "Widgets/BaseLayerPicker/BaseLayerPicker.css": {
+      "bytes": 2544,
+      "sha256": "4589a67b8423b2e2a34bbd4cdaf7c7bca63159d702679556ce948cc9cedcd94f"
+    },
+    "Widgets/BaseLayerPicker/lighter.css": {
+      "bytes": 734,
+      "sha256": "2483870def48e6db019c97e6f82d0ec6fe60c63facbe2c161cfe2c1579ebef67"
+    },
+    "Widgets/Cesium3DTilesInspector/Cesium3DTilesInspector.css": {
+      "bytes": 2431,
+      "sha256": "03e6368d1177e4fc0f7c7faab9c6f660867b0e5f01d2d23001b3811eef67d891"
+    },
+    "Widgets/CesiumInspector/CesiumInspector.css": {
+      "bytes": 2633,
+      "sha256": "53202d9e53ef40afe580925c62ba4e9c1a149a1bae001cb6256ed3084def1171"
+    },
+    "Widgets/CesiumWidget/CesiumWidget.css": {
+      "bytes": 2265,
+      "sha256": "d177d8ab518dda483c404ece734142a51ba2389f2114d259f207b177c0840234"
+    },
+    "Widgets/CesiumWidget/lighter.css": {
+      "bytes": 307,
+      "sha256": "e5cae7e3497064bc3cd16c11a65e259fc55bbdcbce344f76f978e6b0e0b78190"
+    },
+    "Widgets/FullscreenButton/FullscreenButton.css": {
+      "bytes": 193,
+      "sha256": "c952978d84ab0cd9077e0f6f8ebe3a31dc52231a6ceb61169b08e5c58b1253b7"
+    },
+    "Widgets/Geocoder/Geocoder.css": {
+      "bytes": 1811,
+      "sha256": "9290b14bf7159dbd4e09de16ae8057682d580969063b2d1cfd683dd4e6efc5b8"
+    },
+    "Widgets/Geocoder/lighter.css": {
+      "bytes": 495,
+      "sha256": "126bdceac44eae6871200ee0a931ca95c4a4825f405907c21c0e917aa8361576"
+    },
+    "Widgets/I3SBuildingSceneLayerExplorer/I3SBuildingSceneLayerExplorer.css": {
+      "bytes": 636,
+      "sha256": "4be131ecc81a6932a7ccad93621b91f8a26f67fc5d71f9f2c96b42580014d058"
+    },
+    "Widgets/Images/ImageryProviders/ArcGisMapServiceWorldHillshade.png": {
+      "bytes": 8624,
+      "sha256": "bd005647a69b59b30660e6e6f1a8e6cf4bf5ad0f3a1148a705aa325d8427fd97"
+    },
+    "Widgets/Images/ImageryProviders/ArcGisMapServiceWorldImagery.png": {
+      "bytes": 12290,
+      "sha256": "7abc9ebc21e94f9e4e86649d62661580193a70e3e54637e01253bee98269b7de"
+    },
+    "Widgets/Images/ImageryProviders/ArcGisMapServiceWorldOcean.png": {
+      "bytes": 9905,
+      "sha256": "81cbcc167040b451cf2b2dd86bb2467079bae7bfe044fda69d1a751f72d0a662"
+    },
+    "Widgets/Images/ImageryProviders/azureAerial.png": {
+      "bytes": 32446,
+      "sha256": "53e2e0108d57ab985fa594516df532265e1663ab31732179d6173f4fb32b4f3f"
+    },
+    "Widgets/Images/ImageryProviders/azureRoads.png": {
+      "bytes": 25152,
+      "sha256": "d4033f8ef9eb55728815eb33e6e69ba1dc848f259e9a9be9e6c04cf7c0be0e3a"
+    },
+    "Widgets/Images/ImageryProviders/bingAerial.png": {
+      "bytes": 9943,
+      "sha256": "705be480540ee78bc2c719864537d4867bd278a46283c5b293777d63139a75f3"
+    },
+    "Widgets/Images/ImageryProviders/bingAerialLabels.png": {
+      "bytes": 10374,
+      "sha256": "6c6bd8344cbc5eb5c2d10ae281e1ae948ce584366a36214ed2754c40d787f808"
+    },
+    "Widgets/Images/ImageryProviders/bingRoads.png": {
+      "bytes": 8076,
+      "sha256": "8bca72a4659d797752494f2d772f7cb1f78db376b23907c9161a7e3660e6a4de"
+    },
+    "Widgets/Images/ImageryProviders/blueMarble.png": {
+      "bytes": 7403,
+      "sha256": "3da5f427b2355c1b80befb0ce02856fa250bdb8e30721397a7953095fbd30c97"
+    },
+    "Widgets/Images/ImageryProviders/earthAtNight.png": {
+      "bytes": 5836,
+      "sha256": "9bd366dabede661b775d2be55e4bb70625362bc8fd9a296ca6988f075744c2f5"
+    },
+    "Widgets/Images/ImageryProviders/googleContour.png": {
+      "bytes": 40737,
+      "sha256": "0a0a741ad84c0c0911f3f251bb6954e579e583e6bcc601812b5f759d0a6edb48"
+    },
+    "Widgets/Images/ImageryProviders/googleRoadmap.png": {
+      "bytes": 32232,
+      "sha256": "3fb5cd008d06f26c8f3a0b43316b08bbfea6af3c240ad024be8b4af1fea4b20f"
+    },
+    "Widgets/Images/ImageryProviders/googleSatellite.png": {
+      "bytes": 40898,
+      "sha256": "d1b9582fb3edf9d81d5a9c083d0e6c68fd48a4a28cabb3893e66f78e3378781b"
+    },
+    "Widgets/Images/ImageryProviders/googleSatelliteLabels.png": {
+      "bytes": 40267,
+      "sha256": "bedac990018f0be2223eb303b43db2a55bad3556eb9d9790ae7cf9f2632789bc"
+    },
+    "Widgets/Images/ImageryProviders/mapQuestOpenStreetMap.png": {
+      "bytes": 11342,
+      "sha256": "b751906c7ff4122f52c0688aec4ea496de65e1788053a0d6b958e0393fc8ace3"
+    },
+    "Widgets/Images/ImageryProviders/mapboxSatellite.png": {
+      "bytes": 9242,
+      "sha256": "4eed6627af0abf1e3f466e92c3cf32f9fe81e0d2eda16fd252f64c06aa496291"
+    },
+    "Widgets/Images/ImageryProviders/mapboxStreets.png": {
+      "bytes": 7270,
+      "sha256": "a74b31a51560751e3ccccb68ef3dfd01eafe9c6db42fb732a42d0972397fe9ad"
+    },
+    "Widgets/Images/ImageryProviders/mapboxTerrain.png": {
+      "bytes": 8300,
+      "sha256": "19b7b62ae23dc3c8f3548e1c594670d052d10d2048954b50f30a1f81a3c5b7a0"
+    },
+    "Widgets/Images/ImageryProviders/naturalEarthII.png": {
+      "bytes": 7491,
+      "sha256": "f31016adfcb20341ccf6a7cecd8c2351ec820bcb769ad62520e676ff883bf347"
+    },
+    "Widgets/Images/ImageryProviders/openStreetMap.png": {
+      "bytes": 2663,
+      "sha256": "403ec35912440a3f5d01b2caca318dc7cc6efbf1c73bbfe040e0fc45422c349a"
+    },
+    "Widgets/Images/ImageryProviders/sentinel-2.png": {
+      "bytes": 10086,
+      "sha256": "e8270fcacc9ac6829c8f3a8978bab7697b0679c951290a1d7ffb854747c4658c"
+    },
+    "Widgets/Images/ImageryProviders/stadiaAlidadeSmooth.png": {
+      "bytes": 7302,
+      "sha256": "7130b53ea9712f3e6669f276fc0bf6ac75cefde9faf44365ec1bdcfaec2dd2fe"
+    },
+    "Widgets/Images/ImageryProviders/stadiaAlidadeSmoothDark.png": {
+      "bytes": 7289,
+      "sha256": "161373153d350946dd396cb27c6cd7ea6374a89c8d4a4b80eaeb1740b7983748"
+    },
+    "Widgets/Images/ImageryProviders/stamenToner.png": {
+      "bytes": 4119,
+      "sha256": "8de09648729219d7bbc611474efc7f6d6173b868e104f2d2cddbfea1298a5a94"
+    },
+    "Widgets/Images/ImageryProviders/stamenWatercolor.png": {
+      "bytes": 10806,
+      "sha256": "6663e5ccbe5af16f1933069ca3f3b298f469b5cd8b6a9ea914240c1a7e8f7232"
+    },
+    "Widgets/Images/NavigationHelp/Mouse.svg": {
+      "bytes": 5623,
+      "sha256": "8633a7dadb468dcea41869b624f7b809ceb314a5f0b7e55a30a8eeb7cdf23fb9"
+    },
+    "Widgets/Images/NavigationHelp/MouseLeft.svg": {
+      "bytes": 5581,
+      "sha256": "4051709cc4059cd740617a34ebc56b2e9ce378675203cbf6281eae4f04f5ec58"
+    },
+    "Widgets/Images/NavigationHelp/MouseMiddle.svg": {
+      "bytes": 5579,
+      "sha256": "bd7f72a62457527af6cd94eb3460dd58dd2d8105080db5619bd9a440fe1f069a"
+    },
+    "Widgets/Images/NavigationHelp/MouseRight.svg": {
+      "bytes": 5572,
+      "sha256": "8780853b6eea524c36fa2ae759c00d811bb0fb6274b8c7953705a8b0ea318ba4"
+    },
+    "Widgets/Images/NavigationHelp/Touch.svg": {
+      "bytes": 3446,
+      "sha256": "c574d42a0250d9f48e7b4c71185b4a1a1a4b4301ea03ddbf22f940638995f1f6"
+    },
+    "Widgets/Images/NavigationHelp/TouchDrag.svg": {
+      "bytes": 6288,
+      "sha256": "8964f930f74b060a490b033005a1da10983cf6c8ee93c93caf84525126374992"
+    },
+    "Widgets/Images/NavigationHelp/TouchRotate.svg": {
+      "bytes": 5626,
+      "sha256": "5722d19812c315a334034364c1eef2e2df75a975bdbe8de96d47e258e807029d"
+    },
+    "Widgets/Images/NavigationHelp/TouchTilt.svg": {
+      "bytes": 5862,
+      "sha256": "c2fb3e9f406a08e64360d8f1b2d289c61f6200167d14e2b3b461434f1aec4069"
+    },
+    "Widgets/Images/NavigationHelp/TouchZoom.svg": {
+      "bytes": 5482,
+      "sha256": "7a05cc6f1fffb80f88ee8d47f16d51fba00f432583943ff2baa8564196e4a616"
+    },
+    "Widgets/Images/TerrainProviders/CesiumWorldTerrain.png": {
+      "bytes": 10080,
+      "sha256": "714355373dcbede4d4ad850be207fe2ed6830c4d171a7c5158794d19351a2a72"
+    },
+    "Widgets/Images/TerrainProviders/Ellipsoid.png": {
+      "bytes": 6173,
+      "sha256": "1bf31e09a782be7fdfe1b611e4dcb5d1e59fcf3eef59509a11627dd8e7567b54"
+    },
+    "Widgets/Images/TimelineIcons.png": {
+      "bytes": 781,
+      "sha256": "526c03c04d87bd2250f67b6cbcec9c045437168dca76506e50297388046d5059"
+    },
+    "Widgets/Images/info-loading.gif": {
+      "bytes": 723,
+      "sha256": "28239b6aa67c3491f7893dfac9d84a2e2768ac450dc7d51c23548de33a7e3c05"
+    },
+    "Widgets/InfoBox/InfoBox.css": {
+      "bytes": 1950,
+      "sha256": "dbf1e88f02890085a1fa9357d49880c8e93e0184c4e63faf136b2f272db040e6"
+    },
+    "Widgets/InfoBox/InfoBoxDescription.css": {
+      "bytes": 4675,
+      "sha256": "a392409fdd193076707b06c9a07bb9440863ca968079fe48d2ccbe1573b1b8db"
+    },
+    "Widgets/NavigationHelpButton/NavigationHelpButton.css": {
+      "bytes": 2074,
+      "sha256": "7d257f03a4fdc5c4b2a5c5f257b000889aa71e13b5b18327af78c278e9e82ec4"
+    },
+    "Widgets/NavigationHelpButton/lighter.css": {
+      "bytes": 1063,
+      "sha256": "60385a98dde35c997d0d6af3ec87463bb3dac320dd724273154a26ecfad72b82"
+    },
+    "Widgets/PerformanceWatchdog/PerformanceWatchdog.css": {
+      "bytes": 371,
+      "sha256": "31214dc54f28b507b1c7baad35ad0352e9fda9fd1b24f915811f58b82ce6da77"
+    },
+    "Widgets/ProjectionPicker/ProjectionPicker.css": {
+      "bytes": 1216,
+      "sha256": "760c4a01553151d57a614f5e13ff854c0df45f87fc3fe193e8f59bc91a1d010b"
+    },
+    "Widgets/SceneModePicker/SceneModePicker.css": {
+      "bytes": 1794,
+      "sha256": "3dc94f4b216d9c9821f9cf7c4bee9357d6f458d4743dea328639f167ef5bb5ec"
+    },
+    "Widgets/SelectionIndicator/SelectionIndicator.css": {
+      "bytes": 472,
+      "sha256": "797c9e1e2970a688bdff10f544268ede6c47bc449ee7af63e7d4e3abe83190d8"
+    },
+    "Widgets/Timeline/Timeline.css": {
+      "bytes": 2910,
+      "sha256": "d2f1655e59137ddefa05e8bdf8f68160f8247cdefcba51de55440a178a01e99e"
+    },
+    "Widgets/Timeline/lighter.css": {
+      "bytes": 467,
+      "sha256": "454d14e1ad03bb6cef04b7250c159922815b1607363d965a11e9869b0ef8a3c1"
+    },
+    "Widgets/VRButton/VRButton.css": {
+      "bytes": 169,
+      "sha256": "f220a4e72d2a49d72ac003651ac9b504b1326bfd513e2380d566eb9ed0fb0cd6"
+    },
+    "Widgets/Viewer/Viewer.css": {
+      "bytes": 1958,
+      "sha256": "495a778aff711560c57511cf13b5a943d7cea5fa47d3e87a133952e2330af2f8"
+    },
+    "Widgets/VoxelInspector/VoxelInspector.css": {
+      "bytes": 449,
+      "sha256": "58bb321e5b2ce6d134033c4aae77539c26f4b5b8078944fff180bd5e1ab122b5"
+    },
+    "Widgets/lighter.css": {
+      "bytes": 6142,
+      "sha256": "92e9b28deeb10aa256c7227c85bf79946a6ce1def3cbc0ffd04cb47dee506d03"
+    },
+    "Widgets/lighterShared.css": {
+      "bytes": 1062,
+      "sha256": "13652fc7eedf3f3a6816e8c90f2f5fa35a1c8951f387b35a5299c74371df2646"
+    },
+    "Widgets/shared.css": {
+      "bytes": 1952,
+      "sha256": "d4d877c863037a80916101b8e983e99f69d7a6cc580e3ee7f03f16ddcf19a909"
+    },
+    "Widgets/widgets.css": {
+      "bytes": 30710,
+      "sha256": "702c5adf3d16ec7f1c03cc5fb7ecb823af6c59fa192789fb2c859ac7a11f4a0c"
+    },
+    "Workers/chunk-6FYG4X2F.js": {
+      "bytes": 4502,
+      "sha256": "82ed8efcdec5f6652fafc2d11d90c50738d97a5e06d6a6e9b148d7162091f721"
+    },
+    "Workers/chunk-GWE2HRAQ.js": {
+      "bytes": 491570,
+      "sha256": "7c0c80b3575ee21ffc9f9fc9c01d139c2e046dc17336bafcccf290e67433204e"
+    },
+    "Workers/chunk-HNL5VMHB.js": {
+      "bytes": 5098,
+      "sha256": "475ab759ecb0c16b83ab47bcca900eb9e63657c44af20bf46a8a5484c559b39d"
+    },
+    "Workers/chunk-IGOYCRIJ.js": {
+      "bytes": 9687,
+      "sha256": "ee4321ce312ddcbf5d2a822bbc95061fe89e15adbd8ab490fde31accd5e3e69b"
+    },
+    "Workers/chunk-J6FR5PFB.js": {
+      "bytes": 1518,
+      "sha256": "a329c6e3d8fd8fbef82cee66fd993473ea542bf47dc07513109f6f62c31651cd"
+    },
+    "Workers/chunk-LOEQS4D5.js": {
+      "bytes": 178775,
+      "sha256": "82f0a6b6be50cd4768e62f63ee605dc62118a0c40d45c1a27e8eb75a304fc55d"
+    },
+    "Workers/chunk-MXXXHGW3.js": {
+      "bytes": 7675,
+      "sha256": "9a6421166c6a40d27ca5e03d918f2dd39a2f35f74f657bcfb43e68f7a2222363"
+    },
+    "Workers/chunk-QVYSL4VL.js": {
+      "bytes": 26397,
+      "sha256": "ffe4122633d32161a29d0aec9832307ac2617b991fa82c810e0d1368c3a373c2"
+    },
+    "Workers/chunk-VF77DAIX.js": {
+      "bytes": 6034,
+      "sha256": "e71b43b58716487682994b691ed7a2bb1c658acb18392be4fb66fa8a601cd239"
+    },
+    "Workers/chunk-YYTML7GF.js": {
+      "bytes": 58499,
+      "sha256": "8be26ae8cb47c0e250ed9dafc71c3307b75bcb7445f0bb4eefe32c865db03b68"
+    },
+    "Workers/combineGeometry.js": {
+      "bytes": 1111,
+      "sha256": "e62a7854b7b29341b73618d1ecba44546c1589488e7c0cbdd3d1cdd7a2fbb1af"
+    },
+    "Workers/createBoxGeometry.js": {
+      "bytes": 991,
+      "sha256": "f034d2a2d403a165585b96ddbb6b820237667a980ffcff2c7ba0e1e24e9a90ec"
+    },
+    "Workers/createBoxOutlineGeometry.js": {
+      "bytes": 991,
+      "sha256": "c1900713d734a07b57ac9ae7556dfed309db58f7105ed16eb716c96f46f7f73d"
+    },
+    "Workers/createCircleGeometry.js": {
+      "bytes": 1137,
+      "sha256": "58468a01015ea1882e50f993cfc51fd226dae872f9751e46169377722cdded0a"
+    },
+    "Workers/createCircleOutlineGeometry.js": {
+      "bytes": 1137,
+      "sha256": "2177df01e3e885d445baf77658c46b88e347aaf14d5856cce6468e21b36e814c"
+    },
+    "Workers/createCoplanarPolygonGeometry.js": {
+      "bytes": 991,
+      "sha256": "db4a5d3376b11f0486af57e866bf2493202fbdd35e168ef73eac6c391a243f8c"
+    },
+    "Workers/createCoplanarPolygonOutlineGeometry.js": {
+      "bytes": 1033,
+      "sha256": "7e626e34b8841178004b0e069a0436c836f4fdb15bdf5e4b8e8bf05711a0bc4e"
+    },
+    "Workers/createCorridorGeometry.js": {
+      "bytes": 1034,
+      "sha256": "0f01e6a2c94a905bb5489cd27246a9a7da9d025449c163c8c2f059d2506afdbe"
+    },
+    "Workers/createCorridorOutlineGeometry.js": {
+      "bytes": 1034,
+      "sha256": "ad5bfdff154f089512a410b2dd865a4097d65703e785c09cfc429902c35659b6"
+    },
+    "Workers/createCylinderGeometry.js": {
+      "bytes": 992,
+      "sha256": "ea29a28742e67ccf93d19a262ddb636ea9e068dbd8c9af048ba6c8a36305c9d9"
+    },
+    "Workers/createCylinderOutlineGeometry.js": {
+      "bytes": 992,
+      "sha256": "46fdb72203cbc421f5be06768eab458fe55346a23f4e072c22ced5319055beb4"
+    },
+    "Workers/createEllipseGeometry.js": {
+      "bytes": 1069,
+      "sha256": "1cec0de29363ba44d9afc1ba19bb7aab51437f1e2610bd5d71eb724a3b3fc860"
+    },
+    "Workers/createEllipseOutlineGeometry.js": {
+      "bytes": 1069,
+      "sha256": "c9312ebb2e183bcebe60e705d14c970591a6d2d6309291e97bc5d97cb46f45fe"
+    },
+    "Workers/createEllipsoidGeometry.js": {
+      "bytes": 992,
+      "sha256": "833edd5c6f75a57baa0341d4afaea725ab1d3087f40b3e48f110b5d7db6151d4"
+    },
+    "Workers/createEllipsoidOutlineGeometry.js": {
+      "bytes": 1001,
+      "sha256": "1cdce2ebf931e873f7afee5f51b8faf0c60e358fca49092e1f0bb47abc3f7af9"
+    },
+    "Workers/createFrustumGeometry.js": {
+      "bytes": 1024,
+      "sha256": "9a4ba6085d75c4344ce0ccb1e908b21659cc590099391e47921cff179ba3eada"
+    },
+    "Workers/createFrustumOutlineGeometry.js": {
+      "bytes": 3155,
+      "sha256": "ec5a03ecabf0f62d142da6c0380925f0cdb5f136849c4804652f79b1bebf0781"
+    },
+    "Workers/createGeometry.js": {
+      "bytes": 5801,
+      "sha256": "39d52d5d79d346ae342b791a887722e71f6681d74dea0fc206c4d4fc4ac5fbb6"
+    },
+    "Workers/createGroundPolylineGeometry.js": {
+      "bytes": 15925,
+      "sha256": "49eaa0eb62a9c9b8c5f67c603ed097c80d40b592d085a8c6e15b7f4371bdf72b"
+    },
+    "Workers/createPlaneGeometry.js": {
+      "bytes": 992,
+      "sha256": "dcc20663ce6554965a9aebd3d8a3c1b3c0a62da7436b46cd646b4aa0c5ac9692"
+    },
+    "Workers/createPlaneOutlineGeometry.js": {
+      "bytes": 992,
+      "sha256": "ad0cbd658a87156f9a3e51625e8dd890bdb9826eb347978df09779a8f06cf26c"
+    },
+    "Workers/createPolygonGeometry.js": {
+      "bytes": 1034,
+      "sha256": "a17661276bb34d7b6855480088ba63286356b2cf73c537f9f77b55ea448f08b3"
+    },
+    "Workers/createPolygonOutlineGeometry.js": {
+      "bytes": 1034,
+      "sha256": "018b9360ba755c7b3ca4bdb0805317ec7ef97b50bc1a1aa35d48636bec71b142"
+    },
+    "Workers/createPolylineGeometry.js": {
+      "bytes": 1034,
+      "sha256": "3faaf50829061c11d13a10c392b588fc98d66ce9cb6f6116848b97db8ac38e77"
+    },
+    "Workers/createPolylineVolumeGeometry.js": {
+      "bytes": 1034,
+      "sha256": "7d964d414e5d5e9c3703e1a9937b23593203ceb1200e6f2d7616a4a2a36bb452"
+    },
+    "Workers/createPolylineVolumeOutlineGeometry.js": {
+      "bytes": 1034,
+      "sha256": "b4bf1a1b309c99532e2ea4e0b61fea887029e6181df7bb72f6f66d849ed3d8cf"
+    },
+    "Workers/createRectangleGeometry.js": {
+      "bytes": 1076,
+      "sha256": "6416032c3e95c087ecd49dd083eff056720508e2d7ccf1806d7687be04222fdf"
+    },
+    "Workers/createRectangleOutlineGeometry.js": {
+      "bytes": 1076,
+      "sha256": "c8b2cc68a4e957172157e5fe24a9b02671ada7f9788a0dada085937a1293e88d"
+    },
+    "Workers/createSimplePolylineGeometry.js": {
+      "bytes": 1034,
+      "sha256": "93f4a0fac02fefb0f15a1df81e8fc7a491f6c5fd885aba9fff2d47fb92b274ab"
+    },
+    "Workers/createSphereGeometry.js": {
+      "bytes": 992,
+      "sha256": "1c8368e889ae1a457d428acad7ff2984f0cd52541816112a7050d0c4a867aa82"
+    },
+    "Workers/createSphereOutlineGeometry.js": {
+      "bytes": 992,
+      "sha256": "f9db10f048eec599366e9c53ad5d4ecd2ecd55998561657221b3ba81ff3ee1b5"
+    },
+    "Workers/createTaskProcessorWorker.js": {
+      "bytes": 932,
+      "sha256": "65493b8bc150f105b42b99310fd0d3706e4ff844ee7c787d5ccec240fd43a772"
+    },
+    "Workers/createVectorTileClampedPolylines.js": {
+      "bytes": 5708,
+      "sha256": "d325a58c501c84e9228ee85fa250806bb549b9553b26fc09d6ff2e8e8aa648d5"
+    },
+    "Workers/createVectorTileGeometries.js": {
+      "bytes": 5139,
+      "sha256": "55ed08fc95e4401df4332fd5b77442008e9e2139e6aac38f4b2515aa535cc18f"
+    },
+    "Workers/createVectorTilePoints.js": {
+      "bytes": 1646,
+      "sha256": "2e5a47026f7c3e6e3b5c1abfdecd8b891cd2985a073e9d9d6a7d92ce7f4b7591"
+    },
+    "Workers/createVectorTilePolygons.js": {
+      "bytes": 4836,
+      "sha256": "644b7f1771ddee36357f44c14d5330b0bacfd08550b7971f5242a207e26b4829"
+    },
+    "Workers/createVectorTilePolylines.js": {
+      "bytes": 3285,
+      "sha256": "81912bdb0e3f171920ac37592542eabeb2363aaa99604d8a56e619e098226f1a"
+    },
+    "Workers/createVerticesFromCesium3DTilesTerrain.js": {
+      "bytes": 1577,
+      "sha256": "af9136f29b4328a9c420e4a9acbe7051a535fda53f65c8544090288e9afb9984"
+    },
+    "Workers/createVerticesFromGoogleEarthEnterpriseBuffer.js": {
+      "bytes": 7311,
+      "sha256": "467359d94fa884a5bd70e67a35beed04de53a883640eb9411c4095c3de2c70f0"
+    },
+    "Workers/createVerticesFromHeightmap.js": {
+      "bytes": 27703,
+      "sha256": "c91596474366ede86d9e2a44494ab0baa51d5e36c18da87618fdc22d4b49416d"
+    },
+    "Workers/createVerticesFromQuantizedTerrainMesh.js": {
+      "bytes": 5388,
+      "sha256": "3e0b8934e4b4353b58ef7026ddec5fff762c2b35051a1ad2d5b69b483dd2f8e0"
+    },
+    "Workers/createWallGeometry.js": {
+      "bytes": 1034,
+      "sha256": "989b8ade6e548c4aa9c6168f692f9088a067fe68f1fc6440fb8a41782da904d7"
+    },
+    "Workers/createWallOutlineGeometry.js": {
+      "bytes": 1034,
+      "sha256": "29c84cefa6275256f1ab20d2b3fd307bd84bd9feab25af5dcdc35a7194080eab"
+    },
+    "Workers/decodeDraco.js": {
+      "bytes": 4862,
+      "sha256": "a8f91577249ae018beaa17e0f75898bf92c063ec64152c35a9a1a6a78dfe03e8"
+    },
+    "Workers/decodeGoogleEarthEnterprisePacket.js": {
+      "bytes": 36060,
+      "sha256": "5e21cf6aab53f28e871bd1c4f67d03587f6c49e8b18081fa90d91ceb09df6360"
+    },
+    "Workers/decodeI3S.js": {
+      "bytes": 16831,
+      "sha256": "b4f53976abf64ef0edae7efe0d771e916fab32c7b2a22827066a395c79ab4f75"
+    },
+    "Workers/gaussianSplatSorter.js": {
+      "bytes": 1266,
+      "sha256": "f83557921ce870751efdc3d20c55bcbe855ef718e58c4228fb7b8a1b0f9ee166"
+    },
+    "Workers/gaussianSplatTextureGenerator.js": {
+      "bytes": 1304,
+      "sha256": "0dde5372a103a0fd83daba3bdcd72015de3a8b635d35895b4401a9df7ccc6bf6"
+    },
+    "Workers/incrementallyBuildTerrainPicker.js": {
+      "bytes": 1892,
+      "sha256": "ee16bb738db5b8918e7ec842aadbbb5ade03c3ccce585c96ab3531b61b27131a"
+    },
+    "Workers/transcodeKTX2.js": {
+      "bytes": 53472,
+      "sha256": "5a3fa3d23c919229debf1d81fecf033860023c024600a65b9ed8108a4f5fced3"
+    },
+    "Workers/transferTypedArrayTest.js": {
+      "bytes": 979,
+      "sha256": "a35a27a278d047a1ca32e41beb3af324f8fbadf4db15a0b6a0da61a02ac487d1"
+    },
+    "Workers/upsampleQuantizedTerrainMesh.js": {
+      "bytes": 6837,
+      "sha256": "be0aee4b5d916a10961ab5258fed31dd82dda1635d142b834b91ef98b8d49cef"
+    },
+    "Workers/upsampleVerticesFromCesium3DTilesTerrain.js": {
+      "bytes": 1737,
+      "sha256": "9830cc6e5a4fe7a28817e29d0d3404cd1b7f46e3039d91809a3fdf7dc7425fe4"
+    }
+  }
+}

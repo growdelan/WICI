@@ -1,0 +1,46 @@
+[
+  {
+    "synthetic": true,
+    "biuro": "WICI synthetic",
+    "przebieg": "Fikcyjny scenariusz testowy WICI.",
+    "komentarz": "Nie jest to rzeczywiste ostrzeżenie.",
+    "prawdopodobienstwo": "60",
+    "opublikowano": "2026-10-16 18:00:00",
+    "data_od": "2026-10-16 19:00:00",
+    "obszary": [
+      {
+        "wojewodztwo": "pomorskie",
+        "opis": "Fikcyjna zlewnia testowa",
+        "kod_zlewni": [
+          "WICI-1"
+        ]
+      }
+    ],
+    "numer": "900",
+    "zdarzenie": "Syntetyczna susza",
+    "stopień": "-1",
+    "data_do": "9999-12-31 23:59:59"
+  },
+  {
+    "synthetic": true,
+    "biuro": "WICI synthetic",
+    "przebieg": "Fikcyjny scenariusz testowy WICI.",
+    "komentarz": "Nie jest to rzeczywiste ostrzeżenie.",
+    "prawdopodobienstwo": "60",
+    "opublikowano": "2026-10-16 18:00:00",
+    "data_od": "2026-10-16 19:00:00",
+    "obszary": [
+      {
+        "wojewodztwo": "pomorskie",
+        "opis": "Fikcyjna zlewnia testowa",
+        "kod_zlewni": [
+          "WICI-1"
+        ]
+      }
+    ],
+    "numer": "901",
+    "zdarzenie": "Syntetyczne wezbranie",
+    "stopień": "1",
+    "data_do": "2026-10-18 18:00:00"
+  }
+]

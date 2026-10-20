@@ -1,0 +1,128 @@
+port = 8765
+timeout_seconds = 20
+max_response_bytes = 10000000
+[sources.imgw_meteo]
+enabled = true
+interval_seconds = 300
+[sources.rso]
+enabled = true
+interval_seconds = 300
+[sources.rcb]
+enabled = true
+interval_seconds = 600
+[sources.sg]
+enabled = true
+interval_seconds = 1800
+
+# Opcjonalna warstwa satelitarnych wykryć. Klucz wpisz tylko w config.local.toml.
+[sources.firms]
+enabled = false
+interval_seconds = 900
+# map_key = "WKLEJ_WLASNY_KLUCZ"
+
+# Opcjonalna mapa bieżącego ruchu. Klucz wyłącznie w config.local.toml.
+[sources.tomtom]
+enabled = false
+# api_key = "WKLEJ_WLASNY_KLUCZ"
+
+# Oficjalne utrudnienia na drogach krajowych; pobierane po włączeniu warstwy w UI.
+[sources.gddkia]
+enabled = true
+
+# Pogoda na mapie: pobieranie dopiero po włączeniu wiatru lub opadów, bez kluczy.
+[sources.weather_imgw]
+enabled = true
+[sources.weather_forecast]
+enabled = true
+
+# Radar historii opadów RainViewer, tylko po włączeniu warstwy; bez klucza.
+[sources.radar]
+enabled = true
+
+# EUMETSAT LI AFA: publiczny WMS bez klucza, pobieranie po włączeniu warstwy.
+[sources.lightning]
+enabled = true
+
+# Katalog Copernicus EMS, tylko dla miejsca wybranego na mapie.
+[sources.imagery]
+enabled = true
+
+# Samoloty adsb.fi: tylko po włączeniu warstwy, bez klucza, cache 10 sekund.
+[sources.aircraft]
+enabled = true
+
+# Ukraina: publiczne alerty NEPTUN bez klucza; odczyt tylko przy aktywnej warstwie.
+# Przełącznik na mapie jest domyślnie wyłączony. Brak archiwizacji; demo offline.
+[sources.ukraine]
+enabled = true
+
+# Autobusy: pobieranie po włączeniu warstwy dla wybranego miasta, bez historii.
+[sources.buses]
+enabled = true
+
+[sources.buses_szczecin]
+enabled = true
+[sources.buses_krakow]
+enabled = true
+[sources.buses_poznan]
+enabled = true
+
+# Klucz NOWEGO portalu dane.um.warszawa.pl wyłącznie w config.local.toml.
+[sources.buses_warsaw]
+enabled = true
+# api_key = "WKLEJ_WLASNY_KLUCZ"
+
+# Kolej PolishTrainsGTFS: stacje, kursy i trasy po włączeniu warstwy, bez klucza.
+[sources.trains]
+enabled = true
+
+# Statki AISStream: klucz tylko w config.local.toml; połączenie po włączeniu warstwy.
+[sources.ships]
+enabled = true
+# api_key = "WKLEJ_WLASNY_KLUCZ"
+
+# IMGW: wodowskazy i ostrzeżenia JSON; pobieranie po włączeniu warstwy.
+[sources.hydro_imgw]
+enabled = true
+
+# Bieżące godzinowe pomiary GIOŚ v1. Bez klucza; pobieranie tylko po włączeniu warstwy.
+# Stacje: cache 24 h; stanowiska: 6 h; wyniki i indeks: 30 min. Demo zawsze offline.
+# Kolory indeksu: pobieranie wyłącznie dla stacji w bieżącym widoku mapy.
+[sources.gios]
+enabled = true
+
+# IODA: niezależny od widoczności warstwy odczyt w tle; bez klucza API.
+[sources.ioda]
+enabled = true
+interval_seconds = 300 # dozwolone 300 lub 600; nie oznacza interwału pomiarów IODA
+asns = [5617, 12741, 12912] # maks. 8; każda sieć musi mieć potwierdzone relatedTo=country/PL
+
+# Opcjonalny kolektor jakości pozycji adsb.fi; niezależny od widoczności mapy.
+# Domyślnie wyłączony. Wymaga również aktywnego sources.aircraft.
+# Nie pobiera historii sprzed uruchomienia; demo jest syntetyczne i offline.
+[position_quality]
+enabled = false
+interval_seconds = 60 # 60–300; wspólny cache i Retry-After z samolotami
+retention_hours = 72 # 50–168; >=48 h historii + 2 h tła
+
+# Aktywna warstwa: automatyczny przegląd Polski (48 h, katalog co 10 min); demo offline.
+[sources.gfm]
+enabled = true
+
+# Sentinel-2 RGB przed / po: opcjonalne CDSE; tylko na żądanie.
+# Załóż bezpłatne konto CDSE, utwórz backendowy OAuth client w Sentinel Hub Dashboard.
+# Sekrety wpisuj wyłącznie w ignorowanym config.local.toml, nigdy w frontendzie.
+[sources.sentinel2]
+enabled = false
+# client_id = "WKLEJ_ID_KLIENTA_OAUTH"
+# client_secret = "WKLEJ_SEKRET_KLIENTA_OAUTH"
+
+# Sentinel-5P: regionalne kolumny NO₂/SO₂ i bezwymiarowy UVAI; osobna warstwa, tylko na żądanie.
+# Polska + bufor [12°E, 48°N, 26°E, 56°N], jeden dzień UTC na wyszukiwanie.
+# Po enabled=true używa istniejącego klienta sources.sentinel2, jeśli oba pola poniżej są puste.
+# Można podać osobną parę CDSE OAuth; sekrety pozostają wyłącznie na backendzie.
+# Dokładne filtry jakości, zakres dat i ograniczenia kanału: docs/sentinel5p.md.
+[sources.sentinel5p]
+enabled = false
+# client_id = "WKLEJ_ID_KLIENTA_OAUTH"
+# client_secret = "WKLEJ_SEKRET_KLIENTA_OAUTH"

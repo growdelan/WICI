@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "categories": [
+    {
+      "color": "#57b108"
+    },
+    {
+      "color": "#b0dd10"
+    },
+    {
+      "color": "#ffd911"
+    },
+    {
+      "color": "#e58100"
+    },
+    {
+      "color": "#e50000"
+    },
+    {
+      "color": "#990000"
+    }
+  ]
+}

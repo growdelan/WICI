@@ -1,0 +1,31 @@
+{
+  "provider": "Główny Urząd Geodezji i Kartografii — Państwowy Rejestr Granic",
+  "source": "https://mapy.geoportal.gov.pl/wss/service/PZGIK/PRG/WFS/AdministrativeBoundaries",
+  "prepared_at": "2026-10-12T14:15:25.671394+00:00",
+  "input_crs": "EPSG:2180 (GML northing/easting)",
+  "output_crs": "EPSG:4326 (longitude/latitude)",
+  "simplification": {
+    "algorithm": "Visvalingam-Whyatt coverage_simplify; shared edges preserved",
+    "tolerance_metres": 150
+  },
+  "use": "Wyłącznie orientacyjny podkład i obszary administracyjne; nie pomiary geodezyjne.",
+  "terms": "https://www.geoportal.gov.pl/pl/dane/panstwowy-rejestr-granic-prg/",
+  "layers": {
+    "provinces": {
+      "feature_count": 16,
+      "wfs_timestamp": "2026-10-12T14:05:33",
+      "source_sha256": "6332ffef5c934c2e46993c6b7471da078b745fba4b72127e7ef950159372aa92",
+      "versions_min": "2026-08-12T10:30:46",
+      "versions_max": "2026-10-01T10:33:23",
+      "output_sha256": "854c0447472a21c042287f1efc46a27af9343b34fdbc7a7a652162388d941040"
+    },
+    "counties": {
+      "feature_count": 380,
+      "wfs_timestamp": "2026-10-12T14:06:51",
+      "source_sha256": "dcdd00162210b2774e0c2756e7147ea711a30437622032a957cb3c5b24921fcd",
+      "versions_min": "2025-01-14T00:00:00",
+      "versions_max": "2026-10-01T10:33:23",
+      "output_sha256": "8292878dc683b990879a9da5e6e6c2deeb51e615e8f1b7638daee5940ecbb353"
+    }
+  }
+}

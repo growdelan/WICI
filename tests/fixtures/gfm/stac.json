@@ -1,0 +1,88 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "WICI_SYNTHETIC_0",
+      "collection": "GFM",
+      "properties": {
+        "datetime": "2026-10-16T08:00:00Z",
+        "processing:datetime": "2026-10-16T10:00:00Z",
+        "processing:version": "GFM v3.1.0"
+      },
+      "assets": {
+        "ensemble_flood_extent": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_0_ensemble_flood_extent.tif"
+        },
+        "reference_water_mask": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_0_reference_water_mask.tif"
+        },
+        "exclusion_mask": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_0_exclusion_mask.tif"
+        },
+        "advisory_flags": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_0_advisory_flags.tif"
+        },
+        "ensemble_likelihood": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_0_ensemble_likelihood.tif"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WICI_SYNTHETIC_1",
+      "collection": "GFM",
+      "properties": {
+        "datetime": "2026-10-15T08:00:00Z",
+        "processing:datetime": "2026-10-15T10:00:00Z",
+        "processing:version": "v4.1.1"
+      },
+      "assets": {
+        "ensemble_flood_extent": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_1_ensemble_flood_extent.tif"
+        },
+        "reference_water_mask": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_1_reference_water_mask.tif"
+        },
+        "advisory_flags": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_1_advisory_flags.tif"
+        },
+        "ensemble_likelihood": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_1_ensemble_likelihood.tif"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WICI_SYNTHETIC_2",
+      "collection": "GFM",
+      "properties": {
+        "datetime": "2026-10-14T08:00:00Z",
+        "processing:datetime": "2026-10-14T10:00:00Z",
+        "processing:version": "v4.1.1"
+      },
+      "assets": {
+        "ensemble_flood_extent": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_2_ensemble_flood_extent.tif"
+        },
+        "reference_water_mask": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_2_reference_water_mask.tif"
+        },
+        "exclusion_mask": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_2_exclusion_mask.tif"
+        },
+        "advisory_flags": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_2_advisory_flags.tif"
+        },
+        "ensemble_likelihood": {
+          "href": "https://data.eodc.eu/collections/GFM_LAYERS/WICI_SYNTHETIC_2_ensemble_likelihood.tif"
+        }
+      }
+    }
+  ],
+  "links": []
+}

@@ -1,0 +1,31 @@
+{
+  "type": "outages.events",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "minimal CODF-shaped negative case"
+  },
+  "data": [
+    {
+      "location": {
+        "type": "asn",
+        "code": "64512",
+        "name": "WICI synthetic network",
+        "attrs": {
+          "country_code": "PL"
+        }
+      },
+      "start": 1792222200,
+      "duration": 300,
+      "status": 0,
+      "fraction": 0.5,
+      "score": 250,
+      "overlaps_window": false
+    }
+  ],
+  "requestParameters": {
+    "format": "codf"
+  },
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

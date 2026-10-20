@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WICI — sytuacja i ostrzeżenia</title>
+<script defer src="/static/js/preferences.js"></script>
+<script defer src="/static/js/aircraft-motion.js"></script>
+<script defer src="/static/js/aircraft-camera-motion.js"></script>
+<script defer src="/static/js/bus-motion.js"></script>
+<script defer src="/static/js/aircraft3d.js"></script>
+<script src="/static/js/theme.js"></script>
+<link rel="stylesheet" href="/static/css/aircraft3d.css">
+<link rel="stylesheet" href="/static/css/tracking.css">
+<link rel="icon" href="/static/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png" sizes="180x180">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"><link rel="stylesheet" href="/static/css/app.css">
+<script defer src="/static/vendor/leaflet/leaflet.js"></script><script defer src="/static/js/region.js"></script><script defer src="/static/js/requests.js"></script><script defer src="/static/js/weather.js"></script><script defer src="/static/js/hydro.js"></script><script defer src="/static/js/gfm-auto.js"></script><script defer src="/static/js/sentinel2.js"></script><script defer src="/static/js/sentinel5p.js"></script><script defer src="/static/js/gfm.js"></script><script defer src="/static/js/gios.js"></script><script defer src="/static/js/radar.js"></script><script defer src="/static/js/lightning.js"></script><script defer src="/static/js/ukraine.js"></script><script defer src="/static/js/position-quality.js"></script><script defer src="/static/js/tracking.js"></script><script defer src="/static/js/aircraft.js"></script><script defer src="/static/js/buses.js"></script><script defer src="/static/js/ships.js"></script><script defer src="/static/js/trains.js"></script><script defer src="/static/js/imagery.js"></script><script defer src="/static/js/ioda.js"></script><script defer src="/static/js/layers.js"></script><script defer src="/static/js/atlas.js"></script><script defer src="/static/js/app.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Przejdź do treści</a>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="WICI — strona główna"><span class="brand-copy"><img class="brand-logo" src="/static/brand/logo.svg" alt="WICI" width="310" height="96"><span>Sytuacja i ostrzeżenia</span></span></a>
+  <div class="topbar-actions"><div class="clock"><span id="mode" class="mode-pill">Łączenie…</span><time id="clock"></time></div><button type="button" id="theme-toggle" class="theme-toggle" aria-label="WICI Noc — motyw ciemny" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"></path></svg><span id="theme-label">WICI Noc</span></button><button type="button" id="refresh" class="refresh" aria-label="Odśwież widok"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#refresh"></use></svg><span>Odśwież widok</span></button></div>
+</header>
+<div id="demo-banner" class="demo-banner" hidden></div>
+<div id="global-status" role="status" aria-live="polite"></div>
+<div class="app-shell">
+<nav class="side-rail" aria-label="Widoki">
+  <button type="button" class="tab active" data-view="situation" aria-current="page"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#map"></use></svg><span class="rail-label">Sytuacja</span></button>
+  <button type="button" class="tab" data-view="sources"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#database"></use></svg><span class="rail-label">Źródła</span></button>
+  <span class="rail-local" aria-label="Aplikacja lokalna">PL</span>
+</nav>
+<main id="main-content" class="app-main">
+<section id="situation" class="view workspace">
+  <aside class="communications-panel" aria-label="Przegląd publikacji">
+    <div class="panel-heading"><span class="panel-kicker">PRZEGLĄD PUBLIKACJI</span><h1>Sytuacja w Polsce</h1><p>Komunikaty źródeł w jednym miejscu.</p></div>
+    <form id="filters" class="filters">
+      <label class="region-control">Obszar danych<select name="voivodeship" id="province" aria-describedby="region-note"><option value="">Cała Polska</option></select></label><small id="region-note">Wybór obejmuje komunikaty i warstwy mapy. Region zapamiętujemy w tej przeglądarce.</small>
+      <div class="daily-controls"><button type="button" id="previous-day" aria-label="Poprzedni dzień"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#chevron-left"></use></svg></button><label>Dzień publikacji źródła<input type="date" name="date" id="selected-day" required></label><button type="button" id="next-day" aria-label="Następny dzień"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#chevron-right"></use></svg></button><button type="button" id="today">Dzisiaj</button></div>
+      <label class="type-filter">Rodzaj komunikatu<select name="communication_type"><option value="">Wszystkie komunikaty</option><option value="warning">Ostrzeżenia IMGW</option><option value="notice">Informacje</option><option value="exercise">Ćwiczenia</option></select></label>
+      <details class="filter-options"><summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#sliders"></use></svg><span>Filtry i zakres</span><span id="filter-selection" aria-live="polite"></span></summary><div class="filter-options-body">
+        <label>Kategoria<select name="category"><option value="">Wszystkie kategorie</option><option value="weather">Pogoda i hydrologia</option><option value="public_safety">Bezpieczeństwo mieszkańców</option><option value="border">Granice</option><option value="infrastructure">Infrastruktura</option><option value="airspace">Bezpieczeństwo powietrzne</option><option value="other_context">Pozostały kontekst</option></select></label>
+        <label class="check"><input type="checkbox" name="include_active" id="include-active"><span>Także ostrzeżenia IMGW i komunikaty RSO udostępniane dziś z innych dni</span></label>
+      </div></details>
+    </form>
+    <p id="limit-warning" class="notice" hidden></p>
+    <section class="records" aria-label="Lista publikacji"><div class="section-title"><h2>Komunikaty źródeł</h2><span id="communication-count">Wczytywanie…</span></div><div id="communication-list"></div></section>
+    <details class="day-context"><summary>O tym widoku</summary><p id="day-note" class="muted"></p></details>
+  </aside>
+  <section class="map-panel" aria-label="Mapa obszarów publikacji">
+    <div id="map" tabindex="0" aria-label="Interaktywna mapa sytuacji"></div>
+    <div class="map-heading"><strong id="map-title">Mapa sytuacji</strong><span id="map-subtitle">Komunikaty i warstwy danych</span></div>
+<details id="layer-panel" class="layer-panel"><summary><strong>Warstwy</strong><span id="layer-selection" aria-live="polite">· 0 aktywnych</span></summary><div class="layer-panel-body">
+<p class="layer-count-note muted">Liczone są dostępne, włączone warstwy danych. Podkład i opcje pomocnicze poza licznikiem. Rozwinięcie grupy otwiera ustawienia.</p>
+<section class="communications-controls" aria-label="Podstawowa nakładka komunikatów">
+<label class="check"><input type="checkbox" id="communications-enabled" checked aria-describedby="communications-note"> <strong>Komunikaty i ostrzeżenia</strong></label>
+<small id="communications-note">Karteczki komunikatów i kolorowane obszary na mapie. Lista publikacji pozostaje dostępna.</small>
+<p id="communications-status" role="status">Nakładka komunikatów włączona.</p>
+</section>
+<p class="muted">Wybory checkboxów zapamiętujemy w tej przeglądarce.</p>
+<details class="layer-progress-panel" open><summary id="layer-progress-summary">Postęp warstw</summary><div id="layer-progress"></div><small>Wyniki pojawiają się niezależnie. Źródła z pełnym zestawem krajowym pobieramy wspólnie i filtrujemy lokalnie; obrazy przycinamy do regionu.</small></details>
+<details class="layer-group"><summary>Pogoda</summary><div class="layer-group-body"><section class="radar-controls" aria-label="Radar opadów RainViewer">
+<div class="weather-heading"><strong>Radar opadów</strong><span class="badge">Historia · RainViewer</span></div>
+<div class="weather-toolbar"><label class="check"><input type="checkbox" id="radar-enabled"> Radar opadów</label><button type="button" id="radar-play" aria-pressed="false">▶ Odtwarzaj radar</button></div>
+<div class="weather-timeline"><label for="radar-hour">Historia radaru <output id="radar-time">Brak klatki</output></label><input type="range" id="radar-hour" min="0" max="0" value="0" step="1" disabled aria-label="Klatka radaru"><small>Około 2 godzin historii · odstęp 10 minut · czas klatki kompozytu, nie każdego skanu.</small></div>
+<label class="radar-opacity">Widoczność warstwy<input id="radar-opacity" type="range" min="20" max="90" value="65" step="5" aria-label="Widoczność radaru"></label>
+<p id="radar-status" role="status" aria-live="polite">Radar wyłączony.</p>
+<div id="radar-legend" hidden><strong>Odbiciowość radarowa · dBZ</strong><span class="radar-colorbar"></span><span>Słabsze echa → silniejsze echa</span></div>
+<small>Weather data by <a href="https://www.rainviewer.com/" target="_blank" rel="noopener noreferrer">RainViewer</a> · radar historyczny, bez prognozy.</small>
+<details class="layer-info"><summary>Opis i ograniczenia</summary><small>Echa radarowe wskazują obszar opadów, także śniegu. Kolory nie są sumą w mm ani ostrzeżeniem. Przezroczysty obszar może oznaczać brak echa lub brak danych. Dostęp osobisty/edukacyjny, bez gwarancji ciągłego pokrycia. Polska i otoczenie; przybliżenie skaluje obraz, nie zwiększa jego dokładności. Oś radaru jest niezależna od prognozy Open-Meteo i dnia publikacji. <a href="https://www.rainviewer.com/api/transition-faq.html" target="_blank" rel="noopener noreferrer">Warunki i limity</a></small></details>
+</section><section class="lightning-controls" aria-label="Wykryte wyładowania EUMETSAT">
+<div class="weather-heading"><strong>Wykryte wyładowania</strong><span class="badge">EUMETSAT · LI AFA</span></div>
+<label class="check"><input type="checkbox" id="lightning-enabled"> Aktywność wyładowań EUMETSAT</label>
+<label class="lightning-period">Okres obserwacji<select id="lightning-time" disabled aria-label="Okres wyładowań"><option>Brak danych</option></select></label>
+<p id="lightning-status" role="status" aria-live="polite">Warstwa wyładowań wyłączona.</p>
+<div id="lightning-legend" hidden><strong>Oficjalna legenda AFA</strong><img id="lightning-legend-image" alt="Legenda EUMETSAT LI Accumulated Flash Area"><small>Aktywność na obszarze emisji optycznej; piksele nie są miejscami uderzeń w ziemię.</small></div>
+<small>© EUMETSAT 2026 · Meteosat Lightning Imager · <a href="https://view.eumetsat.int/productviewer/productDetails/mtg_fd%3Ali_afa" target="_blank" rel="noopener noreferrer">Źródło i opis produktu</a></small>
+<details class="layer-info"><summary>Opis i ograniczenia</summary><small>Kolorowe obszary pokazują wykrytą aktywność wyładowań w okresie 5 minut. Czas jest początkiem okresu. Satelita obserwuje także wyładowania w chmurach i nie rozróżnia doziemnych. Kliknij obraz, aby sprawdzić okres i widoczny sygnał w pikselu. Brak koloru nie dowodzi braku burzy. Historia obejmuje ostatnią dostępną godzinę, może być opóźniona względem teraz. Niezależna od radaru, prognozy i dnia publikacji. Oryginalne kolory EUMETSAT; obraz przeskalowany i zreprojektowany do mapy.</small></details>
+</section>
+<section class="gios-controls" aria-label="Jakość powietrza GIOŚ">
+<div class="weather-heading"><strong>Jakość powietrza</strong><span class="badge">GIOŚ · pomiary godzinowe</span></div>
+<label class="check"><input type="checkbox" id="gios-enabled"> Jakość powietrza GIOŚ</label>
+<p id="gios-status" role="status" aria-live="polite">Warstwa GIOŚ wyłączona.</p>
+<div id="gios-legend" hidden><strong>Oficjalny polski indeks jakości powietrza GIOŚ</strong><div id="gios-legend-items"></div><small>Kolor dotyczy indeksu ogólnego stacji, niezależnie od wybranego zanieczyszczenia. Szary: brak indeksu, błąd, nieustalony czas lub indeks starszy niż 3 h.</small><p id="gios-index-status" role="status" aria-live="polite"></p></div>
+<div id="gios-controls" hidden>
+<label>Stacja GIOŚ<select id="gios-station"><option value="">Wybierz stację</option></select></label>
+<label>Zanieczyszczenie<select id="gios-parameter"><option value="PM10">PM10</option><option value="PM2.5">PM2,5</option><option value="NO2">NO₂</option><option value="SO2">SO₂</option><option value="O3">O₃</option><option value="CO">CO</option><option value="C6H6">Benzen (C₆H₆)</option></select></label>
+<label>Stanowisko<select id="gios-sensor"><option value="">Wybierz stanowisko</option></select></label>
+<div id="gios-detail"></div><details id="gios-history"><summary>Godzinowe wyniki</summary></details></div>
+<details class="layer-info"><summary>Opis, aktualność i źródło</summary>
+<small>Kolory punktów odpowiadają oficjalnemu indeksowi ogólnemu GIOŚ; szary oznacza brak aktualnego indeksu. Stężenia w µg/m³ (także CO) są odrębne od oficjalnego polskiego indeksu GIOŚ. Brak indeksu oznacza nieznaną jakość powietrza. Nie interpolujemy pomiarów i nie wyliczamy przekroczeń norm dobowych ani rocznych z jednej godziny.</small>
+<small>Pomiar lub indeks starszy niż 3 h: nieaktualny. Wyniki odświeżamy co 5 min na widocznej mapie; wykaz stacji cache’ujemy 24 h, stanowisk 6 h, wyniki i indeks 30 min. Czas lokalny GIOŚ pokazujemy w Europe/Warsaw; niejednoznaczne godziny DST pozostają bez ustalonego wieku. Warstwa bieżąca niezależna od dnia publikacji; wybór obszaru ogranicza stacje i pobieranie indeksów.</small>
+<small>Źródło: <a href="https://powietrze.gios.gov.pl/pjp/content/api" target="_blank" rel="noopener noreferrer">GIOŚ - EKOINFONET · Państwowy Monitoring Środowiska</a>. Wybrane stacje i stanowiska; przetworzono format i czas. Wyniki niezweryfikowane, mogą ulec zmianie.</small></details>
+</section>
+<section class="hydro-controls" aria-label="Hydrologia IMGW">
+<div class="weather-heading"><strong>Hydrologia</strong><span class="badge">IMGW-PIB · bieżący wykaz</span></div>
+<label class="check"><input type="checkbox" id="hydro-stations"> Wodowskazy</label>
+<label class="check"><input type="checkbox" id="hydro-warnings"> Ostrzeżenia hydrologiczne</label>
+<p id="hydro-stations-status" role="status" aria-live="polite">Warstwa wodowskazów wyłączona.</p>
+<div id="hydro-station-controls" hidden><label>Wybierz stację<select id="hydro-station"><option value="">Wybierz wodowskaz</option></select></label><div id="hydro-station-detail"></div></div>
+<p id="hydro-warnings-status" role="status" aria-live="polite">Ostrzeżenia hydrologiczne wyłączone.</p>
+<div id="hydro-warning-controls" hidden><label>Filtr obszaru lub zjawiska<input id="hydro-filter" type="search" placeholder="np. pomorskie, susza"></label><div id="hydro-warning-list" class="hydro-warning-list"></div></div>
+<details class="layer-info"><summary>Legenda i źródła</summary><small>Niebieski: pomiar poniżej progu ostrzegawczego; pomarańczowy: osiągnięty próg ostrzegawczy; czerwony: osiągnięty próg alarmowy; szary: brak aktualnego pomiaru lub progów. Próg na stacji nie jest stopniem ostrzeżenia. Pomiar starszy niż 3 godziny jest nieaktualny. Każdy parametr ma osobny czas. Czasy pomiarów bez strefy przyjęto jako UTC; ostrzeżenia używają czasu polskiego. Dymki pokazują czas w Warszawie.</small>
+<small>Ostrzeżenia dotyczą opisanych zlewni, nie całych województw. JSON nie zawiera ich geometrii ani powiązania ze stacjami. Brak odczytu nie oznacza braku zagrożenia. Warstwa bieżąca, niezależna od filtra dnia; odświeżanie co 5 minut na widocznej mapie.</small>
+<small>Źródło: <a href="https://danepubliczne.imgw.pl/apiinfo" target="_blank" rel="noopener noreferrer">IMGW-PIB · API</a>. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone.</small></details>
+</section>
+<section class="weather-controls" aria-label="Wiatr i opady">
+<div class="weather-heading"><strong>Pogoda na mapie</strong><span class="badge">IMGW · Open-Meteo</span></div>
+<div class="weather-toolbar">
+<label class="check"><input type="checkbox" id="weather-wind"> Wiatr</label>
+<label class="check"><input type="checkbox" id="weather-rain"> Opady punktowe</label>
+<label>Źródło<select id="weather-mode"><option value="measurement">Pomiar · IMGW</option><option value="forecast">Prognoza · Open-Meteo</option></select></label>
+<label class="check"><input type="checkbox" id="weather-animation"> Animacja wiatru</label>
+<button type="button" id="weather-play" aria-pressed="false" title="Przełącz na prognozę i odtwarzaj kolejne godziny.">▶ Odtwarzaj prognozę</button>
+</div>
+<div class="weather-timeline"><label for="weather-hour">Czas pogody <output id="weather-time" for="weather-hour">Bieżące pomiary</output></label><input type="range" id="weather-hour" min="0" max="0" value="0" step="1" disabled aria-label="Godzina prognozy"><small id="weather-range">Pomiar: najnowsza dostępna próbka każdej stacji.</small></div>
+<p id="weather-status" role="status" aria-live="polite">Warstwy pogody wyłączone.</p>
+<div id="weather-legend" class="weather-legend" hidden>
+<div id="weather-wind-legend"><strong>Wiatr · km/h · strzałka wskazuje dokąd wieje</strong><span><i class="wind-low"></i> &lt;10</span><span><i class="wind-medium"></i> 10–&lt;30</span><span><i class="wind-high"></i> 30–&lt;50</span><span><i class="wind-severe"></i> ≥50</span><span>○ cisza · brak wartości = brak strzałki</span></div>
+<div id="weather-rain-legend"><strong id="weather-rain-unit">Opad · mm / 10 min</strong><span><i class="rain-light"></i> &gt;0–&lt;1</span><span><i class="rain-medium"></i> 1–&lt;5</span><span><i class="rain-heavy"></i> ≥5</span><span>0 mm = brak koła</span></div>
+</div>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Pogoda jest niezależna od dnia publikacji; wybór obszaru ogranicza punkty na mapie i pobieranie prognozy. Kliknij strzałkę lub koło, aby odczytać wartości i czas próbki. IMGW: pomiary punktowe na stacjach; Open-Meteo: wartości modelowe w siatce, do 48 godzin. Opad całkowity obejmuje także śnieg; suma za 10 minut (IMGW) lub godzinę (prognoza) kończące się w czasie próbki. Koła są symbolami punktów, nie zasięgiem opadu ani radarem. Animowane smugi pokazują lokalny kierunek przy punktach, bez interpolacji między nimi.</small>
+<small>Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane Instytutu Meteorologii i Gospodarki Wodnej – Państwowego Instytutu Badawczego zostały przetworzone. <a href="https://danepubliczne.imgw.pl/apiinfo" target="_blank" rel="noopener noreferrer">IMGW: warunki</a> · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></small></details>
+</section></div></details>
+<details class="layer-group" id="ioda-group"><summary>Problemy łączności internetowej</summary><div class="layer-group-body">
+<label class="check"><input type="checkbox" id="ioda-enabled"> Anomalie dostępności internetu · IODA</label>
+<p>Detekcja IODA. Bez przypisywania przyczyny i statusu oficjalnego ostrzeżenia polskich służb.</p>
+<div id="ioda-content" hidden>
+<label class="check"><input type="checkbox" id="ioda-communications"> Pokaż też komunikaty i ostrzeżenia na mapie</label>
+<small>Obszary komunikatów są domyślnie ukryte na mapie. Lista publikacji pozostaje dostępna.</small>
+<label>Poziom<select id="ioda-level"><option value="">Wszystkie poziomy</option><option value="country">Kraj</option><option value="region">Region</option><option value="asn">ASN</option></select></label>
+<label>Okno<select id="ioda-hours"><option value="24">24 godziny</option><option value="48" selected>48 godzin</option></select></label>
+<p id="ioda-status" role="status" aria-live="polite">Oczekiwanie na lokalnie zapisane dane.</p><p id="ioda-errors" class="notice" role="status"></p>
+<details class="layer-info"><summary>Zakres, historia i ograniczenia</summary><p id="ioda-note" class="muted"></p></details><div id="ioda-list" class="ioda-list"></div>
+<label>Sygnały dla jednostki<select id="ioda-entity"></select></label><div id="ioda-signals"></div>
+</div>
+<small>Odczyt w tle podczas pracy aplikacji co 300 lub 600 s. Częstotliwość pomiarów i opóźnienie publikacji zależą od IODA. Regiony z niepewnym mapowaniem i ASN pozostają na liście. Fiolet: koniec detekcji niepotwierdzony; fiolet przerywany: dodatkowo stary alert. Szare wypełnienie i przerywany obrys: zakończenie potwierdzone przez IODA. Obszar jednostki jest agregacją pomiarów, nie zasięgiem awarii wszystkich łączy.</small>
+<small>Źródło: <a href="https://ioda.inetintel.cc.gatech.edu" target="_blank" rel="noopener noreferrer">IODA · Georgia Tech Internet Intelligence Lab</a>. Copyright © 2021–2025 Georgia Tech Research Corporation. All Rights Reserved. Dane przetworzone do lokalnego widoku.</small>
+</div></details>
+<details class="layer-group" id="s5p-group"><summary>Sentinel-5P — atmosfera regionalna</summary><div class="layer-group-body">
+<label class="check"><input type="checkbox" id="s5p-enabled"> Regionalne smugi NO₂, SO₂ i aerozoli</label>
+<p id="s5p-status" role="status" aria-live="polite">Warstwa Sentinel-5P wyłączona.</p>
+<p class="s5p-caveat">Obserwacja satelitarna atmosfery w skali regionalnej. Nie opisuje jakości powietrza przy konkretnej ulicy i nie dowodzi emisji z pojedynczego zakładu</p>
+<div id="s5p-controls" hidden>
+<label>Parametr satelitarny<select id="s5p-parameter"><option value="no2">NO₂ — kolumna troposferyczna</option><option value="so2">SO₂ — kolumna całkowita</option><option value="aer_ai">UVAI — indeks aerozolowy</option></select></label>
+<label>Dzień obserwacji (UTC)<input type="date" id="s5p-day"></label>
+<small id="s5p-date-limits">Wyszukiwanie jednego dnia UTC.</small>
+<div class="s5p-actions"><button type="button" id="s5p-search">Wyszukaj obserwacje</button><button type="button" id="s5p-extent">Pokaż cały obszar</button></div>
+<label>Dostępna obserwacja<select id="s5p-observation" disabled><option value="">Najpierw wyszukaj obserwacje</option></select></label>
+<label>Widoczność warstwy <output id="s5p-opacity-value" for="s5p-opacity">65%</output><input type="range" id="s5p-opacity" min="0" max="100" step="5" value="65" aria-label="Widoczność Sentinel-5P"></label>
+<div id="s5p-legend" hidden><strong id="s5p-legend-title"></strong><div id="s5p-legend-items"></div><p id="s5p-legend-description"></p><small>Skala wizualizacji, nie progi jakości powietrza. Wartości poza zakresem skali mają kolory skrajne.</small></div>
+<label class="check"><input type="checkbox" id="s5p-quality"> Pokaż maski braków i jakości</label>
+<div id="s5p-mask-legend" class="s5p-mask-legend"><span><i class="s5p-uncovered"></i>Brak pokrycia</span><span><i class="s5p-rejected"></i>Odrzucone jakościowo</span><span><i class="s5p-nodata"></i>NoData</span></div>
+<div id="s5p-detail"></div>
+<small>Brak sygnału nie oznacza czystego powietrza. Luki pozostają puste; maski odróżniają je od prawidłowego zera.</small>
+</div>
+<details class="layer-info"><summary>Interpretacja, aktualność i źródło</summary>
+<p>NO₂ i SO₂ to wielkości kolumnowe atmosfery w mol/m². UVAI jest bezwymiarowym indeksem absorpcji w UV, nie stężeniem PM10 ani PM2,5. Założenia wysokości warstwy SO₂ oraz filtry jakości podajemy przy wybranym produkcie.</p>
+<p>Nominalna skala przestrzenna NO₂ wynosi około 3,5 × 5,5 km; zależy od produktu i geometrii pomiaru. Powiększanie i reprojekcja nie zwiększają dokładności. Obszar: 48–56°N, 12–26°E, Polska z buforem transgranicznym. Nie przypisujemy smug do zakładów ani kierunku pochodzenia emisji.</p>
+<p>GIOŚ mierzy powietrze przy powierzchni w punktach stacji. Może być włączony równocześnie, ma własne jednostki, legendę i czas. Dane satelitarne nie są przeliczane na przyziemne µg/m³ ani indeks GIOŚ; nie tworzymy wspólnej oceny.</p>
+<p id="s5p-latency-note">Cache aplikacji: 10 min; brak automatycznego odświeżania.</p>
+<p>Codzienne pokrycie nie gwarantuje codziennych użytecznych danych. Około 3 h to cel publikacji NRT, a nie gwarancja dostępności w kanale CDSE ani WICI. Wyszukiwanie i pobieranie odbywa się na żądanie; wiek wyświetlanego obrazu zmienia się niezależnie od pobrania. Dzień obserwacji jest niezależny od dnia publikacji komunikatów.</p>
+<small>Źródło: Copernicus Sentinel-5P / TROPOMI, przetworzone przez WICI. <a href="https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/S5PL2.html" target="_blank" rel="noopener noreferrer">Produkty i pasma CDSE</a> · <a href="https://dataspace.copernicus.eu/terms-and-conditions" target="_blank" rel="noopener noreferrer">Warunki Copernicus Data Space</a></small>
+</details></div></details>
+<details class="layer-group" id="s2-group"><summary>Sentinel-2 — przed / po</summary><div class="layer-group-body">
+<label class="check"><input type="checkbox" id="s2-enabled"> Sentinel-2 — przed / po</label>
+<p id="s2-status" role="status" aria-live="polite">Warstwa Sentinel-2 wyłączona.</p>
+<div id="s2-controls" hidden>
+<button type="button" id="s2-pick" aria-pressed="false">Wskaż punkt na mapie</button>
+<button type="button" id="s2-center">Wybierz środek mapy</button>
+<p id="s2-point">Nie wybrano punktu.</p>
+<label>Bok obszaru porównania<select id="s2-size"><option value="2">2 km</option><option value="4" selected>4 km</option><option value="6">6 km</option></select></label>
+<fieldset><legend>Przed — zakres wyszukiwania</legend>
+<label>Od (UTC)<input type="date" id="s2-before-start"></label><label>Do (UTC)<input type="date" id="s2-before-end"></label>
+</fieldset>
+<fieldset><legend>Po — zakres wyszukiwania</legend>
+<label>Od (UTC)<input type="date" id="s2-after-start"></label><label>Do (UTC)<input type="date" id="s2-after-end"></label>
+</fieldset>
+<p>Możesz porównywać różne lata, np. 2020 i 2026. Każdy zakres obejmuje do 366 dni; domyślnie oba obejmują ostatnie 30 dni.</p>
+<label>Maksymalne zachmurzenie sceny (%)<input type="number" id="s2-cloud" min="0" max="100" value="80"></label>
+<label class="check"><input type="checkbox" id="s2-full-only" checked> Tylko pełny zasięg w katalogu</label>
+<p>Domyślnie ukrywamy obserwacje częściowe i o nieznanym zasięgu. Możesz je pokazać, odznaczając filtr. Pełny zasięg katalogowy nie gwarantuje kompletu pikseli ani braku chmur — rzeczywiste pokrycie sprawdzamy po pobraniu.</p>
+<button type="button" id="s2-search">Wyszukaj obserwacje</button>
+<p id="s2-before-status"></p>
+<label>Przed<select id="s2-before"><option value="">Wyszukaj i wybierz obserwację</option></select></label>
+<p id="s2-after-status"></p>
+<label>Po<select id="s2-after"><option value="">Wyszukaj i wybierz obserwację</option></select></label>
+<button type="button" id="s2-compare">Porównaj wybrane obserwacje</button>
+<label class="check"><input type="checkbox" id="s2-quality"> Pokaż maski: chmury (żółte), cienie (fioletowe), śnieg (błękitny)</label>
+<div id="s2-detail"></div>
+<p>RGB B04/B03/B02: 10 m; nominalny powrót około 5 dni, przez chmury oczekiwanie może być dłuższe. CDSE podaje oczekiwaną dostępność do 24 h od obserwacji — bez gwarancji użytecznego obrazu.</p>
+<p>Zachmurzenie całej sceny nie opisuje punktu. Maski SCL mają 20 m, są przybliżone i mogą się mylić; powiększenie do siatki RGB nie zwiększa ich dokładności. Szachownica oznacza brak pokrycia / NoData.</p>
+<p>Porównanie wizualne: sezon, oświetlenie i kolorystyka mogą wyjaśniać różnice. To nie jest potwierdzenie zmiany terenu ani automatyczne wykrywanie.</p>
+<a href="https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Overview/Authentication.html" target="_blank" rel="noopener noreferrer">Instrukcja konfiguracji CDSE / OAuth</a>
+</div></div></details>
+<details class="layer-group" id="gfm-group"><summary>Zalania satelitarne — Copernicus GFM</summary><div class="layer-group-body">
+<label class="check"><input type="checkbox" id="gfm-enabled"> Zalania satelitarne — Copernicus GFM</label>
+<p id="gfm-status" role="status" aria-live="polite">Warstwa GFM wyłączona.</p>
+<div id="gfm-controls" hidden>
+<label>Tryb GFM<select id="gfm-mode"><option value="auto">Automatycznie · Polska</option><option value="manual">Wybrana obserwacja / archiwum</option></select></label>
+<p id="gfm-automatic-note">Automatyczny przegląd Polski: obserwacje z ostatnich 48 godzin, katalog sprawdzany co 10 minut przy włączonej warstwie i widocznej mapie. Odczyt początkowy odbywa się stopniowo. Różowe punkty oznaczają grupy wykryć, nie obrys zalania; przybliż mapę do poziomu 10, aby zobaczyć geometrię pikseli 20 m. Każda grupa ma własny czas i informacje o jakości. Brak punktów nie potwierdza braku powodzi.</p>
+<button type="button" id="gfm-klodzko">Wczytaj próbę historyczną: Kłodzko · wrzesień 2024</button>
+<div id="gfm-manual" hidden>
+<p>Obszar zainteresowania: widoczny prostokąt mapy w Polsce, maks. 0,5° × 0,5° i 4 mln pikseli źródłowych. Przybliż i przesuń mapę, następnie wyszukaj. Maks. 15 dni, 24 produkty; katalog może być niepełny.</p>
+<p id="gfm-area">Nie wybrano jeszcze obszaru.</p>
+<button type="button" id="gfm-recent">Ostatnie 7 dni</button>
+<label>Od (UTC)<input type="date" id="gfm-start"></label><label>Do (UTC)<input type="date" id="gfm-end"></label>
+<button type="button" id="gfm-search">Szukaj dla widocznego obszaru mapy</button>
+<label>Obserwacja Sentinel-1<select id="gfm-observation"><option value="">Wyszukaj obserwacje</option></select></label>
+</div>
+<label>Widoczność nakładki (0 = niewidoczna, 1 = pełna widoczność)<input type="range" id="gfm-opacity" min="0" max="1" step="0.05" value="0.65"></label>
+<div id="gfm-legend" class="gfm-legend" aria-label="Legenda GFM"><span><i class="gfm-flood"></i>Zalanie</span><span><i class="gfm-water"></i>Woda referencyjna (stała / sezonowa)</span><span><i class="gfm-excluded"></i>Wykluczenie</span><span><i class="gfm-unknown"></i>Brak obserwacji / NoData</span><span><i class="gfm-clear"></i>Ocenione bez detekcji</span></div>
+<div id="gfm-detail"></div>
+</div>
+<details class="layer-info"><summary>Źródło i ograniczenia</summary>
+<p>Copernicus EMS Global Flood Monitoring / EODC. Piksel produktu 20 m; widok mapy może być próbkowany rzadziej. Radar obserwuje także nocą i przez chmury; zabudowa, gęsta roślinność i teren ograniczają detekcję. Potrzebny jest przelot Sentinel-1; około 8 godzin to docelowy czas udostępnienia po obserwacji przy terminowej dostawie danych, a nie interwał aktualizacji.</p>
+<p>Czas GFM jest niezależny od dnia publikacji komunikatów. Tryb automatyczny sam sprawdza Polskę i pokazuje szczegóły po przybliżeniu. W archiwum nakładka pozostaje w wybranym obszarze po przesunięciu mapy; ponów wyszukiwanie dla nowego obszaru. Dane nie określają głębokości ani przejezdności dróg. Włącz osobno wodowskazy i listę ostrzeżeń IMGW; WICI nie przypisuje ostrzeżeń do wykryć ani nie wyznacza zlewni.</p>
+<p><a href="https://global-flood.emergency.copernicus.eu/terms-of-service/" target="_blank" rel="noopener noreferrer">Warunki CEMS i atrybucja</a> · <a href="https://extwiki.eodc.eu/en/GFM" target="_blank" rel="noopener noreferrer">Instrukcja GFM</a>. Kolory i reprojekcja: WICI; wymagane oznaczenie roku produktu widoczne po odczycie.</p>
+</details></div></details>
+<details class="layer-group" id="imagery-group"><summary>Zobrazowania po katastrofach</summary><div class="layer-group-body"><section class="imagery-controls" aria-label="Zobrazowania po katastrofach">
+<label class="check"><input type="checkbox" id="imagery-enabled"> <strong>Zobrazowania po katastrofach</strong></label>
+<p>Copernicus EMS Rapid Mapping</p>
+<p>Włącz warstwę i kliknij miejsce na mapie. Szukamy materiałów w okolicy do 10 km. Możesz też przesunąć mapę klawiszami strzałek i wybrać jej środek.</p>
+<button type="button" id="imagery-center" disabled>Szukaj w środku mapy</button>
+<p id="imagery-location">Nie wybrano miejsca.</p>
+<p id="imagery-status" role="status" aria-live="polite">Warstwa zobrazowań wyłączona.</p>
+<div id="imagery-results" hidden><ul id="imagery-providers" class="imagery-providers" aria-label="Dostępność źródeł"></ul><div id="imagery-gallery" class="imagery-gallery" aria-label="Materiały dla wybranego miejsca"></div></div>
+<details class="layer-info"><summary>Opis i ograniczenia</summary><small>Obrysy wskazują przybliżony zasięg materiałów, nie obszar zniszczeń. Copernicus EMS udostępnia produkty kartograficzne dotyczące katastrof; podgląd może być mapą analizy skutków. Dostępność jest niepełna, a zdjęcia mogą być archiwalne. Data wykonania i publikacji produktu są rozróżniane; brak daty oznacza brak tej informacji u źródła. Warstwa jest niezależna od dnia publikacji. Wyszukiwanie odbywa się wyłącznie po wskazaniu miejsca.</small></details>
+</section></div></details>
+<details class="layer-group"><summary>Pożary</summary><div class="layer-group-body"><section class="fire-controls" aria-label="Warstwa satelitarna NASA FIRMS">
+<label class="check"><input type="checkbox" id="fires-enabled"> <strong>Satelitarne wykrycia pożarów</strong></label>
+<label>Okno obserwacji<select id="fires-hours"><option value="24">Ostatnie 24 godziny</option><option value="48">Ostatnie 48 godzin</option></select></label>
+<p id="fires-status" role="status" aria-live="polite">Warstwa wyłączona.</p>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Pomarańczowe punkty: anomalie cieplne NASA FIRMS / VIIRS. Obserwacje satelitarne z opóźnieniem zwykle do 3 godzin od przelotu; satelita nie obserwuje miejsca stale. To nie potwierdzone interwencje ani informacja, czy pożar nadal trwa. Filtr województwa i wybrany dzień obejmują też tę warstwę; dla dni historycznych okno kończy się o końcu dnia w Polsce. Piksel nominalnie 375 m nie określa rozmiaru pożaru; chmury mogą zasłonić wykrycie, a przemysł powodować anomalie.</small></details>
+</section><section class="effis-controls" aria-label="Prognoza zagrożenia pożarowego EFFIS">
+<label class="check"><input type="checkbox" id="effis-enabled"> <strong>Zagrożenie pożarowe EFFIS</strong></label>
+<label>Dzień prognozy<select id="effis-day"><option value="0">Dziś</option><option value="1">Jutro</option><option value="2">Pojutrze</option></select></label>
+<p id="effis-status" role="status" aria-live="polite">Warstwa EFFIS wyłączona.</p>
+<small>FWI: pogodowe warunki sprzyjające powstawaniu i rozwojowi pożarów roślinności. To nie prawdopodobieństwo pożaru ani ostrzeżenie IMGW. Prognoza dla Polski i otoczenia; jej dzień jest niezależny od dnia publikacji. Czas pobrania nie jest czasem wydania modelu — źródło go nie podaje.</small>
+<div id="effis-legend" hidden><strong>Oficjalna legenda FWI</strong><div id="effis-legend-image"></div><small>Niskie · umiarkowane · wysokie · bardzo wysokie · ekstremalne · bardzo ekstremalne. Kolory i progi według legendy źródła.</small></div>
+<small>Źródło: <a href="https://forest-fire.emergency.copernicus.eu/" target="_blank" rel="noopener noreferrer">EFFIS / Copernicus Emergency Management Service</a> · <a href="https://forest-fire.emergency.copernicus.eu/about-effis/technical-background/fire-danger-forecast" target="_blank" rel="noopener noreferrer">Model i indeks FWI</a> · <a href="https://forest-fire.emergency.copernicus.eu/about-effis/data-license" target="_blank" rel="noopener noreferrer">Warunki wykorzystania danych</a></small>
+</section></div></details>
+<details class="layer-group"><summary>Drogi</summary><div class="layer-group-body"><section class="osm-controls" aria-label="Podkład drogowy">
+<label class="check"><input type="checkbox" id="osm-enabled" checked disabled> <strong>Drogi OpenStreetMap</strong></label>
+<p id="osm-status" role="status" aria-live="polite">Podkład OpenStreetMap oczekuje na sprawdzenie trybu aplikacji.</p>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Mapa online z drogami, numerami i miejscowościami w całym widocznym obszarze, niezależna od warstw TomTom i GDDKiA oraz filtrów publikacji. Dostępna w trybie LIVE na widocznej mapie.</small>
+<small>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Zgłoś błąd mapy</a></small></details>
+</section><section class="traffic-controls" aria-label="Aktualny ruch drogowy">
+<label class="check"><input type="checkbox" id="traffic-enabled"> <strong>Ruch drogowy TomTom</strong></label>
+<p id="traffic-status" role="status" aria-live="polite">Warstwa TomTom wyłączona.</p>
+<small>Aktualny przepływ ruchu dla Polski, niezależny od dnia publikacji. Odświeżanie co 5 minut, tylko na widocznej mapie. Czas lokalnego pobrania nie jest czasem zdarzenia. Kliknij drogę, aby odczytać jej nazwę i oznaczenie.</small>
+<div id="traffic-legend" hidden><strong>Prędkość względem swobodnego ruchu</strong><span><i class="traffic-green"></i> zielony ≥75%</span><span><i class="traffic-yellow"></i> żółty 35–75%</span><span><i class="traffic-red"></i> czerwony 15–35%</span><span><i class="traffic-darkred"></i> ciemnoczerwony &lt;15%</span><span><i class="traffic-grey"></i> szary: droga zamknięta</span></div>
+<small>Źródło: <a href="https://www.tomtom.com/traffic-index/" target="_blank" rel="noopener noreferrer">TomTom Traffic</a> · © <a href="https://www.tomtom.com/copyright/" target="_blank" rel="noopener noreferrer">TomTom</a></small>
+</section><section class="gddkia-controls" aria-label="Utrudnienia na drogach krajowych">
+<label class="check"><input type="checkbox" id="gddkia-enabled"> <strong>Utrudnienia GDDKiA</strong></label>
+<p id="gddkia-status" role="status" aria-live="polite">Warstwa GDDKiA wyłączona.</p>
+<details class="layer-info"><summary>Opis i źródło</summary><small><i class="gddkia-symbol"></i> Fioletowe punkty: utrudnienia w zestawieniu GDDKiA. Punkt wskazuje środek odcinka objętego utrudnieniem, nie dokładne miejsce kolizji. Planowany koniec nie potwierdza usunięcia utrudnienia. Dane są niezależne od ruchu TomTom, dnia publikacji; odświeżanie co 5 minut tylko na widocznej mapie.</small>
+<small>Źródło: <a href="https://www.gov.pl/web/gddkia" target="_blank" rel="noopener noreferrer">GDDKiA</a> · <a href="https://www.archiwum.gddkia.gov.pl/dane/zima_html/utrdane.xml" target="_blank" rel="noopener noreferrer">Zestawienie XML</a></small></details>
+</section></div></details>
+<details class="layer-group"><summary>Komunikacja miejska</summary><div class="layer-group-body"><section class="buses-controls" aria-label="Autobusy komunikacji miejskiej">
+<label class="check"><input type="checkbox" id="buses-enabled"> <strong>Autobusy miejskie</strong></label>
+<label for="buses-city">Miasto</label><select id="buses-city"><option value="szczecin">Szczecin</option><option value="krakow">Kraków</option><option value="poznan">Poznań</option><option value="warszawa">Warszawa</option></select>
+<label for="buses-line">Linia</label><select id="buses-line"><option value="">Wszystkie linie</option></select>
+<button type="button" id="buses-focus">Pokaż Szczecin</button>
+<p id="buses-status" role="status" aria-live="polite">Warstwa autobusów wyłączona.</p>
+<small>Kliknij numer linii na mapie, aby zobaczyć dane lub wybrać „Podążaj w 3D”. Kamera zewnętrzna i pierwsza osoba korzystają z pozycji do 60 s; brakujący kierunek kamery może być szacowany z ruchu. Szare znaczniki: pozycje starsze niż minutę lub błąd odświeżania. Pozycje starsze niż 2 minuty znikają.</small>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Bieżące pozycje autobusów wybranego miasta, także na trasach podmiejskich. Pobieranie tylko na widocznej mapie. Pierwsze wczytanie Krakowa lub Poznania może potrwać dłużej z powodu pobierania rozkładu. Dostępność szczegółów zależy od źródła; brak opóźnienia nie oznacza punktualności. Dane niezależne od dnia publikacji; bez historii przejazdów. Brak pozycji nie oznacza braku autobusu. Pokrycie i aktualność zależą od źródła.</small>
+<small id="buses-description">Dane przetworzone i ujednolicone przez WICI; wiek ostatniej pozycji w szczegółach pojazdu.</small>
+<small>Źródło: <a id="buses-source" href="https://www.zditm.szczecin.pl/pl/zditm/dla-programistow/api-pojazdy" target="_blank" rel="noopener noreferrer">ZDiTM Szczecin</a><span id="buses-license"> · CC0 1.0</span></small></details>
+</section></div></details>
+<details class="layer-group"><summary>Kolej</summary><div class="layer-group-body"><section class="trains-controls" aria-label="Stacje i kursy kolejowe">
+<label class="check"><input type="checkbox" id="trains-enabled"> <strong>Stacje, kursy i opóźnienia</strong></label>
+<label class="check"><input type="checkbox" id="trains-positions-enabled" checked> Szacowane pozycje pociągów</label>
+<small class="train-estimate-legend"><span aria-hidden="true">◆</span> POZYCJE SZACOWANE · nie GPS. Wyznaczane wzdłuż trasy z aktualizowanych godzin postojów. Skład może w rzeczywistości stać lub jechać w innym miejscu.</small>
+<p id="trains-positions-status" role="status" aria-live="polite">Szacowane pozycje oczekują na włączenie warstwy kolejowej.</p>
+<button type="button" id="trains-poland">Pokaż Polskę</button>
+<p id="trains-status" role="status" aria-live="polite">Warstwa kolejowa wyłączona.</p>
+<small>Kliknij stację, aby zobaczyć kursy, następnie wybierz pociąg, aby pokazać jego trasę i postoje. Pierwsze wczytanie może potrwać kilkadziesiąt sekund.</small>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Fioletowe punkty oznaczają stacje, pomarańczowa linia — wybraną trasę. Romb ze znakiem pociągu oznacza szacowane położenie kursu, nie pomiar GPS. Szacunki pojawiają się tylko przy świeżych danych i dostępnych aktualizowanych godzinach oraz geometrii. Znikają po wygaśnięciu danych lub błędzie; odwołane kursy i objazdy bez potwierdzonego przebiegu nie otrzymują pozycji. Kursy i aktualizacje są bieżące, niezależne od dnia publikacji. Brak aktualizacji oznacza rozkład planowy, nie potwierdzenie punktualności. Przebieg trasy pochodzi z rozkładu; nie potwierdza aktualnego objazdu. Pokrycie jest niepełne, a źródło może mieć przerwy w aktualizacji.</small>
+<small>Źródło: <a href="https://mkuran.pl/gtfs/" target="_blank" rel="noopener noreferrer">PolishTrainsGTFS · Mikołaj Kuranowski</a> · PKP PLK / Koleje Mazowieckie · dane przetworzone w WICI · <a href="/notices" target="_blank" rel="noopener noreferrer">Warunki wykorzystania</a></small></details>
+</section></div></details>
+<details id="ukraine-group" class="layer-group"><summary>Ukraina</summary><div class="layer-group-body"><section class="ukraine-controls" aria-label="Alerty i doniesienia z Ukrainy NEPTUN">
+<label class="check"><input type="checkbox" id="ukraine-enabled"> <strong>Ukraina — alerty NEPTUN</strong></label>
+<button type="button" id="ukraine-fit">Pokaż Polskę i Ukrainę</button>
+<p id="ukraine-status" role="status" aria-live="polite">Warstwa Ukrainy wyłączona.</p>
+<small>NEPTUN jest agregatorem z możliwymi opóźnieniami i niepełnym pokryciem. Kieruj się oficjalnymi sygnałami alarmowymi.</small>
+<div id="ukraine-legend" class="ukraine-legend" hidden><span><i class="ukraine-red"></i> Aktywny alarm</span><span><i class="ukraine-yellow"></i> Ostrzeżenie / częściowy alarm</span><span><i class="ukraine-neutral"></i> Nieaktualny lub nieustalony stan</span><span><i class="ukraine-report-symbol"></i> Doniesienie o zagrożeniu</span><span><i class="ukraine-advisory-symbol"></i> Informacja orientacyjna / nieustalony typ</span></div>
+<small>Alarmy obwodów i rejonów oraz doniesienia o dronach, rakietach i innych zagrożeniach. Dane bieżące, niezależne od dnia publikacji. Odświeżanie co około 15 sekund na widocznej mapie.</small>
+<details id="ukraine-reports-panel" hidden><summary id="ukraine-reports-count">Doniesienia</summary><div id="ukraine-list"></div></details>
+<details id="ukraine-unmapped" hidden><summary>Alarmy bez geometrii</summary><div id="ukraine-unmapped-alerts"></div></details>
+<details class="layer-info"><summary>Opis i źródło</summary><small>NEPTUN jest agregatorem. Alarmy oficjalne są przekazywane pośrednio; doniesienie nie potwierdza uderzenia. Punkt oznacza zgłoszoną, niekiedy przybliżoną lokalizację, bez przewidywania ruchu. Doniesienia obszarowe i niemapowalne są dostępne na liście bez sztucznego punktu. Punkty starsze niż 7 minut znikają. Po utracie świeżości alarmy stają się szare, a punkty doniesień są ukrywane. Brak oznaczeń nie oznacza braku zagrożenia. Granice pochodzą z serwisu NEPTUN.</small></details>
+<small>Dane: <a href="https://neptun.in.ua/" target="_blank" rel="noopener noreferrer">NEPTUN</a> · <a href="https://neptun.in.ua/developers" target="_blank" rel="noopener noreferrer">Opis API</a></small>
+</section></div></details>
+<details class="layer-group"><summary>Lotnictwo</summary><div class="layer-group-body"><section class="aircraft-controls" aria-label="Samoloty nad Polską">
+<label class="check"><input type="checkbox" id="aircraft-enabled"> <strong>Samoloty</strong></label>
+<p>Pomarańczowe: oznaczone jako wojskowe w adsb.fi. Niebieskie: pozostałe.</p>
+<p id="aircraft-status" role="status" aria-live="polite">Warstwa samolotów wyłączona.</p>
+<small>Kliknij samolot, aby zobaczyć jego dane, wybrać „Śledź trasę” lub „Podążaj w 3D”. Zapis trasy i odtwarzanie historii są dostępne w panelu „Trasy obserwacji”. Śledzenie oferuje kamerę zewnętrzną i pierwszą osobę dla pozycji do 30 s z dostępną wysokością. Odświeżanie co 10 sekund na widocznej mapie.</small>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Bieżące pozycje w granicach Polski, niezależne od dnia publikacji. Identyfikator lotu to znak wywoławczy; może różnić się od numeru rejsu na bilecie. Wysokość barometryczna, prędkość względem ziemi. Niepełne pokrycie ADS-B/MLAT; brak punktu nie oznacza braku samolotu. Pozycje starsze niż 2 minuty znikają. Warstwa pozycji jest bieżąca. Osobny opcjonalny kolektor zapisuje ograniczoną historię wskaźników jakości.</small>
+<small>Źródło: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> · użytek osobisty, niekomercyjny · <a href="https://github.com/adsbfi/opendata" target="_blank" rel="noopener noreferrer">Warunki API</a></small></details>
+<hr>
+<div class="quality-controls"><label class="check"><input id="quality-enabled" type="checkbox"> <strong>Anomalie jakości pozycji / GNSS</strong></label>
+<label>Historia <select id="quality-hours"><option value="24">24 h</option><option value="48">48 h</option></select></label>
+<label>Okno obserwacji (Europe/Warsaw) <select id="quality-window" aria-label="Okno jakości pozycji"></select></label>
+<button id="quality-latest" type="button">Najnowsze okno</button>
+<small id="quality-follow">Śledzenie najnowszego zakończonego okna</small>
+<p id="quality-status" role="status" aria-live="polite">Warstwa jakości pozycji wyłączona.</p>
+<p id="quality-summary"></p>
+<small>Czerwony: anomalia jakości; zielony: wystarczająca próba bez wykrycia; szary: za mało danych. Błąd źródła i nieaktualność są opisane osobno. Puste obszary: brak obserwacji.</small>
+<details class="layer-info"><summary>Metoda, ograniczenia i źródło</summary>
+<p id="quality-method"></p>
+<p id="quality-note">Pośredni sygnał jakości pozycji, nie potwierdzony jamming ani spoofing, nie oficjalne ostrzeżenie. Komórki wskazują obszary obserwacji, nie nadajniki zakłóceń.</p>
+<small>Okna 5 min, minimum 5 różnych samolotów, dwa kolejne okna, minimum 6 okien lokalnego tła. Historia kończy się z końcem wybranego dnia lub teraz; filtr województwa dotyczy lokalizacji obserwacji. Ostatnia znana pozycja jest wyłącznie niepewnym kontekstem. Endpoint przestrzenny może pomijać samoloty tracące pozycję.</small>
+<p>Bieżące źródło: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> · <a href="https://github.com/adsbfi/opendata" target="_blank" rel="noopener noreferrer">użytek osobisty, niekomercyjny</a>. Historia z poprzedniego źródła: <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">ADSB.lol</a> / <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL 1.0</a>.</p>
+</details></div>
+
+</section></div></details>
+<details class="layer-group"><summary>Bałtyk</summary><div class="layer-group-body"><section class="ships-controls" aria-label="Statki na Bałtyku">
+<label class="check"><input type="checkbox" id="ships-enabled"> <strong>Statki AIS</strong></label>
+<button type="button" id="ships-baltic">Pokaż Bałtyk</button>
+<p id="ships-status" role="status" aria-live="polite">Warstwa statków wyłączona.</p>
+<div class="ship-legend" aria-label="Legenda statków według AIS"><strong>Statki — typ według AIS</strong><span><i class="ship-legend-swatch ship-military" aria-hidden="true"></i>Wojskowe według AIS — kod 35</span><span><i class="ship-legend-swatch ship-civilian" aria-hidden="true"></i>Typy cywilne według AIS</span><span><i class="ship-legend-swatch ship-unclassified" aria-hidden="true"></i>Nieustalone — brak lub niejednoznaczny typ</span><span><i class="ship-legend-swatch ship-civilian ship-old" aria-hidden="true"></i>Paski — pozycja starsza niż 5 minut</span></div>
+<p class="ship-classification-note">Brak kodu 35 nie oznacza, że jednostka jest cywilna. Klasyfikacja opiera się na deklarowanym typie AIS, nie na potwierdzonej przynależności.</p>
+<small>Kliknij statek, aby zobaczyć nazwę, MMSI, prędkość, kurs, cel podróży i wiek pozycji, jeżeli są dostępne. Odświeżanie co 10 sekund na widocznej mapie.</small>
+<details class="layer-info"><summary>Opis i źródło</summary><small>Po włączeniu warstwa zbiera pozycje stopniowo. Dane bieżące tylko dla Bałtyku i cieśnin duńskich z Kattegatem, bez Morza Północnego, Skagerraku, rzek, kanałów i jezior. Filtr wody: EEA / VLIZ Marine Regions; granice przy brzegu są przybliżone. Dane niezależne od dnia publikacji. Niepełne pokrycie AIS; brak punktu nie oznacza braku statku. Kolory oznaczają deklarowany typ AIS; paski oznaczają pozycje starsze niż 5 minut. Służby ratownicze i porządkowe, typ „inne”, kody zarezerwowane i brak typu są nieustalone. Pozycje starsze niż 15 minut znikają. Okrągła ikona: brak kierunku. Wybrane jednostki można zapisywać przyciskiem „Śledź trasę” i odtwarzać w panelu „Trasy obserwacji” przez ostatnie 7 dni.</small>
+<small>Źródło: <a href="https://aisstream.io/" target="_blank" rel="noopener noreferrer">AISStream</a></small></details>
+</section></div></details>
+</div></details>
+    <details id="tracking-panel" class="tracking-panel">
+      <summary id="tracking-heading">Trasy obserwacji <small id="tracking-summary">Samoloty i statki</small></summary>
+      <div class="tracking-body">
+        <label>Zapisane obserwacje<select id="tracking-session"><option value="">Brak zapisanych tras</option></select></label>
+        <p id="tracking-empty">Kliknij samolot lub statek i wybierz „Śledź trasę”.</p>
+        <div id="tracking-controls" hidden>
+          <div class="tracking-title-row"><strong id="tracking-title"></strong><span id="tracking-recording"></span></div>
+          <div class="tracking-readout"><span id="tracking-mode">NAJNOWSZA</span><output id="tracking-time" for="tracking-timeline">—</output></div>
+          <label class="tracking-timeline">Czas obserwacji · Europe/Warsaw<input id="tracking-timeline" type="range" min="0" max="0" step="any" value="0" aria-label="Czas odtwarzania trasy"><span class="tracking-range"><span id="tracking-from">—</span><span id="tracking-to">—</span></span></label>
+          <div class="tracking-actions"><button id="tracking-play" type="button">Odtwórz</button><label>Tempo<select id="tracking-speed" aria-label="Prędkość odtwarzania"><option value="1">1×</option><option value="10">10×</option><option value="60" selected>60×</option><option value="300">300×</option><option value="600">600×</option></select></label><button id="tracking-live" type="button" aria-pressed="true">Najnowsza pozycja</button><button id="tracking-fit" type="button">Cała trasa</button><button id="tracking-stop" type="button">Zakończ zapis</button></div>
+          <span id="tracking-metrics"></span>
+          <button id="tracking-exit" type="button">Wyjdź ze śledzenia</button>
+        </div>
+        <p id="tracking-status" role="status" aria-live="polite"></p>
+        <details class="tracking-help"><summary>Zasady zapisu · historia 7 dni</summary><small>Zapis wymaga uruchomionego WICI i aktywnego komputera. Luki w odbiorze pozostają przerwami w trasie. Trasy są niezależne od dnia publikacji i wybranego województwa.</small></details>
+      </div>
+    </details>
+    <aside id="s5p-map-key" aria-label="Legenda i czas Sentinel-5P" hidden><strong id="s5p-map-title"></strong><span id="s5p-map-colorbar" aria-hidden="true"></span><span id="s5p-map-scale"></span><small id="s5p-map-time"></small><small>Skala regionalna · nie pomiar przy ulicy</small></aside>
+    <details class="map-legend"><summary class="legend-summary"><span id="ioda-map-label" hidden>Łączność · IODA</span><span class="communications-map-key"><i class="severity-dot severity-1"></i>1°</span><span class="communications-map-key"><i class="severity-dot severity-2"></i>2°</span><span class="communications-map-key"><i class="severity-dot severity-3"></i>3°</span><span class="communications-map-key"><i class="severity-dot severity-info"></i>Informacje</span><span id="ukraine-map-label" class="ukraine-map-label" hidden>Ukraina</span><span class="legend-expand">Legenda</span></summary><div class="map-legend-body"><section id="ioda-map-legend" class="ioda-map-legend" aria-label="Legenda łączności IODA" hidden>
+<strong id="ioda-map-count">Odczyt zapisanych detekcji…</strong>
+<small id="ioda-map-window"></small>
+<small id="ioda-map-mapping"></small>
+<p id="ioda-map-empty" class="ioda-map-message" role="status" hidden></p>
+<button id="ioda-map-expand" type="button" hidden>Sprawdź 48 godzin</button>
+<p id="ioda-map-read" class="ioda-map-message" role="status" hidden></p>
+<span><i class="ioda-key ioda-key-unconfirmed" aria-hidden="true"></i>Koniec niepotwierdzony</span>
+<span><i class="ioda-key ioda-key-stale" aria-hidden="true"></i>Koniec niepotwierdzony · stary alert</span>
+<span><i class="ioda-key ioda-key-ended" aria-hidden="true"></i>Zakończona według IODA</span>
+<small>Brak detekcji nie potwierdza sprawności łączności. Obszar wskazuje jednostkę pomiarów, nie zasięg awarii.</small>
+<small id="ioda-map-context"></small>
+</section><section class="communications-map-key"><strong>Karteczki: komunikaty województwa</strong><small>Punkt karteczki służy nawigacji; nie oznacza miejsca zdarzenia.</small><span>IMGW: żółty 1°, pomarańczowy 2°, czerwony 3° · informacja: niebieski</span><span><i class="legend-area"></i> Obszar ostrzeżenia</span><span><i class="legend-notification"></i> Obszar powiadomienia</span></section><section id="ukraine-map-legend" class="ukraine-legend" aria-label="Legenda alertów Ukrainy NEPTUN" hidden><strong>Ukraina · <a href="https://neptun.in.ua/" target="_blank" rel="noopener noreferrer">NEPTUN</a></strong><span><i class="ukraine-red" aria-hidden="true"></i> Czerwony: aktywny alarm</span><span><i class="ukraine-yellow" aria-hidden="true"></i> Żółty: ostrzeżenie / częściowy alarm</span><span><i class="ukraine-report-symbol" aria-hidden="true"></i> Brązowy punkt: doniesienie o zagrożeniu</span><span><i class="ukraine-neutral" aria-hidden="true"></i> Szary obszar: nieaktualny lub nieustalony stan</span><span><i class="ukraine-advisory-symbol" aria-hidden="true"></i> Szary punkt: informacja / nieustalony typ</span><small>Doniesienie nie potwierdza uderzenia. Brak oznaczeń nie oznacza braku zagrożenia.</small></section><section id="ships-map-legend" class="ship-legend" aria-label="Legenda statków według AIS" hidden><strong>Statki — typ według AIS</strong><span><i class="ship-legend-swatch ship-military" aria-hidden="true"></i>Wojskowe według AIS — kod 35</span><span><i class="ship-legend-swatch ship-civilian" aria-hidden="true"></i>Typy cywilne według AIS</span><span><i class="ship-legend-swatch ship-unclassified" aria-hidden="true"></i>Nieustalone — brak lub niejednoznaczny typ</span><span><i class="ship-legend-swatch ship-civilian ship-old" aria-hidden="true"></i>Paski — pozycja starsza niż 5 minut</span><small>Brak kodu 35 nie oznacza, że jednostka jest cywilna. Klasyfikacja opiera się na deklarowanym typie AIS, nie na potwierdzonej przynależności.</small></section><small id="map-note">Lokalne granice administracyjne. Rekordy bez geometrii pozostają na liście.</small></div></details>
+    <aside id="detail-panel" class="details-panel" aria-label="Szczegóły publikacji" hidden><header class="detail-toolbar"><h2 id="detail-title" tabindex="-1">Publikacja źródła</h2><button type="button" id="close-details" aria-label="Zamknij szczegóły publikacji"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></header><div id="details" class="details"><div class="empty"><h2>Wybierz publikację</h2><p>Sprawdź opis, jego źródło, czas i dokładność lokalizacji.</p></div></div></aside>
+  </section>
+</section>
+<section id="sources" class="view" hidden><div class="page-heading"><div><span class="eyebrow">JAWNY ZAKRES DANYCH</span><h2>Źródła i aktualność</h2><p>Pobieranie działa tylko podczas uruchomienia aplikacji. Poprawny odczyt nie oznacza pełnego pokrycia wydarzeń.</p></div></div><div id="source-list" class="source-grid"></div></section>
+
+<details id="coverage-panel" class="coverage-panel"><summary><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#database"></use></svg><span id="coverage-summary">Zakres i aktualność źródeł</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="/static/icons.svg#chevron-down"></use></svg></summary><div id="coverage" class="coverage"></div></details>
+<footer>Brak informacji na mapie nie oznacza braku zagrożenia. Aplikacja pokazuje publikacje z wybranych źródeł i nie zastępuje oficjalnych komunikatów ani służb alarmowych.</footer>
+</main>
+</div>
+<dialog id="aircraft3d-dialog" aria-labelledby="aircraft3d-title" aria-describedby="aircraft3d-description">
+  <div class="aircraft3d-header">
+    <div><span id="aircraft3d-eyebrow" class="eyebrow">WICI · lotnictwo</span><h2 id="aircraft3d-title">Śledzenie 3D</h2></div>
+    <button id="aircraft3d-close" type="button">Wróć do Atlasu <span aria-hidden="true">↗</span></button>
+  </div>
+  <div class="aircraft3d-toolbar" role="group" aria-label="Perspektywa kamery">
+    <button id="aircraft3d-follow" type="button" aria-pressed="true">Kamera zewnętrzna</button>
+    <button id="aircraft3d-pov" type="button" aria-pressed="false">Pierwsza osoba</button>
+    <p id="aircraft3d-view-note"></p>
+  </div>
+  <div class="aircraft3d-viewport">
+    <div id="aircraft3d-scene" aria-label="Globus 3D podążający za samolotem"></div>
+    <div id="aircraft3d-reticle" aria-hidden="true" hidden><span></span><i></i><span></span></div>
+    <div class="aircraft3d-readout"><strong id="aircraft3d-telemetry"></strong><span id="aircraft3d-time"></span></div>
+  </div>
+  <div class="aircraft3d-controls">
+    <label id="aircraft3d-distance-control">Odległość <output id="aircraft3d-distance-value" for="aircraft3d-distance">1800 m</output><input id="aircraft3d-distance" type="range" min="300" max="12000" step="100" value="1800"></label>
+    <div id="aircraft3d-orbit-controls" role="group" aria-label="Obrót kamery zewnętrznej">
+      <button id="aircraft3d-left" type="button" aria-label="Obróć kamerę w lewo">↶</button>
+      <button id="aircraft3d-behind" type="button">Za samolotem</button>
+      <button id="aircraft3d-right" type="button" aria-label="Obróć kamerę w prawo">↷</button>
+    </div>
+    <label class="check"><input id="aircraft3d-osm" type="checkbox"> Podkład OpenStreetMap (online)</label>
+  </div>
+  <div class="aircraft3d-footer">
+    <p id="aircraft3d-status" role="status" aria-live="polite"></p>
+    <p id="aircraft3d-map-status"></p>
+    <details><summary>Źródło i dokładność widoku</summary>
+      <p id="aircraft3d-description">Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Powierzchnia uproszczona, bez rzeźby terenu i budynków.</p>
+      <p>Pozycje: <a id="aircraft3d-source" href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a><span id="aircraft3d-source-note"> · użytek osobisty, niekomercyjny</span>. Granice: PRG / GUGiK. <span id="aircraft3d-model-note">Model samolotu: schematyczny, nie przedstawia konkretnego typu.</span> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> — po włączeniu podkładu. <a href="/notices" target="_blank" rel="noopener noreferrer">Licencje</a>.</p>
+    </details>
+  </div>
+</dialog>
+</body>
+</html>

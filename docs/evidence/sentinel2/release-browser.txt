@@ -1,0 +1,15 @@
+✔ Sentinel-2 desktop: offline comparison, touch, keyboard, geometry and stale responses (5351.223083ms)
+✔ Sentinel-2 mobile: offline comparison, touch, keyboard, geometry and stale responses (4441.001375ms)
+✔ Sentinel-2 700px: labels and full slider remain inside map after resize (2923.614ms)
+✔ Sentinel-2 800px: labels and full slider remain inside map after resize (2862.665292ms)
+✔ Sentinel-2 900px: labels and full slider remain inside map after resize (2779.386375ms)
+✔ Sentinel-2 picking desktop: publication cards and non-bubbling layers select a visible point (5077.706208ms)
+✔ Sentinel-2 picking mobile: publication cards and non-bubbling layers select a visible point (4798.329167ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28726.458375

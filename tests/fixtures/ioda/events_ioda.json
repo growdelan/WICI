@@ -1,0 +1,66 @@
+{
+  "type": "outages.events",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "fictional five-minute detection with explicit normal alert"
+  },
+  "data": [
+    {
+      "entity": {
+        "type": "asn",
+        "code": "64512",
+        "name": "WICI synthetic network",
+        "attrs": {
+          "country_code": "PL"
+        }
+      },
+      "from": 1792222200,
+      "until": 1792222500,
+      "score": 250,
+      "datasource": "bgp",
+      "method": "median",
+      "alerts": [
+        {
+          "entity": {
+            "type": "asn",
+            "code": "64512",
+            "name": "WICI synthetic network",
+            "attrs": {
+              "country_code": "PL"
+            }
+          },
+          "datasource": "bgp",
+          "method": "median",
+          "time": 1792222200,
+          "level": "critical",
+          "value": 5,
+          "historyValue": 10
+        },
+        {
+          "entity": {
+            "type": "asn",
+            "code": "64512",
+            "name": "WICI synthetic network",
+            "attrs": {
+              "country_code": "PL"
+            }
+          },
+          "datasource": "bgp",
+          "method": "median",
+          "time": 1792222500,
+          "level": "normal",
+          "value": 10,
+          "historyValue": 10
+        }
+      ]
+    }
+  ],
+  "requestParameters": {
+    "format": "ioda",
+    "includeAlerts": true,
+    "overall": false
+  },
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

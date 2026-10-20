@@ -1,0 +1,78 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "samples": [
+    {
+      "file": "development/PMW_STAN_20260903080000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "64e18c90138f10de2a94996846baffe11409ae7b99d2942fc827754e48076819",
+      "case": "initial"
+    },
+    {
+      "file": "development/PMW_STAN_20260904080000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "ac65455fabce38cf8e8c23990941f169002087d1b9dabf5645eb751b606e3f79",
+      "case": "aggregate"
+    },
+    {
+      "file": "development/DSW_STAN_20260909080000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "f34655a0c8749f6c82241f5badb2a9669bff4495b6b89376ca024c0937041526",
+      "case": "rain"
+    },
+    {
+      "file": "development/SLW_STAN_20260923120000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "4ecf8dd3c6735cd48a624904b04e54a05ebdaccde88fe3a16dc311e696820c22",
+      "case": "change"
+    },
+    {
+      "file": "development/PMW_STAN_20260905080000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "3abed32e73d095f8c38951286c33fcc975967e40d57fd135d3345b5f0ddd342d",
+      "case": "before_cancel"
+    },
+    {
+      "file": "heldout/OPW_STAN_20260916080000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "3be19bbed07ff9c005cfa9f5e47f57995b66b7c1fffe1efc929bbd8c8c7dc316",
+      "case": "mixed"
+    },
+    {
+      "file": "heldout/MAW_STAN_20260909080000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "651a1620c95d8fce0f845619320bbdac67d93288b85c0259d36fa19ea583426a",
+      "case": "heat"
+    },
+    {
+      "file": "heldout/PMW_STAN_20260905160000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "ee596e444c9cb54a4d5d7307d03bad8909d4654fe7969419a996dccb28967966",
+      "case": "cancel"
+    },
+    {
+      "file": "heldout/SLW_STAN_20260923100000000.pdf",
+      "synthetic": true,
+      "license": "MIT",
+      "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+      "sha256": "e1df9b8450e8d25b1303248867473ea8953df2df0384641e0d89b3386ad34e78",
+      "case": "older"
+    }
+  ]
+}

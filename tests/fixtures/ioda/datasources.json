@@ -1,0 +1,24 @@
+{
+  "type": "datasources",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "three accepted signal unit labels"
+  },
+  "data": [
+    {
+      "datasource": "bgp",
+      "units": "Visible /24s"
+    },
+    {
+      "datasource": "ping-slash24",
+      "units": "Up /24s"
+    },
+    {
+      "datasource": "merit-nt",
+      "units": "Unique Source IPs"
+    }
+  ],
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

@@ -1,0 +1,17 @@
+WICI - SYNTETYCZNE DANE TESTOWE. NIE JEST TO OSTRZEŻENIE.
+WOJEWÓDZTWO śląskie OSTRZEŻENIA METEOROLOGICZNE ZBIORCZO NR 1
+WYKAZ OBOWIĄZUJĄCYCH OSTRZEŻEŃ
+Zjawisko/Stopień zagrożenia
+Upał/1 ZMIANA
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: będziński(500), bielski(500), cieszyński(500), częstochowski(500), gliwicki(500), kłobucki(500), lubliniecki(500), mikołowski(500), myszkowski(500)
+Ważność
+od godz. 10:00 dnia 23.09.2026 do godz. 20:00 dnia 23.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 12:00 dnia 23.09.2026

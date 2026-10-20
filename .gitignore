@@ -1,0 +1,23 @@
+.venv*/
+var/
+*.lockfile
+config.local.toml
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+tmp/
+.secrets/
+
+# Local files and generated distributions must not enter the public repository.
+.DS_Store
+.env
+.env.*
+!.env.example
+dist/
+build/
+*.egg-info/
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.log

@@ -1,0 +1,13 @@
+✔ GFM desktop: raster, IMGW popup, changing observations and disabling (4726.343458ms)
+✔ GFM mobile: raster, IMGW popup, changing observations and disabling (4694.149875ms)
+✔ GFM wide: raster, IMGW popup, changing observations and disabling (4696.842584ms)
+✔ GFM auto desktop: Poland, native geometry, new data, disable (13444.952417ms)
+✔ GFM auto mobile: Poland, native geometry, new data, disable (13653.765916ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41430.03575

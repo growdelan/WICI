@@ -1,0 +1,29 @@
+{
+  "type": "signals",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "regular grid with positive, absent, zero and positive samples"
+  },
+  "data": [
+    [
+      {
+        "entityType": "country",
+        "entityCode": "PL",
+        "datasource": "bgp",
+        "from": 1792222800,
+        "until": 1792223700,
+        "step": 300,
+        "nativeStep": 300,
+        "values": [
+          8,
+          null,
+          0,
+          6
+        ]
+      }
+    ]
+  ],
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

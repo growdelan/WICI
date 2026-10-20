@@ -1,0 +1,21 @@
+........................................................................ [ 10%]
+........................................................................ [ 21%]
+........................................................................ [ 32%]
+........................................................................ [ 42%]
+........................................................................ [ 53%]
+........................................................................ [ 64%]
+........................................................................ [ 75%]
+........................................................................ [ 85%]
+........................................................................ [ 96%]
+......................                                                   [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/fastapi/testclient.py:1
+  <PROJECT>/.venv/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_sentinel2.py::test_footprint_and_nodata_alpha
+  <PROJECT>/.venv/lib/python3.12/site-packages/rasterio/io.py:141: NotGeoreferencedWarning: Dataset has no geotransform, gcps, or rpcs. The identity matrix will be returned.
+    rd = DatasetReader(mempath, driver=driver, sharing=sharing, thread_safe=thread_safe, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+670 passed, 2 warnings in 66.13s (0:01:06)

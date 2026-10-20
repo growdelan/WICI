@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="310" height="96" viewBox="0 0 310 96" role="img" aria-labelledby="title">
+  <title id="title">wici — Sygnał</title>
+  <path fill="#67cebc" d="M8 12 30 22v16L8 28Zm62 11 19-9v16l-19 9ZM8 34l22 10 9 21 15-18a4 4 0 0 1 6 0l15 18 9-21 22-10v17L95 57 81 89a4 4 0 0 1-4 3H65L57 80 49 92H37a4 4 0 0 1-4-3L19 57 8 51Z"/>
+  <path fill="#e6ae62" d="m96 11 16-8v16l-16 8Z"/>
+  <g fill="#ecf3f4">
+    <path d="M126 36h13l9 32 10-32h11l10 32 9-32h13l-16 54h-12l-10-31-10 31h-12Z"/>
+    <path d="M210 36h13v54h-13Z M223.5 20a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+    <path d="m279 44-9 9a17 17 0 1 0 0 22l9 9a29 29 0 1 1 0-40Z"/>
+    <path d="M289 36h13v54h-13Z M302.5 20a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+  </g>
+</svg>

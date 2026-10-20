@@ -1,0 +1,16 @@
+{
+  "record_type": "historical_integration_check_summary",
+  "checked_on": "2026-10-17",
+  "source": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+  "source_data_retained": false,
+  "redacted_on": "2026-10-18",
+  "note": "The original report contained live IODA responses. All source records, measurements, entity metadata, derived counts and request/response details were removed. This summary retains only local verification outcomes; it is not a response fixture or evidence of current service availability.",
+  "local_verification": {
+    "restart_preserved_local_state": true,
+    "replaying_stored_records_changed_local_state": false,
+    "wici_api_http_status_after_restart": 200,
+    "external_network_disabled_for_wici_api_check": true
+  },
+  "replacement_fixtures": "tests/fixtures/ioda/README.md",
+  "git_history": "The original repository history is not included in this clean repository."
+}

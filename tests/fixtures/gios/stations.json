@@ -1,0 +1,40 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "Lista stacji pomiarowych": [
+    {
+      "Identyfikator stacji": 9001,
+      "Nazwa stacji": "WICI syntetyczna stacja 0",
+      "WGS84 φ N": 52.0,
+      "WGS84 λ E": 19.0,
+      "Nazwa miasta": "Testowo",
+      "Kod stacji": "WICI-0",
+      "Województwo": "mazowieckie"
+    },
+    {
+      "Identyfikator stacji": 9002,
+      "Nazwa stacji": "WICI syntetyczna stacja 1",
+      "WGS84 φ N": 54.0,
+      "WGS84 λ E": 14.5,
+      "Nazwa miasta": "Testowo",
+      "Kod stacji": "WICI-1",
+      "Województwo": "mazowieckie"
+    },
+    {
+      "Identyfikator stacji": 9003,
+      "Nazwa stacji": "WICI syntetyczna stacja 2",
+      "WGS84 φ N": 49.5,
+      "WGS84 λ E": 23.0,
+      "Nazwa miasta": "Testowo",
+      "Kod stacji": "WICI-2",
+      "Województwo": "mazowieckie"
+    }
+  ],
+  "totalPages": 1,
+  "totalElements": 3,
+  "links": {
+    "next": "https://example.invalid/broken-next"
+  }
+}

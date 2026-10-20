@@ -1,0 +1,481 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "annotation_method": "Expected values specified in synthetic scenario definitions, not read back from parser output.",
+  "heldout": [
+    {
+      "member": "OPW_STAN_20260916080000000.pdf",
+      "sections": [
+        {
+          "phenomenon": "Intensywne opady deszczu",
+          "grade": "1",
+          "action": "warning",
+          "counties": [
+            {
+              "code": "1601",
+              "name": "brzeski",
+              "warning_number": "600"
+            },
+            {
+              "code": "1602",
+              "name": "głubczycki",
+              "warning_number": "600"
+            },
+            {
+              "code": "1603",
+              "name": "kędzierzyńsko-kozielski",
+              "warning_number": "600"
+            }
+          ],
+          "published_utc": "2026-09-16T06:00:00+00:00",
+          "valid_from_utc": "2026-09-16T08:00:00+00:00",
+          "valid_until_utc": "2026-09-16T18:00:00+00:00"
+        },
+        {
+          "phenomenon": "Burze",
+          "grade": "2",
+          "action": "warning",
+          "counties": [
+            {
+              "code": "1601",
+              "name": "brzeski",
+              "warning_number": "601"
+            },
+            {
+              "code": "1602",
+              "name": "głubczycki",
+              "warning_number": "601"
+            }
+          ],
+          "published_utc": "2026-09-16T06:00:00+00:00",
+          "valid_from_utc": "2026-09-16T08:00:00+00:00",
+          "valid_until_utc": "2026-09-16T18:00:00+00:00"
+        },
+        {
+          "phenomenon": "Silny wiatr",
+          "grade": "3",
+          "action": "ZMIANA",
+          "counties": [
+            {
+              "code": "1601",
+              "name": "brzeski",
+              "warning_number": "602"
+            },
+            {
+              "code": "1602",
+              "name": "głubczycki",
+              "warning_number": "602"
+            }
+          ],
+          "published_utc": "2026-09-16T06:00:00+00:00",
+          "valid_from_utc": "2026-09-16T08:00:00+00:00",
+          "valid_until_utc": "2026-09-16T18:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "member": "MAW_STAN_20260909080000000.pdf",
+      "sections": [
+        {
+          "phenomenon": "Upał",
+          "grade": "1",
+          "action": "warning",
+          "counties": [
+            {
+              "code": "1401",
+              "name": "białobrzeski",
+              "warning_number": "700"
+            },
+            {
+              "code": "1402",
+              "name": "ciechanowski",
+              "warning_number": "700"
+            },
+            {
+              "code": "1403",
+              "name": "garwoliński",
+              "warning_number": "700"
+            },
+            {
+              "code": "1404",
+              "name": "gostyniński",
+              "warning_number": "700"
+            },
+            {
+              "code": "1405",
+              "name": "grodziski",
+              "warning_number": "700"
+            }
+          ],
+          "published_utc": "2026-09-09T06:00:00+00:00",
+          "valid_from_utc": "2026-09-09T08:00:00+00:00",
+          "valid_until_utc": "2026-09-09T18:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "member": "PMW_STAN_20260905160000000.pdf",
+      "sections": [
+        {
+          "phenomenon": "Intensywne opady deszczu",
+          "grade": "1",
+          "action": "ODWOŁANIE",
+          "counties": [
+            {
+              "code": "2201",
+              "name": "bytowski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2202",
+              "name": "chojnicki",
+              "warning_number": "300"
+            },
+            {
+              "code": "2203",
+              "name": "człuchowski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2204",
+              "name": "gdański",
+              "warning_number": "300"
+            },
+            {
+              "code": "2205",
+              "name": "kartuski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2206",
+              "name": "kościerski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2207",
+              "name": "kwidzyński",
+              "warning_number": "300"
+            },
+            {
+              "code": "2208",
+              "name": "lęborski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2209",
+              "name": "malborski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2210",
+              "name": "nowodworski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2211",
+              "name": "pucki",
+              "warning_number": "300"
+            },
+            {
+              "code": "2212",
+              "name": "słupski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2213",
+              "name": "starogardzki",
+              "warning_number": "300"
+            },
+            {
+              "code": "2214",
+              "name": "tczewski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2215",
+              "name": "wejherowski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2216",
+              "name": "sztumski",
+              "warning_number": "300"
+            },
+            {
+              "code": "2261",
+              "name": "Gdańsk",
+              "warning_number": "300"
+            },
+            {
+              "code": "2262",
+              "name": "Gdynia",
+              "warning_number": "300"
+            },
+            {
+              "code": "2263",
+              "name": "Słupsk",
+              "warning_number": "300"
+            },
+            {
+              "code": "2264",
+              "name": "Sopot",
+              "warning_number": "300"
+            }
+          ],
+          "published_utc": "2026-09-05T14:00:00+00:00",
+          "valid_from_utc": null,
+          "valid_until_utc": null
+        },
+        {
+          "phenomenon": "Burze",
+          "grade": "1",
+          "action": "warning",
+          "counties": [
+            {
+              "code": "2201",
+              "name": "bytowski",
+              "warning_number": "301"
+            },
+            {
+              "code": "2202",
+              "name": "chojnicki",
+              "warning_number": "301"
+            },
+            {
+              "code": "2203",
+              "name": "człuchowski",
+              "warning_number": "301"
+            },
+            {
+              "code": "2204",
+              "name": "gdański",
+              "warning_number": "301"
+            },
+            {
+              "code": "2205",
+              "name": "kartuski",
+              "warning_number": "301"
+            },
+            {
+              "code": "2206",
+              "name": "kościerski",
+              "warning_number": "301"
+            }
+          ],
+          "published_utc": "2026-09-05T14:00:00+00:00",
+          "valid_from_utc": "2026-09-05T08:00:00+00:00",
+          "valid_until_utc": "2026-09-05T18:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "member": "SLW_STAN_20260923100000000.pdf",
+      "sections": [
+        {
+          "phenomenon": "Upał",
+          "grade": "1",
+          "action": "warning",
+          "counties": [
+            {
+              "code": "2401",
+              "name": "będziński",
+              "warning_number": "500"
+            },
+            {
+              "code": "2402",
+              "name": "bielski",
+              "warning_number": "500"
+            },
+            {
+              "code": "2403",
+              "name": "cieszyński",
+              "warning_number": "500"
+            },
+            {
+              "code": "2404",
+              "name": "częstochowski",
+              "warning_number": "500"
+            },
+            {
+              "code": "2405",
+              "name": "gliwicki",
+              "warning_number": "500"
+            },
+            {
+              "code": "2406",
+              "name": "kłobucki",
+              "warning_number": "500"
+            },
+            {
+              "code": "2407",
+              "name": "lubliniecki",
+              "warning_number": "500"
+            },
+            {
+              "code": "2408",
+              "name": "mikołowski",
+              "warning_number": "500"
+            },
+            {
+              "code": "2409",
+              "name": "myszkowski",
+              "warning_number": "500"
+            }
+          ],
+          "published_utc": "2026-09-23T08:00:00+00:00",
+          "valid_from_utc": "2026-09-23T08:00:00+00:00",
+          "valid_until_utc": "2026-09-23T18:00:00+00:00"
+        }
+      ]
+    }
+  ],
+  "adversarial_variants": [
+    {
+      "id": "pdf-derived-unknown_county",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "bytowski(100)",
+      "replace_to": "Atlantyda(100)"
+    },
+    {
+      "id": "pdf-derived-unparsed_area_suffix",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Sopot(100)",
+      "replace_to": "Sopot(100), dodatkowy obszar"
+    },
+    {
+      "id": "pdf-derived-duplicate_county",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "bytowski(100)",
+      "replace_to": "bytowski(100), bytowski(100)"
+    },
+    {
+      "id": "pdf-derived-zero_warning_number",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "bytowski(100)",
+      "replace_to": "bytowski(0)"
+    },
+    {
+      "id": "pdf-derived-missing_warning_number",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "bytowski(100)",
+      "replace_to": "bytowski"
+    },
+    {
+      "id": "pdf-derived-missing_validity",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Ważność",
+      "replace_to": "Nieznana ważność"
+    },
+    {
+      "id": "pdf-derived-reversed_validity",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "do godz. 20:00 dnia 04.09.2026",
+      "replace_to": "do godz. 09:00 dnia 04.09.2026"
+    },
+    {
+      "id": "pdf-derived-invalid_calendar_day",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "04.09.2026",
+      "replace_to": "31.09.2026"
+    },
+    {
+      "id": "pdf-derived-ambiguous_publication_dst",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "godz. 08:00 dnia 03.09.2026",
+      "replace_to": "godz. 02:30 dnia 25.10.2026"
+    },
+    {
+      "id": "pdf-derived-nonexistent_publication_dst",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "godz. 08:00 dnia 03.09.2026",
+      "replace_to": "godz. 02:30 dnia 29.03.2026"
+    },
+    {
+      "id": "pdf-derived-unsupported_phenomenon",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Intensywne opady deszczu/1",
+      "replace_to": "Mgła/1"
+    },
+    {
+      "id": "pdf-derived-zero_grade",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Intensywne opady deszczu/1",
+      "replace_to": "Intensywne opady deszczu/0"
+    },
+    {
+      "id": "pdf-derived-out_of_range_grade",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Intensywne opady deszczu/1",
+      "replace_to": "Intensywne opady deszczu/4"
+    },
+    {
+      "id": "pdf-derived-missing_forecast_label",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Przebieg",
+      "replace_to": "Nieznany przebieg"
+    },
+    {
+      "id": "pdf-derived-zero_probability",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "65%",
+      "replace_to": "0%"
+    },
+    {
+      "id": "pdf-derived-excess_probability",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "65%",
+      "replace_to": "101%"
+    },
+    {
+      "id": "pdf-derived-missing_issuance",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Godzina i data wydania",
+      "replace_to": "Nieznana data wydania"
+    },
+    {
+      "id": "pdf-derived-exercise_note",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Uwagi\nBrak.",
+      "replace_to": "Uwagi\nĆwiczenie ostrzegania."
+    },
+    {
+      "id": "pdf-derived-correction_note",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Uwagi\nBrak.",
+      "replace_to": "Uwagi\nSprostowanie komunikatu."
+    },
+    {
+      "id": "pdf-derived-negated_warning",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Uwagi\nBrak.",
+      "replace_to": "Uwagi\nOstrzeżenie nie obowiązuje."
+    },
+    {
+      "id": "pdf-derived-duplicate_probability_label",
+      "origin": "adversarial_text_variant_of_original_synthetic_fixture",
+      "source_member": "PMW_STAN_20260903080000000.pdf",
+      "replace_from": "Prawdopodobieństwo\n65%",
+      "replace_to": "Prawdopodobieństwo\n0%\nPrawdopodobieństwo\n65%"
+    }
+  ]
+}

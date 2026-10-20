@@ -1,0 +1,18 @@
+{
+  "type": "entities.lookup",
+  "error": null,
+  "metadata": {
+    "synthetic": true,
+    "fixture": "WICI offline contract tests",
+    "case": "country entity with empty attrs"
+  },
+  "data": [
+    {
+      "type": "country",
+      "code": "PL",
+      "name": "Poland",
+      "attrs": {}
+    }
+  ],
+  "copyright": "Synthetic WICI test data (MIT); not an IODA response."
+}

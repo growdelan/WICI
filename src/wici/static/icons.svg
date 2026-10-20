@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <symbol id="map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6ZM9 3v15m6-12v15"/></symbol>
+  <symbol id="database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/></symbol>
+  <symbol id="refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 2M5 16a8 8 0 0 0 13 2"/></symbol>
+  <symbol id="chevron-left" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+  <symbol id="chevron-right" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
+  <symbol id="chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h4m4 0h8M4 17h8m4 0h4M8 4v6m4 4v6M12 14h4v6h-4"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+</svg>

@@ -1,0 +1,5 @@
+   Building wici @ file://<PROJECT>
+      Built wici @ file://<PROJECT>
+Uninstalled 1 package in 0.95ms
+Installed 1 package in 1ms
+All checks passed!

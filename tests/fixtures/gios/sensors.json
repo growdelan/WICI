@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "Lista stanowisk pomiarowych dla podanej stacji": [
+    {
+      "Identyfikator stanowiska": 9100,
+      "Identyfikator stacji": 9001,
+      "Wskaźnik - kod": "PM10"
+    },
+    {
+      "Identyfikator stanowiska": 9101,
+      "Identyfikator stacji": 9001,
+      "Wskaźnik - kod": "PM10"
+    }
+  ],
+  "totalPages": 1,
+  "totalElements": 2,
+  "links": {
+    "next": "https://example.invalid/broken-next"
+  }
+}

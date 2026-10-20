@@ -1,0 +1,616 @@
+{
+  "checked_on": "2026-10-17",
+  "project_version": "0.24.1",
+  "base_commit": "73b4b2605c8349b31ec19f270ee489ccc85b7eb2",
+  "uv_lock_sha256": "ada4ee70cd7b9c2381c829f08998d53fd2723f593bd62ca0c22167703b37311f",
+  "scope": "39 locked Python dependencies including optional and platform-conditional dependencies. Native binaries of selected GIS packages listed for the inspected macOS environment, not a complete cross-platform binary license audit. Build backend is not pinned by uv.lock.",
+  "package_count_excluding_wici": 39,
+  "runtime_dependency_count": 28,
+  "packages": [
+    {
+      "name": "affine",
+      "locked_version": "3.0.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "3.0.1",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "affine-3.0.1.dist-info/licenses/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "annotated-doc",
+      "locked_version": "0.0.5",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.0.5",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "annotated_doc-0.0.5.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "annotated-types",
+      "locked_version": "0.8.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.8.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "annotated_types-0.8.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "anyio",
+      "locked_version": "4.15.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "4.15.1",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "anyio-4.15.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "attrs",
+      "locked_version": "26.1.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "26.1.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "attrs-26.1.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "beautifulsoup4",
+      "locked_version": "4.15.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "4.15.0",
+      "license_declared": "MIT License",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "beautifulsoup4-4.15.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "certifi",
+      "locked_version": "2026.7.22",
+      "groups": [
+        "runtime",
+        "geo"
+      ],
+      "installed_version": "2026.7.22",
+      "license_declared": "MPL-2.0",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "certifi-2026.7.22.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "click",
+      "locked_version": "8.5.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "8.5.0",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "click-8.5.0.dist-info/licenses/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "colorama",
+      "locked_version": "0.4.6",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": null,
+      "license_declared": "BSD-3-Clause",
+      "evidence": "upstream 0.4.6 LICENSE.txt; conditional Windows dependency not installed on macOS",
+      "source": "https://github.com/tartley/colorama/blob/0.4.6/LICENSE.txt",
+      "license_files": []
+    },
+    {
+      "name": "fastapi",
+      "locked_version": "0.143.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.143.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "fastapi-0.143.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "gtfs-realtime-bindings",
+      "locked_version": "1.0.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "1.0.0",
+      "license_declared": "Apache License, Version 2.0",
+      "evidence": "installed metadata and Apache source-file header; full license verified upstream",
+      "license_files": [],
+      "source": "https://github.com/MobilityData/gtfs-realtime-bindings/blob/master/LICENSE"
+    },
+    {
+      "name": "h11",
+      "locked_version": "0.16.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.16.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "h11-0.16.0.dist-info/licenses/LICENSE.txt"
+      ]
+    },
+    {
+      "name": "httpcore",
+      "locked_version": "1.0.9",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "1.0.9",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "httpcore-1.0.9.dist-info/licenses/LICENSE.md"
+      ]
+    },
+    {
+      "name": "httpx",
+      "locked_version": "0.28.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.28.1",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "httpx-0.28.1.dist-info/licenses/LICENSE.md"
+      ]
+    },
+    {
+      "name": "idna",
+      "locked_version": "3.20",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "3.20",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "idna-3.20.dist-info/licenses/LICENSE.md"
+      ]
+    },
+    {
+      "name": "iniconfig",
+      "locked_version": "2.3.1",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "2.3.1",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "iniconfig-2.3.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "numpy",
+      "locked_version": "2.5.4",
+      "groups": [
+        "runtime",
+        "geo"
+      ],
+      "installed_version": "2.5.4",
+      "license_declared": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "numpy-2.5.4.dist-info/licenses/LICENSE.txt",
+        "numpy-2.5.4.dist-info/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+        "numpy-2.5.4.dist-info/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
+        "numpy-2.5.4.dist-info/licenses/numpy/_core/src/highway/LICENSE",
+        "numpy-2.5.4.dist-info/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/_core/src/umath/svml/LICENSE",
+        "numpy-2.5.4.dist-info/licenses/numpy/fft/pocketfft/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
+        "numpy-2.5.4.dist-info/licenses/numpy/ma/LICENSE",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/src/distributions/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/src/philox/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/src/sfc64/LICENSE.md",
+        "numpy-2.5.4.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md",
+        "numpy/_core/include/numpy/random/LICENSE.txt",
+        "numpy/ma/LICENSE",
+        "numpy/random/LICENSE.md"
+      ]
+    },
+    {
+      "name": "opentelemetry-api",
+      "locked_version": "1.45.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "1.45.1",
+      "license_declared": "Apache-2.0",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "opentelemetry_api-1.45.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "packaging",
+      "locked_version": "26.3",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "26.3",
+      "license_declared": "Apache-2.0 OR BSD-2-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "packaging-26.3.dist-info/licenses/LICENSE",
+        "packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+        "packaging-26.3.dist-info/licenses/LICENSE.BSD"
+      ]
+    },
+    {
+      "name": "pluggy",
+      "locked_version": "1.6.0",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "1.6.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pluggy-1.6.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "protobuf",
+      "locked_version": "7.36.2",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "7.36.2",
+      "license_declared": "3-Clause BSD License",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "protobuf-7.36.2.dist-info/LICENSE"
+      ]
+    },
+    {
+      "name": "pydantic",
+      "locked_version": "2.14.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "2.14.1",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pydantic-2.14.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "pydantic-core",
+      "locked_version": "2.50.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "2.50.1",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pydantic_core-2.50.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "pygments",
+      "locked_version": "2.21.0",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "2.21.0",
+      "license_declared": "BSD-2-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pygments-2.21.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "pymupdf",
+      "locked_version": "1.28.2",
+      "groups": [
+        "pdf-check"
+      ],
+      "installed_version": "1.28.2",
+      "license_declared": "Dual Licensed - GNU AFFERO GPL 3.0 or Artifex Commercial License",
+      "evidence": "installed metadata and dual-license declaration in COPYING; not a full AGPL license text",
+      "license_files": [
+        "pymupdf-1.28.2.dist-info/COPYING"
+      ],
+      "source": "https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright"
+    },
+    {
+      "name": "pyparsing",
+      "locked_version": "3.3.3",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "3.3.3",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pyparsing-3.3.3.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "pypdf",
+      "locked_version": "6.20.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "6.20.1",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pypdf-6.20.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "pyproj",
+      "locked_version": "3.8.0",
+      "groups": [
+        "geo"
+      ],
+      "installed_version": "3.8.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pyproj-3.8.0.dist-info/licenses/LICENSE",
+        "pyproj-3.8.0.dist-info/licenses/LICENSE_proj"
+      ]
+    },
+    {
+      "name": "pytest",
+      "locked_version": "9.1.1",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "9.1.1",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pytest-9.1.1.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "pytest-asyncio",
+      "locked_version": "1.4.0",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "1.4.0",
+      "license_declared": "Apache-2.0",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "pytest_asyncio-1.4.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "rasterio",
+      "locked_version": "1.5.2",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "1.5.2",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "rasterio-1.5.2.dist-info/licenses/LICENSE.txt",
+        "rasterio/gdal_data/LICENSE.TXT"
+      ]
+    },
+    {
+      "name": "ruff",
+      "locked_version": "0.17.0",
+      "groups": [
+        "dev"
+      ],
+      "installed_version": "0.17.0",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "ruff-0.17.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "shapely",
+      "locked_version": "2.2.0",
+      "groups": [
+        "geo"
+      ],
+      "installed_version": "2.2.0",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "shapely-2.2.0.dist-info/licenses/LICENSE.txt",
+        "shapely-2.2.0.dist-info/licenses/LICENSE_GEOS"
+      ]
+    },
+    {
+      "name": "soupsieve",
+      "locked_version": "3.0.3",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "3.0.3",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "soupsieve-3.0.3.dist-info/licenses/LICENSE.md"
+      ]
+    },
+    {
+      "name": "starlette",
+      "locked_version": "1.7.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "1.7.0",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "starlette-1.7.0.dist-info/licenses/LICENSE.md"
+      ]
+    },
+    {
+      "name": "typing-extensions",
+      "locked_version": "4.16.0",
+      "groups": [
+        "runtime",
+        "dev"
+      ],
+      "installed_version": "4.16.0",
+      "license_declared": "PSF-2.0",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "typing_extensions-4.16.0.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "typing-inspection",
+      "locked_version": "0.4.4",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.4.4",
+      "license_declared": "MIT",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "typing_inspection-0.4.4.dist-info/licenses/LICENSE"
+      ]
+    },
+    {
+      "name": "uvicorn",
+      "locked_version": "0.54.0",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "0.54.0",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "uvicorn-0.54.0.dist-info/licenses/LICENSE.md"
+      ]
+    },
+    {
+      "name": "websockets",
+      "locked_version": "15.0.1",
+      "groups": [
+        "runtime"
+      ],
+      "installed_version": "15.0.1",
+      "license_declared": "BSD-3-Clause",
+      "evidence": "installed distribution metadata and license files",
+      "license_files": [
+        "websockets-15.0.1.dist-info/LICENSE"
+      ]
+    }
+  ],
+  "build_backend": {
+    "requirement": "hatchling (unbounded)",
+    "included_in_uv_lock": false,
+    "observed_cached_version": "1.32.4",
+    "caution": "Cache presence does not establish which environment built a particular artifact.",
+    "dependencies_for_observed_version": {
+      "packaging": "Apache-2.0 OR BSD-2-Clause",
+      "pathspec": "MPL-2.0",
+      "pluggy": "MIT",
+      "tomlkit": "MIT",
+      "trove-classifiers": "Apache-2.0"
+    },
+    "python_conditional": "tomli applies only to Python <3.11; WICI requires Python 3.12.",
+    "metadata_reference": "https://github.com/pypa/hatch/blob/master/backend/pyproject.toml"
+  },
+  "known_distribution_gaps": {
+    "gtfs-realtime-bindings": "Installed 1.0.0 has an Apache header but no separate full LICENSE/NOTICE file in RECORD.",
+    "pymupdf": "Installed 1.28.2 COPYING states dual licensing without the full AGPL text.",
+    "rasterio": "BSD metadata is not an exhaustive license inventory of all native libraries bundled in platform wheels."
+  },
+  "native_libraries_in_installed_macos_gis_wheels": {
+    "pyproj": [
+      "pyproj/.dylibs/libjpeg.8.3.2.dylib",
+      "pyproj/.dylibs/liblzma.5.dylib",
+      "pyproj/.dylibs/libproj.25.9.8.1.dylib",
+      "pyproj/.dylibs/libsharpyuv.0.1.2.dylib",
+      "pyproj/.dylibs/libtiff.6.dylib",
+      "pyproj/.dylibs/libwebp.7.2.0.dylib",
+      "pyproj/.dylibs/libzstd.1.5.7.dylib"
+    ],
+    "rasterio": [
+      "rasterio/.dylibs/libLerc.4.dylib",
+      "rasterio/.dylibs/libaec.0.1.7.dylib",
+      "rasterio/.dylibs/libblosc.1.21.6.dylib",
+      "rasterio/.dylibs/libcrypto.3.dylib",
+      "rasterio/.dylibs/libcurl.4.dylib",
+      "rasterio/.dylibs/libdeflate.0.dylib",
+      "rasterio/.dylibs/libgdal.38.3.12.2.dylib",
+      "rasterio/.dylibs/libgif.7.2.0.dylib",
+      "rasterio/.dylibs/libhdf5.320.2.0.dylib",
+      "rasterio/.dylibs/libhdf5_hl.320.0.3.dylib",
+      "rasterio/.dylibs/libjpeg.8.3.2.dylib",
+      "rasterio/.dylibs/libjson-c.5.4.0.dylib",
+      "rasterio/.dylibs/liblzma.5.dylib",
+      "rasterio/.dylibs/libnetcdf.22.dylib",
+      "rasterio/.dylibs/libnghttp2.14.dylib",
+      "rasterio/.dylibs/libopenjp2.2.5.4.dylib",
+      "rasterio/.dylibs/libpcre2-8.0.dylib",
+      "rasterio/.dylibs/libpng16.16.dylib",
+      "rasterio/.dylibs/libproj.25.9.8.1.dylib",
+      "rasterio/.dylibs/libsharpyuv.0.dylib",
+      "rasterio/.dylibs/libsqlite3.3.53.1.dylib",
+      "rasterio/.dylibs/libssl.3.dylib",
+      "rasterio/.dylibs/libsz.2.0.1.dylib",
+      "rasterio/.dylibs/libtiff.6.dylib",
+      "rasterio/.dylibs/libwebp.7.dylib",
+      "rasterio/.dylibs/libz.1.3.2.dylib",
+      "rasterio/.dylibs/libzstd.1.5.7.dylib"
+    ],
+    "shapely": [
+      "shapely/.dylibs/libgeos.3.14.1.dylib",
+      "shapely/.dylibs/libgeos_c.1.20.5.dylib"
+    ]
+  },
+  "other_native_components_observed": {
+    "pymupdf": [
+      "pymupdf/libmupdf.dylib",
+      "pymupdf/libmupdfcpp.so",
+      "pymupdf/_mupdf.so",
+      "pymupdf/_extra.so"
+    ]
+  },
+  "superseded_by": "../../license-audit.md: current dependency and fixture cleanup on 2026-10-18"
+}

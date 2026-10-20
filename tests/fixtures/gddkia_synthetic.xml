@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8'?>
+<utrudnienia gen="2026-10-14T15:00:00+0200" synthetic="true">
+  <utr>
+    <typ>U</typ>
+    <nr_drogi>A1</nr_drogi>
+    <woj>pomorskie</woj>
+    <nazwa_odcinka>WICI fikcyjny odcinek 0</nazwa_odcinka>
+    <geo_lat>53.1</geo_lat>
+    <geo_long>18.1</geo_long>
+    <data_powstania>2026-10-01T08:00:00+0200</data_powstania>
+    <data_likwidacji>2026-10-15T18:00:00+0200</data_likwidacji>
+    <objazd>Syntetyczny opis do testu, nie rzeczywiste utrudnienie.</objazd>
+    <skutki />
+    <rodzaj>
+      <poz>U33</poz>
+    </rodzaj>
+  </utr>
+  <utr>
+    <typ>U</typ>
+    <nr_drogi>A1</nr_drogi>
+    <woj>pomorskie</woj>
+    <nazwa_odcinka>WICI fikcyjny odcinek 1</nazwa_odcinka>
+    <geo_lat>53.1</geo_lat>
+    <geo_long>18.1</geo_long>
+    <data_powstania>2026-10-01T08:00:00+0200</data_powstania>
+    <data_likwidacji>2026-10-16T18:00:00+0200</data_likwidacji>
+    <objazd>Syntetyczny opis do testu, nie rzeczywiste utrudnienie.</objazd>
+    <skutki />
+    <ruch_2_kierunkowy>true</ruch_2_kierunkowy>
+    <ogr_predkosc>80</ogr_predkosc>
+    <rodzaj>
+      <poz>U33</poz>
+    </rodzaj>
+  </utr>
+  <utr>
+    <typ>W</typ>
+    <nr_drogi>A1</nr_drogi>
+    <woj>pomorskie</woj>
+    <nazwa_odcinka>WICI fikcyjny odcinek 2</nazwa_odcinka>
+    <geo_lat>53.1</geo_lat>
+    <geo_long>18.1</geo_long>
+    <data_powstania>2026-10-01T08:00:00+0200</data_powstania>
+    <data_likwidacji>2026-10-17T18:00:00+0200</data_likwidacji>
+    <objazd>Syntetyczny opis do testu, nie rzeczywiste utrudnienie.</objazd>
+    <skutki>S07</skutki>
+    <rodzaj>
+      <poz>R07</poz>
+    </rodzaj>
+  </utr>
+  <utr>
+    <typ>U</typ>
+    <nr_drogi>A1</nr_drogi>
+    <woj>pomorskie</woj>
+    <nazwa_odcinka>WICI fikcyjny odcinek 3</nazwa_odcinka>
+    <geo_lat />
+    <geo_long>18.1</geo_long>
+    <data_powstania>2026-10-01T08:00:00+0200</data_powstania>
+    <data_likwidacji>2026-10-18T18:00:00+0200</data_likwidacji>
+    <objazd>Syntetyczny opis do testu, nie rzeczywiste utrudnienie.</objazd>
+    <skutki />
+    <rodzaj>
+      <poz>U33</poz>
+    </rodzaj>
+  </utr>
+  <utr>
+    <typ>I</typ>
+    <nr_drogi>A1</nr_drogi>
+    <woj>pomorskie</woj>
+    <nazwa_odcinka>WICI fikcyjny odcinek 4</nazwa_odcinka>
+    <geo_lat>53.1</geo_lat>
+    <geo_long>18.1</geo_long>
+    <data_powstania>2026-10-01T08:00:00+0200</data_powstania>
+    <data_likwidacji>2026-10-19T18:00:00+0200</data_likwidacji>
+    <objazd>Syntetyczny opis do testu, nie rzeczywiste utrudnienie.</objazd>
+    <skutki />
+    <rodzaj>
+      <poz>I04</poz>
+    </rodzaj>
+  </utr>
+</utrudnienia>

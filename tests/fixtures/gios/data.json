@@ -1,0 +1,163 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "Lista danych pomiarowych": [
+    {
+      "Data": "2026-10-17 08:00:00",
+      "Wartość": 12.5,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 07:00:00",
+      "Wartość": 1,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 06:00:00",
+      "Wartość": null,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 05:00:00",
+      "Wartość": 3,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 04:00:00",
+      "Wartość": 4,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 03:00:00",
+      "Wartość": 5,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 02:00:00",
+      "Wartość": 6,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 01:00:00",
+      "Wartość": 7,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-17 00:00:00",
+      "Wartość": 8,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 23:00:00",
+      "Wartość": 0,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 22:00:00",
+      "Wartość": 1,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 21:00:00",
+      "Wartość": 2,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 20:00:00",
+      "Wartość": 3,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 19:00:00",
+      "Wartość": 4,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 18:00:00",
+      "Wartość": 5,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 17:00:00",
+      "Wartość": 6,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 16:00:00",
+      "Wartość": 7,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 15:00:00",
+      "Wartość": 8,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 14:00:00",
+      "Wartość": 0,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 13:00:00",
+      "Wartość": 1,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 12:00:00",
+      "Wartość": 2,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 11:00:00",
+      "Wartość": 3,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 10:00:00",
+      "Wartość": 4,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 09:00:00",
+      "Wartość": 5,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 08:00:00",
+      "Wartość": 6,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 07:00:00",
+      "Wartość": 7,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 06:00:00",
+      "Wartość": 8,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 05:00:00",
+      "Wartość": 0,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 04:00:00",
+      "Wartość": 1,
+      "Kod stanowiska": "WICI-9101"
+    },
+    {
+      "Data": "2026-10-16 03:00:00",
+      "Wartość": 2,
+      "Kod stanowiska": "WICI-9101"
+    }
+  ],
+  "totalPages": 1,
+  "totalElements": 30,
+  "links": {
+    "next": "https://example.invalid/broken-next"
+  }
+}

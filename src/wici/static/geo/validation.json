@@ -1,0 +1,16 @@
+{
+  "provinces": {
+    "valid": true,
+    "coverage_valid_after_rounding": true,
+    "area_km2": 313730.7827567223,
+    "overlap_km2": -7.9345703125e-10
+  },
+  "counties": {
+    "valid": true,
+    "coverage_valid_after_rounding": true,
+    "area_km2": 313730.88301904773,
+    "overlap_km2": -1.220703125e-10
+  },
+  "layer_symdiff_km2": 0.4538206044194023,
+  "layer_symdiff_fraction": 1.4465287735928372e-06
+}

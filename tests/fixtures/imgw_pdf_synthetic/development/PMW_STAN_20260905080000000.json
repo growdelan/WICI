@@ -1,0 +1,7 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "generator": "scripts/prepare_imgw_pdf_fixtures.py",
+  "sha256": "3abed32e73d095f8c38951286c33fcc975967e40d57fd135d3345b5f0ddd342d",
+  "case": "before_cancel"
+}

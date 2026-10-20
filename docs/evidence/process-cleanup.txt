@@ -1,0 +1,6 @@
+{
+  "checked_at": "2026-10-12T14:44:24.195945+00:00",
+  "lsof_exit_code": 1,
+  "listener_count": 0,
+  "own_test_handles_terminal": true
+}

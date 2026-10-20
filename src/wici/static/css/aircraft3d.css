@@ -1,0 +1,62 @@
+/* Scoped to the on-demand viewer; Atlas keeps its map, layer and focus state. */
+#aircraft3d-dialog {
+  width:min(1320px,96vw);height:min(940px,94dvh);max-width:96vw;max-height:94dvh;
+  padding:0;border:1px solid var(--control-line);border-radius:14px;
+  background:var(--paper);color:var(--ink);box-shadow:0 24px 100px #0008;
+  overflow:auto;overscroll-behavior:contain;
+}
+#aircraft3d-dialog[open] {display:flex;flex-direction:column}
+#aircraft3d-dialog::backdrop {background:#091e27c9;backdrop-filter:blur(3px)}
+.aircraft3d-header {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 20px 10px;flex-shrink:0}
+.aircraft3d-header h2 {margin:0;font-size:20px;overflow-wrap:anywhere}
+.aircraft3d-header .eyebrow {margin:0 0 3px}
+#aircraft3d-dialog button {min-height:44px;padding:8px 12px;color:var(--ink);background:var(--paper);border:1px solid var(--control-line)}
+#aircraft3d-dialog button:hover {background:var(--hover)}
+#aircraft3d-dialog button[aria-pressed="true"] {background:var(--teal);color:var(--paper);border-color:var(--teal)}
+:root[data-theme="dark"] #aircraft3d-dialog button[aria-pressed="true"] {color:#0b2428}
+#aircraft3d-dialog :focus-visible {outline:3px solid var(--focus);outline-offset:3px}
+#aircraft3d-close {flex-shrink:0}
+.aircraft3d-toolbar {display:flex;align-items:center;gap:8px;padding:0 20px 12px;flex-wrap:wrap;flex-shrink:0}
+.aircraft3d-toolbar p {margin:0 0 0 auto;color:var(--muted);font-size:12px}
+.aircraft3d-viewport {position:relative;flex:1 0 260px;min-height:260px;background:#091c27;overflow:hidden}
+#aircraft3d-scene {position:absolute;inset:0}
+#aircraft3d-scene .cesium-viewer,#aircraft3d-scene .cesium-widget {width:100%;height:100%}
+#aircraft3d-scene .cesium-widget-credits {max-width:calc(100% - 12px);font-size:11px;background:#08191dd9;color:#fff}
+#aircraft3d-scene .cesium-widget-credits a {color:#fff}
+.aircraft3d-readout {position:absolute;top:16px;left:16px;right:16px;pointer-events:none;display:grid;gap:4px;justify-items:start;color:#fff;text-shadow:0 1px 3px #000}
+.aircraft3d-readout>* {padding:4px 8px;background:#0c202bdf;border-radius:5px;font-size:13px}
+.aircraft3d-readout strong:empty,.aircraft3d-readout span:empty {display:none}
+#aircraft3d-reticle {position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);align-items:center;gap:8px;pointer-events:none;color:#e5f6d7}
+#aircraft3d-reticle:not([hidden]) {display:flex}
+#aircraft3d-reticle span {display:block;width:45px;height:2px;background:currentColor;box-shadow:0 1px 2px #000}
+#aircraft3d-reticle i {display:block;width:7px;height:7px;border:1px solid currentColor;border-radius:50%;box-shadow:0 1px 2px #000}
+.aircraft3d-controls {display:flex;align-items:center;gap:16px;padding:10px 20px;flex-wrap:wrap;flex-shrink:0;border-bottom:1px solid var(--line)}
+#aircraft3d-distance-control {display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:12px;min-width:220px}
+#aircraft3d-distance {grid-column:1/-1;width:100%;min-height:30px;accent-color:var(--teal)}
+#aircraft3d-orbit-controls {display:flex;gap:5px}
+#aircraft3d-orbit-controls[hidden],#aircraft3d-distance-control[hidden] {display:none}
+.aircraft3d-controls .check {margin-left:auto;font-size:12px;min-height:44px}
+.aircraft3d-footer {padding:8px 20px 12px;flex-shrink:0;font-size:12px;line-height:1.5}
+.aircraft3d-footer p {margin:3px 0}
+#aircraft3d-status {font-weight:650}
+#aircraft3d-map-status,.aircraft3d-footer details {color:var(--muted)}
+#aircraft3d-dialog[data-state="error"] #aircraft3d-status,#aircraft3d-dialog[data-state="stale"] #aircraft3d-status,#aircraft3d-dialog[data-state="holding"] #aircraft3d-status {color:var(--notice-ink)}
+.aircraft3d-footer details {max-height:140px;overflow-y:auto}
+.aircraft3d-footer a {color:var(--teal)}
+.map-popup>button {margin-top:10px;min-height:44px}
+@media(max-width:600px) {
+  #aircraft3d-dialog {width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;margin:0}
+  .aircraft3d-header {padding:12px;gap:8px;align-items:start}
+  .aircraft3d-header h2 {font-size:17px}
+  .aircraft3d-header .eyebrow {font-size:11px}
+  #aircraft3d-close {font-size:12px;padding:8px}
+  .aircraft3d-toolbar {padding:0 12px 10px}
+  .aircraft3d-toolbar p {width:100%;margin:0}
+  .aircraft3d-viewport {flex-basis:230px;min-height:230px}
+  .aircraft3d-readout {left:8px;right:8px;top:8px}
+  .aircraft3d-readout>* {font-size:12px}
+  .aircraft3d-controls {padding:8px 12px;gap:6px 12px}
+  #aircraft3d-distance-control {min-width:0;flex:1 1 100%}
+  .aircraft3d-controls .check {margin-left:0}
+  .aircraft3d-footer {padding:6px 12px 10px}
+}

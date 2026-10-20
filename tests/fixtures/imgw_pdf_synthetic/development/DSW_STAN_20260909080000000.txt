@@ -1,0 +1,17 @@
+WICI - SYNTETYCZNE DANE TESTOWE. NIE JEST TO OSTRZEŻENIE.
+WOJEWÓDZTWO dolnośląskie OSTRZEŻENIA METEOROLOGICZNE ZBIORCZO NR 1
+WYKAZ OBOWIĄZUJĄCYCH OSTRZEŻEŃ
+Zjawisko/Stopień zagrożenia
+Intensywne opady deszczu/1
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: bolesławiecki(400), dzierżoniowski(400), głogowski(400)
+Ważność
+od godz. 10:00 dnia 09.09.2026 do godz. 20:00 dnia 09.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 08:00 dnia 09.09.2026

@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "license": "MIT",
+  "author": "WICI",
+  "purpose": "Offline contract regression; not provider data",
+  "now": 1792224000000.0,
+  "ac": [
+    {
+      "hex": "abcdef",
+      "lat": 52.1,
+      "lon": 19.2,
+      "type": "adsb_icao",
+      "seen": 0,
+      "seen_pos": 0,
+      "nac_p": 9,
+      "nic": 8,
+      "sil": 3,
+      "sil_type": "perhour",
+      "rc": 100
+    }
+  ]
+}

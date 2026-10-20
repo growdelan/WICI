@@ -1,0 +1,10 @@
+✔ real map, selection, manual state, hourly history, popup preservation and mobile (3694.908875ms)
+✔ main reload scheduler, real Leaflet hit ordering and open hydrology popup refresh (4540.593458ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8689.233208

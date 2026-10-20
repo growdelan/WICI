@@ -1,0 +1,20 @@
+✔ real map, selection, manual state, hourly history, popup preservation and mobile (4365.871459ms)
+✖ main reload scheduler, real Leaflet hit ordering and open hydrology popup refresh (34996.123625ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35243.329542
+
+✖ failing tests:
+
+test at tests/hydro_browser.cjs:54:1
+✖ main reload scheduler, real Leaflet hit ordering and open hydrology popup refresh (34996.123625ms)
+  page.waitForFunction: Timeout 30000ms exceeded.
+      at TestContext.<anonymous> (<PROJECT>/tests/hydro_browser.cjs:116:14) {
+    name: 'TimeoutError',
+    log: []
+  }

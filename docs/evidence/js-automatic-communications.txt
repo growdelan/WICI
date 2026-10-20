@@ -1,0 +1,14 @@
+✔ interrupted GET retries and returns the queue (153.3815ms)
+✔ interrupted JSON body also retries the map read (152.625333ms)
+✔ permanent interruption is bounded and explains which view failed (454.34975ms)
+✔ interrupted operator POST is never replayed (1.320583ms)
+✔ HTTP error and malformed JSON do not trigger network retries (2.21ms)
+✔ timeout aborts the request and remains bounded (20.641ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 831.074

@@ -1,0 +1,1 @@
+"""WICI — sytuacja i ostrzeżenia."""

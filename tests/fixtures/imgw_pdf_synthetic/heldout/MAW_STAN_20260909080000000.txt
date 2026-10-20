@@ -1,0 +1,17 @@
+WICI - SYNTETYCZNE DANE TESTOWE. NIE JEST TO OSTRZEŻENIE.
+WOJEWÓDZTWO mazowieckie OSTRZEŻENIA METEOROLOGICZNE ZBIORCZO NR 1
+WYKAZ OBOWIĄZUJĄCYCH OSTRZEŻEŃ
+Zjawisko/Stopień zagrożenia
+Upał/1
+Obszar (w nawiasie numer ostrzeżenia dla powiatu)
+powiaty: białobrzeski(700), ciechanowski(700), garwoliński(700), gostyniński(700), grodziski(700)
+Ważność
+od godz. 10:00 dnia 09.09.2026 do godz. 20:00 dnia 09.09.2026
+Prawdopodobieństwo
+65%
+Przebieg
+Prognozowane wartości są fikcyjne i służą wyłącznie testom WICI.
+Uwagi
+Brak.
+Godzina i data wydania
+godz. 08:00 dnia 09.09.2026
