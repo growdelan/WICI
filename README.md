@@ -2,6 +2,8 @@
 
 WICI to lokalna aplikacja do przeglądania oficjalnych komunikatów dotyczących Polski i dodatkowych danych na wspólnej mapie. Łączy publikacje IMGW, Regionalnego Systemu Ostrzegania (RSO), Rządowego Centrum Bezpieczeństwa (RCB) i Straży Granicznej z warstwami pogody, ruchu drogowego, pożarów, autobusów miejskich, samolotów, kolei i statków na Bałtyku.
 
+Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
+
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
 
 Pozwala sprawdzić informacje dla wybranego dnia i województwa, otworzyć pełną zapisaną treść oraz przejrzeć historię zmian komunikatu. Dane i historia pozostają na Twoim komputerze. Aplikacja nie wymaga konta WICI ani klucza do modelu AI.
