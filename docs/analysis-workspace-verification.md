@@ -80,3 +80,21 @@ Nowe testy backendu znajdują się w `test_workspace.py`, `test_workspace_histor
 Wszystkie próby korzystały z tymczasowych baz i syntetycznych danych. Nowe scenariusze Chromium blokują ruch zewnętrzny. Nie zmieniano lokalnej konfiguracji ani bazy LIVE. Dostawców na żywo, Safari i Firefox nie weryfikowano.
 
 Historia stacji zaczyna się od rzeczywiście pozyskanych odpowiedzi i nie odtwarza okresu sprzed instalacji. Retencja wynosi 14 dni; fizyczne czyszczenie przy starcie i co godzinę może usunąć rekord do godziny po przekroczeniu granicy. Kursor odtwarza wyłącznie wybraną stację, a metadane i geometria pozostają aktualnym katalogiem. Przy historii wymagającej kilku stron kursor jest dostępny dopiero po doczytaniu kompletu. Zakres etapu nie obejmuje historycznej rekonstrukcji całej mapy, nowych dostawców ani pełnej ontologii relacji.
+
+## Końcowy przegląd wydania v0.30.0 — 22.10.2026
+
+Przegląd przed scaleniem objął wszystkie pliki diffu do `main`: kontrakty i zabezpieczenia API, migracje 015/016, projekcję dokumentów, zapis/retencję i rewizje pomiarów, współdzielenie źródeł, wybór/czas/mapę, konfiguracje stanowisk, testy i dokumentację. Po poprawkach nie pozostały uwagi blokujące scalenie.
+
+Znaleziono i poprawiono utratę oczekującego tekstu wyszukiwarki po kliknięciu filtra w oknie debounce 250 ms. Wpisany tekst jest zachowany; przywrócenie zapisanego stanowiska anuluje poprzednie oczekujące wyszukiwanie. Nowy scenariusz Chromium odtwarzał błąd przed poprawką i przechodzi po niej. Istniejący test kursora oczekuje na gotowość historii zamiast wysyłać zdarzenie do wyłączonego suwaka. Test hydrologii odczekuje też 200-milisekundową animację Leafleta przed sprawdzeniem usunięcia dymka przy zatrzymanym zegarze. Indeks PRD wskazuje wdrożoną instrukcję.
+
+Ponowna weryfikacja wydania:
+
+- 880 testów Python: zaliczone (3 znane ostrzeżenia, bez błędów).
+- 322 testy Node: zaliczone.
+- 55 scenariuszy Chromium: zaliczone z ponownymi próbami hydrologii i jakości pozycji, w tym 3 scenariusze Analizy (szczegóły w raporcie).
+- Ruff, składnia zmienionych plików JS, lockfile i poprawność diffu: poprawne.
+- Budowa sdist i wheel 0.30.0 oraz obecność nowych modułów i migracji w pakiecie: poprawne.
+
+Pierwszy zbiorczy przebieg obejmował 56 pozycji: 54 właściwe scenariusze `node:test`, skrypt jakości pozycji i moduł pomocniczy motywu. Wynik wyniósł 54 zaliczone / 2 nieudane. W hydrologii końcowe sprawdzenie DOM wyprzedzało animację zamknięcia dymka; osobna próba już przed poprawką przeszła, a po dodaniu oczekiwania na animację ponownie zaliczono ten scenariusz. Skrypt jakości pozycji wymaga osobnego serwera — w zbiorczym przebiegu brakowało procesu na porcie 8773. Próbę uruchomiono ponownie z odizolowanym serwerem DEMO i `WICI_UI_URL`; przeszła. W rezultacie zaliczono łącznie 55 scenariuszy Chromium.
+
+Zbiorczy przebieg Chromium uruchomiono poleceniem `node --test --test-concurrency=1 tests/*_browser.cjs tests/browser_theme.cjs` z modułem Playwright przez `NODE_PATH`. Moduł `browser_theme.cjs` jest helperem; nie jest liczony jako osobny scenariusz Chromium. Testy końcowe używały odizolowanych serwerów i baz demo, bez okien na pulpicie. Dodatkowo po poprawce powtórzono 20 powiązanych testów Node i trzy scenariusze Analizy. Przegląd wykazał również poprawny build `uv build`; sprawdzono wersję pakietu, nowe moduły/migracje oraz brak lokalnych baz, konfiguracji prywatnej i filmów w archiwach. GitHub nie zgłasza kontroli CI dla PR #1; powyższe wyniki pochodzą z lokalnych przebiegów.
