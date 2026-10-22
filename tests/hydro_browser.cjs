@@ -123,6 +123,8 @@ test('main reload scheduler, real Leaflet hit ordering and open hydrology popup 
   await page.waitForFunction(()=>!state.map.hasLayer(window.hydroMarker));assert.equal((await markerState(page)).open,false);
   if(!await page.locator('#hydro-stations').isVisible())await page.locator('#layer-panel > summary').click();
   await page.locator('#hydro-stations').uncheck();await page.locator('#hydro-warnings').uncheck();
+  // Leaflet removes a fading popup after 200ms; the browser clock is paused.
+  await page.clock.runFor(250);
   assert.equal(await page.locator('.leaflet-popup').count(),0);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
  }finally{if(browser)await browser.close();await app.stop();}
 });

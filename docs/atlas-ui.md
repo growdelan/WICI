@@ -97,3 +97,8 @@ Granice weryfikacji: przetestowano rzeczywisty Chromium, bez audytu czytnikiem e
 
 
 Pliki wdrożenia: `static/index.html`, `static/css/app.css`, nowy `static/js/theme.js`, prezentacyjne zmiany w `static/js/app.js`, `static/js/atlas.js`, `static/js/layers.js` i kontrastowy `static/brand/logo-night.svg` (ścieżki względem `src/wici/`). Testy: nowy `scripts/check_night_ui.cjs`, poprawiony smoke Atlasu, `tests/ui_theme.test.cjs`, `tests/ui_layers.test.cjs`, rozszerzenia testów Atlasu i mocków oraz helper `tests/browser_theme.cjs` z siedmioma scenariuszami integracyjnymi. Dokumentacja: `README.md` i ten dokument; konfiguracja wyszukiwania testów: `pyproject.toml`.
+
+
+## Tryb Analiza — 22.10.2026
+
+Zakładka Analiza używa tej samej instancji Leaflet. Nowe moduły `workspace-*` obsługują katalog, tabelę, oś i kartę. Atlas zawiesza prezentację swoich warstw przy zachowaniu checkboxów; zapis tras pracuje dalej w backendzie. Motyw jest wspólny, układ analizy ma oddzielny klucz localStorage. [Instrukcja](analysis-workspace.md), [regresje](analysis-workspace-verification.md).

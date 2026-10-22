@@ -2,7 +2,7 @@
 
 Aktualizacja 18.10.2026: bieżące testy korzystają z autorskich próbek syntetycznych. Kopie źródłowe i dane z dawnych raportów usunięto; [opis zestawu](../tests/fixtures/README.md). Wcześniejsze sprawdzenia live były osobnymi próbami, a nie dowodem pochodzenia obecnych fixture.
 
-Bieżąca warstwa w grupie „Pogoda” panelu „Warstwy mapy”. Dwa niezależne przełączniki: **Wodowskazy** oraz **Ostrzeżenia hydrologiczne**. Nie wymaga klucza. Domyślnie wyłączone w UI; dostęp można wyłączyć przez `[sources.hydro_imgw] enabled = false`. Demo zwraca jawny brak danych i nie pobiera sieci.
+Bieżąca warstwa w grupie „Pogoda” panelu „Warstwy mapy”. Dwa niezależne przełączniki: **Wodowskazy** oraz **Ostrzeżenia hydrologiczne**. Nie wymaga klucza. Domyślnie wyłączone w UI; dostęp można wyłączyć przez `[sources.hydro_imgw] enabled = false`. Źródłowe API w demo zwraca `disabled` i nie pobiera sieci. Tryb Analiza ma osobny, jawnie syntetyczny scenariusz wodowskazów w bazie demo.
 
 ## Źródła i weryfikacja
 
@@ -13,7 +13,7 @@ Oficjalne [apiinfo IMGW](https://danepubliczne.imgw.pl/apiinfo) wskazuje:
 
 Historyczne sprawdzenie opisane w tym miejscu korzystało z danych live. Kopie odpowiedzi, pomiary, zrzuty i szczegółowe zestawienia usunięto z bieżącej wersji 18.10.2026; zobacz [zasady przechowywania wyników](evidence/README.md).
 
-`hydro2/` zwrócił pustą odpowiedź HTML; nie jest używany jako fallback. Nie zmieniono istniejącego adaptera meteorologicznych PDF ani kolektora publikacji. Hydrologia korzysta z konwencji bieżących warstw mapy: osobny serwis w pamięci, bez archiwizacji i zależności od dnia publikacji czy filtra województwa komunikatów.
+`hydro2/` zwrócił pustą odpowiedź HTML; nie jest używany jako fallback. Nie zmieniono istniejącego adaptera meteorologicznych PDF ani kolektora publikacji. Hydrologia zachowuje osobny cache usług na żądanie. Nowe odczyty wodowskazów zasilają także lokalny katalog i 14-dniową historię trybu Analiza; wykaz ostrzeżeń hydrologicznych pozostaje w dotychczasowej warstwie.
 
 ## Czas i znaczenie danych
 
@@ -44,3 +44,9 @@ NODE_PATH=/sciezka/do/node_modules node --test tests/hydro_browser.cjs
 ```
 
 Wymaga Playwright i zainstalowanego Chromium. Sam uruchamia i zatrzymuje serwer demo na wolnym porcie, używa tymczasowej bazy oraz blokuje zewnętrzną sieć. Przechwytuje wyłącznie odpowiedzi hydrologii; rzeczywisty `app.js`, główny harmonogram, API demo, granice i Leaflet pozostają aktywne. Przyspieszony zegar sprawdza starzenie pomiaru i wygaśnięcie ostrzeżenia pomiędzy pobraniami, kliknięcie wodowskazu po ponownym narysowaniu i podniesieniu obszarów publikacji, zachowanie dymka przy pobraniu i błędzie oraz zamknięcie po usunięciu stacji.
+
+## Katalog i historia w trybie Analiza
+
+`hydro_station:imgw:<id_stacji>` identyfikuje stację niezależnie od zmiany jej nazwy. Katalog, tabela, mapa i karta korzystają z zapisanych danych. Historia dopisuje się przy nowych pobraniach używanej usługi; samo przesuwanie kursora i odczyt karty nie wywołują IMGW. Odczyty cache nie tworzą rewizji. Zmiany wartości A → B → A są zachowywane, NULL oznacza lukę, a progi w karcie historycznej pochodzą z odpowiedzi zapisanej razem z pomiarem. Brak dostępnego historycznego progu nie jest uzupełniany bieżącym progiem stacji.
+
+Retencja wynosi 14 dni. Nieznane lub przyszłe daty są zachowane oddzielnie od poprawnego szeregu i nie stają się sztucznym zdarzeniem w chwili pobrania. Błąd źródła i częściowy wykaz zachowują katalog oraz pomiary; status zapisu i źródła pozostaje widoczny. [Model przechowywania](data-model.md#stanowisko-analityczne-migracje-015016), testy `tests/test_workspace_history.py` i `tests/test_workspace_integration.py`.

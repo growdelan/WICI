@@ -8,9 +8,10 @@ kliknięcie stacji na mapie także wybiera ją do szczegółów. Lista zawiera r
 prawidłowych współrzędnych. Dla każdego z PM10, PM2,5, NO₂, SO₂, O₃, CO i benzenu szczegóły
 wskazują dostępność. Kilka stanowisk jednego parametru pozostaje osobno do wyboru.
 
-Wyniki godzinowe są pokazywane w tabeli, w oknie zwracanym przez bieżącą usługę (od ostatniej
-pełnej godziny do trzeciej doby wstecz). Nie jest to archiwum. Dane trafiają wyłącznie do pamięci
-procesu; kolektor komunikatów i SQLite nie zapisują pomiarów.
+Wyniki godzinowe bieżącej warstwy są pokazywane w oknie zwracanym przez usługę (od ostatniej
+pełnej godziny do trzeciej doby wstecz). Nowe odczyty na żądanie zasilają także lokalny katalog
+i 14-dniową historię trybu Analiza. Kolektor komunikatów nie pobiera pomiarów GIOŚ w tle;
+historia obejmuje wyłącznie rzeczywiście pozyskane odpowiedzi i może zawierać luki.
 
 ## Kontrakt źródła i jednostki
 
@@ -119,7 +120,8 @@ Przesuwanie mapy zatrzymuje kolejkę; po zakończeniu ruchu granice są sprawdza
 a żądania, które opuściły widok, są anulowane. Spóźnione odpowiedzi nie zmieniają kolorów. Nie ma masowego pobierania
 sensorów w Polsce. Wyłączenie warstwy lub ukrycie mapy/karty zatrzymuje timery; tokeny generacji
 ignorują spóźnione odpowiedzi. AbortController anuluje żądania przy ukryciu warstwy oraz zmianie wyboru; wspólny klient HTTP nie ponawia anulowanych żądań. Odświeżanie zachowuje wybór, otwarty dymek i rozwiniętą tabelę. Błąd połączenia z lokalnym API zachowuje również pomiar uzyskany przez równoległe żądanie tego samego wyboru — z pierwotnym czasem pobrania i oznaczeniem błędu.
-Demo pozostaje całkowicie offline i zwraca `disabled`, niezależnie od konfiguracji.
+Źródłowe API demo pozostaje całkowicie offline i zwraca `disabled`, niezależnie od konfiguracji.
+Tryb Analiza pokazuje osobny, jawnie syntetyczny scenariusz GIOŚ zapisany w bazie demo.
 
 ## Weryfikacja
 
@@ -141,7 +143,7 @@ Ograniczenia: dane są godzinowe i niezweryfikowane; 30-minutowy cache może op�
 pojawienie się nowej godziny. Nie rozstrzygamy jesiennego DST bez offsetu. Lista nie podaje
 typu stanowiska, więc przy kilku stanowiskach (np. manualnym i automatycznym PM10)
 trzeba wybrać właściwe stanowisko. Stanowiska spoza siedmiu obsługiwanych parametrów
-pozostają poza widokiem wyników. Nie zapisujemy archiwum. Weryfikacja mobilna obejmuje Chromium,
+pozostają poza widokiem wyników. Historia lokalna nie uzupełnia brakujących odczytów ze źródła. Weryfikacja mobilna obejmuje Chromium,
 nie fizyczne urządzenia ani wszystkie silniki przeglądarek.
 
 ## Regresje po przeglądzie
@@ -165,3 +167,22 @@ Podczas ponownego równoległego uruchomienia Chromium wystąpił pojedynczy tim
 ## Regionalny widok i postęp
 
 Wybór „Obszar danych” filtruje punkty i listę stacji według granic PRG. Kolejka indeksów obejmuje jedynie stacje widoczne na mapie i wewnątrz regionu; zmiana regionu anuluje poprzednie prace, zachowując krajowy cache listy stacji i indeksy. Panel pokazuje odczytane indeksy względem liczby stacji w aktualnym widoku. Stacje bez współrzędnych pozostają dostępne przy wyborze całej Polski. Zachowano kolory oficjalnego indeksu, szary brak lub nieaktualność, limity współbieżności, cache i Retry-After. [Szczegóły zakresu i ładowania](regions.md).
+
+## Historia stanowiska analitycznego
+
+Trwały obiekt `air_quality_station:gios:<station_id>` zawiera metadane stacji. Stanowiska pomiarowe
+są przypisane po własnym ID: dwa stanowiska PM10 nie są scalane. Zapis przechowuje wartość,
+jednostkę, źródłowy czas, rozstrzygnięty czas obserwacji, czas pobrania i kolejne korekty A → B → A.
+NULL pozostaje brakiem; niejednoznaczna godzina DST nie jest zgadywana. Ponowne użycie cache
+nie dopisuje próbek ani nie zmienia czasu pobrania już zapisanej rewizji.
+
+Oficjalny indeks jest osobnym szeregiem ze źródłowymi czasami danych oraz obliczenia. Wybór
+stanowiska lub substancji nie przelicza indeksu ogólnego. Zapytania katalogu, karty i osi czasu
+czytają SQLite; pobranie nowego szeregu następuje przez istniejącą usługę na żądanie. Częściowa
+odpowiedź może dopisać poprawne rekordy, lecz nie oznacza usunięcia innych stacji z katalogu.
+Błąd nie kasuje poprawnej historii. Retencja wartości wynosi 14 dni; aktualna geometria stacji
+nie jest prezentowana jako historyczna lokalizacja.
+
+[Model przechowywania](data-model.md#stanowisko-analityczne-migracje-015016) oraz testy
+`tests/test_workspace_history.py` i `tests/test_workspace_integration.py` opisują deduplikację,
+retencję, status kolejki i spójność istniejącego API z trybem Analiza.

@@ -1,4 +1,4 @@
-"""On-demand GIOŚ v1 JSON-LD. Memory only; no collector or historical archive."""
+"""On-demand GIOŚ v1 JSON-LD with an optional local observation archive."""
 import asyncio
 import copy
 import json
@@ -114,7 +114,7 @@ class GiosPartial(GiosUnavailable):
 
 
 class GiosService:
-    def __init__(self, client, clock, timeout=20, enabled=True, demo=False):
+    def __init__(self, client, clock, timeout=20, enabled=True, demo=False, history=None):
         self.client, self.clock = client, clock
         self.timeout, self.enabled, self.demo = min(timeout, 30), enabled, demo
         self.cache = OrderedDict()
@@ -124,6 +124,15 @@ class GiosService:
         self.requests = {k: deque() for k in FIELDS}
         self.retry_at, self.failures = {}, {}
         self.resource_failures = OrderedDict()
+        self.history = history
+
+    def archive(self, kind, identity, result, failure=False):
+        if self.history is not None:
+            resource = 'gios:' + kind + (':' + str(identity) if identity is not None else '')
+            queued = (self.history.report_failure(resource, result) if failure
+                      else self.history.submit(resource, result))
+            result['history_status'] = 'pending' if queued else 'error'
+        return result
 
     def defer(self, kind, deadline):
         self.retry_at[kind] = max(self.retry_at.get(kind, deadline), deadline)
@@ -188,6 +197,7 @@ class GiosService:
                     payload = await self.download(kind, identity)
                 if cached and payload['status'] == 'partial':
                     self.defer_resource(key, now)
+                    self.archive(kind, identity, self.result(kind, (payload, self.clock().astimezone(UTC))))
                     result = self.result(kind, cached, True)
                     result.update(status='partial', message='Nieprawidłowe rekordy GIOŚ; zachowano poprzedni odczyt.')
                     return result
@@ -196,25 +206,26 @@ class GiosService:
                     self.cache.popitem(last=False)
                 self.failures[kind] = 0
                 self.resource_failures.pop(key, None)
-                return self.result(kind, self.cache[key])
+                return self.archive(kind, identity, self.result(kind, self.cache[key]))
             except GiosPartial as exc:
                 self.defer_resource(key, now)
+                payload = {'items': exc.items, 'status': 'partial', 'rejected_count': exc.rejected,
+                           'message': 'Niepełna paginacja GIOŚ — dostępny tylko fragment odpowiedzi.'}
+                partial = self.archive(kind, identity, self.result(kind, (payload, now)))
                 if cached:
                     result = self.result(kind, cached, True)
                     result.update(status='partial', message='Niepełna paginacja GIOŚ; zachowano poprzedni odczyt.')
                     return result
-                payload = {'items': exc.items, 'status': 'partial', 'rejected_count': exc.rejected,
-                           'message': 'Niepełna paginacja GIOŚ — dostępny tylko fragment odpowiedzi.'}
-                result = self.result(kind, (payload, now))
+                result = partial
                 result['stale'] = True
                 return result
             except GiosResourceUnavailable:
                 self.defer_resource(key, now)
-                return self.result(kind, cached, True)
+                return self.archive(kind, identity, self.result(kind, cached, True), failure=True)
             except (httpx.HTTPError, ValueError, TypeError, KeyError, OverflowError, TimeoutError):
                 self.failures[kind] = min(self.failures.get(kind, 0)+1, 6)
                 self.defer(kind, now+timedelta(seconds=min(300 * 2**(self.failures[kind]-1), 3600)))
-                return self.result(kind, cached, True)
+                return self.archive(kind, identity, self.result(kind, cached, True), failure=True)
 
     async def reserve(self, kind):
         async with self.rate_lock:

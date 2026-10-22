@@ -243,6 +243,7 @@ class Repository:
                     'window_start': stamp(start),'window_end': stamp(end)}
 
     def ingest(self,document: Document | dict,now=None):
+        from wici.workspace_repository import WorkspaceRepository
         document=Document.model_validate(document)
         document=Document.model_validate(dict(document.model_dump(),title=clean_text(document.title),text=clean_text(document.text)))
         time=stamp(now or self.clock())
@@ -263,6 +264,7 @@ class Repository:
             self.db.execute('UPDATE documents SET last_checked_at=? WHERE id=?',(time,row['id']))
             if current and current['content_hash']==digest:
                 self.db.execute('UPDATE documents SET url=? WHERE id=?',(document.url,row['id']))
+                WorkspaceRepository(self).project_document(row['id'])
                 return {'document_id':row['id'],'document_version_id':current['id'],'changed':False}
             prior_issued=(current['source_updated_at'] or current['source_published_at']) if current else None
             issued=document.source_updated_at or document.source_published_at
@@ -278,6 +280,10 @@ class Repository:
                  payload['source_updated_at'],document.parser_version,document.redaction_note,time)).lastrowid
             if not older:
                 self.db.execute('UPDATE documents SET current_version=?,url=? WHERE id=?',(number,document.url,row['id']))
+            projected = WorkspaceRepository(self).project_document(row['id'])
+            if older and not projected:
+                self.db.execute('UPDATE catalog_objects SET revision=revision+1 WHERE ref=?',
+                                (f"communication:{row['id']}",))
             return {'document_id':row['id'],'document_version_id':version_id,'changed':True,'out_of_order':older}
 
     @serialized_query

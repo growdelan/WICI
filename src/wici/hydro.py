@@ -129,8 +129,9 @@ def warnings(payload, now):
 
 
 class HydroService:
-    def __init__(self, client, clock, timeout=20, enabled=True, demo=False):
+    def __init__(self, client, clock, timeout=20, enabled=True, demo=False, history=None):
         self.client, self.clock, self.timeout, self.enabled, self.demo = client, clock, timeout, enabled, demo
+        self.history = history
         self.locks = {kind: asyncio.Lock() for kind in URLS}
         self.cache, self.retry_at = {}, {}
 
@@ -185,10 +186,17 @@ class HydroService:
                     raise ValueError('Unrecognized hydrology records')
                 cached = self.cache[kind] = (payload, now)
                 self.retry_at.pop(kind, None)
-                return self.result(kind, cached, now)
+                result = self.result(kind, cached, now)
+                if self.history is not None and kind == 'stations':
+                    queued = self.history.submit('hydro:stations', result)
+                    result['history_status'] = 'pending' if queued else 'error'
+                return result
             except (httpx.HTTPError, ValueError, TypeError, KeyError, OverflowError):
                 self.retry_at[kind] = max(self.retry_at.get(kind, now), now+timedelta(seconds=REFRESH))
-                return self.result(kind, cached, now, failed=True)
+                result = self.result(kind, cached, now, failed=True)
+                if self.history is not None and kind == 'stations':
+                    self.history.report_failure('hydro:stations', result)
+                return result
 
     async def download(self, kind, now):
         async with self.client.stream('GET', URLS[kind], timeout=self.timeout, follow_redirects=False,
