@@ -251,7 +251,7 @@ Symbole zachowują kolory klasyfikacji samolotów i wszystkich trzech kategorii 
 
 Weryfikacja: **838 testów Python, 283 testy Node i 2 scenariusze Chromium** przeszły. Testy obejmują migracje bazy, zapis bez przeglądarki, restart, retencję, przerwy, trzygodzinną historię, kolory, wyjście ze śledzenia i ponowne otwarcie zapisanej trasy. Przegląd kodu bez uwag; próby przeglądarkowe korzystały z odizolowanego serwera i danych syntetycznych. Bez testów usług LIVE, Safari i Firefox. [Obsługa i ograniczenia](tracking.md).
 
-## Stanowisko analityczne — etap 1 — 22.10.2026
+## v0.30.0 — stanowisko analityczne, etap 1 — 22.10.2026
 
 Zakładka „Analiza” udostępnia katalog komunikatów, wodowskazów IMGW, stacji GIOŚ i obszarów PRG. Mapa, tabela i oś czasu mają wspólny zakres oraz wybór obiektu. Karty pokazują pochodzenie, jednostki, braki danych, wersje komunikatów i lokalną historię stacji. Przedział i kursor nie zmieniają się przy odświeżeniu; zapisane stanowiska odtwarzają filtry, czas, kamerę i układ.
 
