@@ -250,3 +250,11 @@ Przycisk „Śledź trasę” uruchamia zapis wybranego samolotu lub statku w lo
 Symbole zachowują kolory klasyfikacji samolotów i wszystkich trzech kategorii AIS podczas śledzenia i odtwarzania. Klasyfikacja jest utrwalana razem z obserwacją. „Wyjdź ze śledzenia” kończy aktywny zapis wybranego obiektu, usuwa jego trasę i zaznaczenie, zwija panel i zapamiętuje brak wyboru po odświeżeniu. Historia pozostaje dostępna na liście.
 
 Weryfikacja: **838 testów Python, 283 testy Node i 2 scenariusze Chromium** przeszły. Testy obejmują migracje bazy, zapis bez przeglądarki, restart, retencję, przerwy, trzygodzinną historię, kolory, wyjście ze śledzenia i ponowne otwarcie zapisanej trasy. Przegląd kodu bez uwag; próby przeglądarkowe korzystały z odizolowanego serwera i danych syntetycznych. Bez testów usług LIVE, Safari i Firefox. [Obsługa i ograniczenia](tracking.md).
+
+## Stanowisko analityczne — etap 1 — 22.10.2026
+
+Zakładka „Analiza” udostępnia katalog komunikatów, wodowskazów IMGW, stacji GIOŚ i obszarów PRG. Mapa, tabela i oś czasu mają wspólny zakres oraz wybór obiektu. Karty pokazują pochodzenie, jednostki, braki danych, wersje komunikatów i lokalną historię stacji. Przedział i kursor nie zmieniają się przy odświeżeniu; zapisane stanowiska odtwarzają filtry, czas, kamerę i układ.
+
+Addytywne migracje 015/016 wprowadzają projekcję katalogu i 14-dniową historię odczytów na żądanie. Korekty oraz brak pomiaru pozostają jawne, a oficjalny indeks GIOŚ jest niezależny od stężenia substancji. Wspólny manager odczytów zachowuje cache i limity. Przejście między Sytuacją i Analizą zachowuje ustawienia Atlasu oraz aktywny zapis tras. [Instrukcja](analysis-workspace.md).
+
+Weryfikacja: **880 testów Python, 322 testy Node, 2 nowe scenariusze Chromium i 27 istniejących scenariuszy Chromium** zaliczonych, w tym ponowne próby po poprawkach preferencji, regionu i GIOŚ. Ruff, składnia JS, lockfile i diff poprawne. Dla miliona pomiarów p95 lokalnego zapytania po rozgrzaniu wyniosło 54,99 ms, a pierwsze zapytanie 2204,74 ms. Testy offline na tymczasowych bazach; bez weryfikacji usług LIVE, Safari i Firefox. [Raport, polecenia i ograniczenia](analysis-workspace-verification.md).

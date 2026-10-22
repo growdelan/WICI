@@ -1,6 +1,6 @@
 # Model danych WICI
 
-SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`009` są historycznym, transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL, blokada repozytorium i jeden worker chronią zapis. Pobieranie HTTP odbywa się poza transakcją.
+SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`016` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
 
 ## Aktywne tabele
 
@@ -36,3 +36,23 @@ Mapa używa rozpoznanych kodów PRG, z rolą obszaru ostrzeżenia lub powiadomie
 Niezależne tabele: `ioda_entities` (typ/kod/nazwa/zweryfikowane metadane), `ioda_events` (klucz typu/kodu/sygnału/metody/początku, miary, źródłowa granica czasu, potwierdzony alertem normal koniec lub NULL, pełny payload i pochodzenie, czasy pomiaru/pobrania/pierwszego zapisu, flaga synthetic), `ioda_alerts` (źródłowe wartości i odniesienia z czasem, metodą, pochodzeniem), `ioda_samples` (jednostka/sygnał/czas/krok, wartość nullable, nativeStep, pobranie i pochodzenie). Nie używają wycofanych tabel obserwacji ani redakcji. Scheduler używa istniejących `sources`, `fetch_runs`; ostatni zakres i częściowe błędy w `app_state.ioda_run`.
 
 Deduplikacja i aktualizacja nie opierają się na zmiennej długości zdarzenia. Nie ma identyfikatora upstream event: zachowany payload i klucz pochodny są jawnie rozróżnione. Brak rekordu nie zamyka zdarzenia; NULL pomiaru nie zeruje poprzedniej wartości. Retencja pomiarów/alertów 30 dni; zdarzenia wymagają też 30 dni od ostatniego pobrania. Historia pozostaje lokalną najnowszą zapisaną reprezentacją, bez rekonstrukcji dawnego stanu wiedzy. Szczegóły semantyki i mapowania: [ioda.md](ioda.md).
+
+## Stanowisko analityczne (migracje 015–016)
+
+Migracja `015` dodaje projekcję `catalog_objects`, przypisania `catalog_object_areas`, stan projekcji `workspace_meta` i nazwane konfiguracje `workspace_views`. Trwałe odwołania mają postać `communication:<documents.id>`, `hydro_station:imgw:<id>`, `air_quality_station:gios:<id>` i `area:prg:<kod>`. Zmiana nazwy stacji nie zmienia jej tożsamości. Komunikaty nadal przechowują treść i wersje w dotychczasowych tabelach; projekcja wskazuje aktualną wersję i aktualizuje się w tej samej transakcji. Idempotentne uzupełnienie projekcji przy starcie nie tworzy wersji dokumentów. Zapisywane widoki zawierają walidowaną konfigurację, `schema_version` i rewizję do kontroli równoczesnych zmian.
+
+Migracja `016` dodaje:
+
+| Tabela | Znaczenie |
+|---|---|
+| `station_sensors` | Trwałe powiązanie stanowiska GIOŚ ze stacją i parametrem; dwa stanowiska PM10 pozostają odrębne. |
+| `station_measurements` | Wartość nullable, jednostka, źródłowy i rozstrzygnięty czas, pobranie, rewizja, jakość czasu, pochodzenie i progi dostępne w odpowiedzi. |
+| `station_index_observations` | Oficjalny indeks GIOŚ wraz z osobnymi czasami danych i obliczenia; nie wynika z wybranej substancji. |
+| `workspace_source_runs` | Wynik nowego pobrania zasobu, liczby rekordów i kompletność odpowiedzi; bez surowych odpowiedzi i kluczy. |
+| `station_observation_keys` | Skrót tożsamości oraz pierwszy czas odczytu próbki o nieznanym lub przyszłym czasie; uniemożliwia odnawianie retencji przez powtarzanie tej samej błędnej próbki. |
+
+Ograniczona kolejka przyjmuje wyłącznie nowe odpowiedzi istniejących usług na żądanie. Cache nie dopisuje próbek i nie odmładza czasu pobrania. Zapis korzysta z tego samego połączenia SQLite i `RLock`; zapytania stanowiska analitycznego czytają lokalną bazę. Błąd lub przepełnienie kolejki jest widoczne w `/api/workspace/status`. Błąd sieci i częściowa lista nie usuwają katalogu ani poprawnych pomiarów. Dopiero pełny poprawny wykaz może oznaczyć stację jako nieobecną w bieżącym katalogu, zachowując jej rekord.
+
+Klucz obserwacji obejmuje obiekt, stanowisko, parametr i źródłowy czas. Zmiany A → B → A tworzą trzy niezmienne rewizje; `is_current` wskazuje ostatnią rewizję tej obserwacji, umożliwiając zliczanie jej raz na osi czasu. NULL pozostaje jawnym brakiem wartości. Historyczne progi i czas pobrania rewizji nie są zastępowane bieżącymi. Próby ze złym lub przyszłym czasem nie trafiają do poprawnych szeregów. Retencja wartości wynosi 14 dni od czasu obserwacji, a dla czasów błędnych/przyszłych — od pierwszego pobrania; minimalne skróty tożsamości pozostają po usunięciu wartości, aby kolejne kopie nie wydłużały retencji. Lokalny worker usuwa przeterminowane wartości przy starcie, zapisie nowej odpowiedzi i co godzinę podczas pracy aplikacji, również bez pobierania źródeł.
+
+Historia obejmuje odczyty wykonane na żądanie i może mieć luki. Metadane oraz geometria stacji opisują ostatni znany katalog. Przesunięcie kursora nie rekonstruuje historycznej lokalizacji ani stanu wiedzy całej mapy. [Plan i zakres pierwszego etapu](plan-stanowisko-analityczne-etap-1.md).

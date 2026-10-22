@@ -29,3 +29,8 @@ Zmiana regionu podczas wyszukiwania zobrazowań lub Sentinel-2 usuwa punkt leż�
 ## Weryfikacja offline
 
 Testy Node obejmują geometrię, zapis i awarie localStorage, przycinanie nowych paneli mapy, niezależny postęp, błędy transportu, zmianę regionu w kolejce GIOŚ, prognozę, GFM i wyścigi odpowiedzi zobrazowań/Sentinel-2. Testy Python sprawdzają regionalne zapytania i cache prognoz, wspólny cache IMGW, backoff, zachowanie danych po awarii i walidację kodów API. `tests/region_browser.cjs` uruchamia izolowane demo i rzeczywisty Chromium: odtworzenie regionu, indeksy tylko dla właściwych stacji, niezależne ładowanie, rzeczywisty hit-test przyciętej geometrii, telefon i zmianę regionu podczas obu wyszukiwań.
+
+
+## Region w Analizie
+
+Katalog stosuje ten sam kod województwa i lokalne geometrie PRG. Przypisanie stacji wynika z kodu/nazwy źródła albo położenia punktu w granicy; podstawa jest zapisana przy relacji. Punkty na granicy i otwory poligonów mają testy. Powiaty są obiektami referencyjnymi; filtrem wspólnym pozostaje kraj/województwo. Otwarty zapisany widok przywraca własny region. Obiekt pozostający poza filtrem może zachować kartę z odpowiednią informacją. Przesuwanie kamery nie zmienia filtra katalogu. [Szczegóły](analysis-workspace.md).

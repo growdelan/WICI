@@ -84,7 +84,8 @@ test('saved region, independent progress, scoped GIOS indices, polygon clipping 
   assert.equal(await page.locator('[data-layer="gios-enabled"]').getAttribute('data-state'),'Odczyt zakończony');
   const clipping=await page.evaluate(async()=>{
    state.map.fitBounds([[49,14],[55,24]],{animate:false});
-   state.map.createPane('regionTest').style.zIndex='500';
+   // Test clipping above publication cards so they cannot intercept the probe.
+   state.map.createPane('regionTest').style.zIndex='650';
    const inside=L.circleMarker([51.11,17.04],{pane:'regionTest',radius:12}).addTo(state.map),outside=L.circleMarker([52.23,21.01],{pane:'regionTest',radius:12}).addTo(state.map);
    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
    const hit=layer=>{const r=layer.getElement().getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===layer.getElement();};

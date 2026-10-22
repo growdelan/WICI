@@ -32,11 +32,14 @@ from wici.scheduler import Scheduler
 from wici.sentinel2 import SentinelError, SentinelService
 from wici.sentinel5p import Sentinel5PError, Sentinel5PService
 from wici.ships import ShipService
+from wici.station_history import StationHistory
 from wici.tracking import TrackingService, TrackRequest
 from wici.traffic import RoadService, TrafficService, TrafficUnavailable
 from wici.trains import TrainService
 from wici.ukraine import UkraineService
 from wici.weather import WeatherService
+from wici.workspace_api import create_workspace_router
+from wici.workspace_service import WorkspaceService
 
 
 def create_app(demo=False, root=ROOT, config=None, client=None):
@@ -56,8 +59,12 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         ships = None
         quality = None
         tracking = None
+        station_history = None
         try:
             repo = Repository(directory/'app.sqlite3',clock=(lambda:DEMO_NOW) if demo else (lambda:datetime.now(UTC)))
+            station_history = StationHistory(repo)
+            station_history.start()
+            app.state.station_history = station_history
             network = client or httpx.AsyncClient(timeout=config.timeout_seconds,follow_redirects=False,
                 headers={'User-Agent':'WICI-local/0.1 (private local pilot)'})
             scheduler = Scheduler(repo,config,network,demo)
@@ -86,13 +93,13 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             app.state.imagery = ImageryService(network, repo.clock, config.timeout_seconds,
                 enabled=config.enabled('imagery'), demo=demo)
             app.state.gios = GiosService(network, repo.clock, config.timeout_seconds,
-                enabled=config.enabled('gios'), demo=demo)
+                enabled=config.enabled('gios'), demo=demo, history=station_history)
             app.state.gfm = GFMService(network, repo.clock, enabled=config.enabled('gfm'), demo=demo)
             app.state.sentinel2 = SentinelService(network, config, demo=demo)
             app.state.sentinel5p = Sentinel5PService(network, config, demo=demo)
             app.state.gfm_monitor = GFMMonitor(app.state.gfm)
             app.state.hydro = HydroService(network, repo.clock, config.timeout_seconds,
-                enabled=config.enabled('hydro_imgw'), demo=demo)
+                enabled=config.enabled('hydro_imgw'), demo=demo, history=station_history)
             app.state.weather = WeatherService(network, repo.clock, config.timeout_seconds, demo=demo,
                 measurement_enabled=config.enabled('weather_imgw'),
                 forecast_enabled=config.enabled('weather_forecast'))
@@ -104,6 +111,14 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 timeout=config.timeout_seconds, monthly_limit=19_000)
             if demo:
                 seed(repo)
+            app.state.workspace = WorkspaceService(repo)
+            app.state.workspace.source_enabled = {
+                'hydro:stations': app.state.hydro.enabled and not demo,
+                'gios:stations': app.state.gios.enabled and not demo,
+            }
+            if demo:
+                from wici.workspace_demo import seed_workspace
+                seed_workspace(repo, station_history)
             scheduler.start()
             yield
         finally:
@@ -123,6 +138,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 await app.state.gfm_monitor.close()
             if network and client is None:
                 await network.aclose()
+            if station_history:
+                await station_history.close()
             if repo:
                 repo.close()
             handler.close()
@@ -131,6 +148,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             lock.close()
 
     app = FastAPI(title='WICI',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
+    app.include_router(create_workspace_router())
 
     @app.middleware('http')
     async def security(request,call_next):
@@ -273,7 +291,9 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
         if kind != 'stations' and (id is None or id <= 0 or id > 2**63-1):
             return JSONResponse({'detail':'Wymagany poprawny identyfikator GIOŚ'}, status_code=422)
-        return await app.state.gios.fetch(kind, id if kind != 'stations' else None)
+        result = await app.state.gios.fetch(kind, id if kind != 'stations' else None)
+        await app.state.station_history.flush()
+        return result
     @app.get('/api/sentinel2/status')
     @app.get('/api/sentinel2/search')
     @app.get('/api/sentinel2/render')
@@ -354,7 +374,9 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.hydro.fetch(kind)
+        result = await app.state.hydro.fetch(kind)
+        await app.state.station_history.flush()
+        return result
     @app.get('/api/weather')
     async def weather(request:Request, mode:str='measurement', voivodeship:str=''):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':

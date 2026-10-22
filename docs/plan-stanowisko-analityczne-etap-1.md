@@ -297,4 +297,9 @@ Dokumentacja przy wdrożeniu: README, PRD, data-model, atlas-ui, regions, hydrol
 
 Plan oparto na odczycie bieżącego kodu oraz [modelu danych](data-model.md), [komunikatach](automatic-communications.md), [regionach](regions.md), [hydrologii](hydrology.md), [GIOŚ](gios.md) i [trasach](tracking.md). Wzorce produktu: [obiekty i relacje Palantir Ontology](https://www.palantir.com/docs/foundry/ontology/overview/), [czas na mapie](https://www.palantir.com/docs/foundry/map/time-overview/), [zapisane eksploracje](https://www.palantir.com/docs/foundry/object-explorer/save-explorations/). Są inspiracją do projektu WICI, nie deklaracją zgodności z Palantirem.
 
-Ten branch zawiera wyłącznie plan i odnośnik w indeksie wymagań. Nie wprowadza migracji, endpointów, kolektorów, interfejsu ani zależności. Wymienione kontrakty, nazwy nowych modułów i kryteria odbioru opisują przyszłą implementację.
+W chwili sporządzenia planu branch zawierał wyłącznie ten dokument i odnośnik w indeksie wymagań. Wymienione kontrakty, nazwy nowych modułów i kryteria odbioru były projektem przyszłej implementacji. Aktualny stan opisuje poniższa sekcja wdrożenia.
+
+
+## Wdrożenie na branchu planu
+
+Implementacja etapu 1 znajduje się na `codex/wici-analysis-workspace-plan`. [Instrukcja i ostateczny zakres](analysis-workspace.md) oraz [wyniki weryfikacji](analysis-workspace-verification.md) opisują zachowanie dostarczonego rozwiązania. Powyższy projekt zachowano jako punkt odniesienia.

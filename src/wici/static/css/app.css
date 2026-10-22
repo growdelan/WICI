@@ -401,3 +401,6 @@ input[type="range"] {min-height:32px}
 
 #s2-controls fieldset{min-width:0;margin:0;padding:10px;border:1px solid var(--line);border-radius:7px;display:grid;gap:8px}
 #s2-controls fieldset legend{font-size:12px;font-weight:600;padding:0 4px}#s2-controls fieldset label{display:grid;gap:4px;font-size:12px}
+
+/* Three main modes fit beside the local badge on a narrow phone. */
+@media(max-width:380px){.side-rail{padding-inline:8px;gap:4px}.side-rail .tab{padding-inline:8px}}
