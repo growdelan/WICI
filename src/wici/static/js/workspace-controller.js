@@ -43,7 +43,7 @@ window.WiciWorkspace = (() => {
     shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
     if (lastControlsQuery !== state.query) {
       lastControlsQuery = state.query;
-      if (document.activeElement !== search) search.value = state.query.q;
+      if (document.activeElement !== search && searchTimer == null) search.value = state.query.q;
       province.value = state.query.province || ''; sourceSelect.value = state.query.source_ids[0] || '';
       for (const [type, button] of controls) button.setAttribute('aria-pressed', String(state.query.types.includes(type)));
       for (const [name, checkbox] of checkboxOptions) checkbox.checked = name === 'include_without_samples' ? !state.query[name] : state.query[name];
@@ -178,7 +178,10 @@ window.WiciWorkspace = (() => {
     const panels = U.el('div', null, 'analysis-mobile-switch');
     for (const [id, name] of [['table', 'Tabela'], ['map', 'Mapa']]) {const button = U.button(name, () => dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: id}})); button.dataset.panel = id; panels.append(button);} top.append(panels);
     const fields = U.el('div', null, 'analysis-query-fields'); search = U.el('input'); search.type = 'search'; search.maxLength = 200; search.id = 'analysis-search'; search.placeholder = 'Nazwa, tytuł lub identyfikator…';
-    search.addEventListener('input', () => {clearTimeout(searchTimer); searchTimer = setTimeout(() => dispatch({type: 'SET_QUERY', patch: {q: search.value}}), 250);});
+    search.addEventListener('input', () => {
+      clearTimeout(searchTimer); const value = search.value;
+      searchTimer = setTimeout(() => {searchTimer = null; dispatch({type: 'SET_QUERY', patch: {q: value}});}, 250);
+    });
     province = U.el('select'); province.id = 'analysis-province'; const all = U.el('option', 'Cała Polska'); all.value = ''; province.append(all);
     const regions = [...(options.geometries || new Map())].filter(([key]) => /^\d{2}$/.test(key)).sort((a, b) => a[1].properties.name.localeCompare(b[1].properties.name, 'pl'));
     for (const [code, feature] of regions) {const option = U.el('option', feature.properties.name); option.value = code; province.append(option);}
@@ -227,6 +230,7 @@ window.WiciWorkspace = (() => {
     mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: selectObject, narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
     cardView = window.WiciObjectCard(cardHost, {close: closeCard, show(object) {dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}}); if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => selectObject(store.getState().selectedRef, document.activeElement, version), region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
     store.subscribe((state, previous, action) => {
+      if (action.type === 'APPLY_VIEW') {clearTimeout(searchTimer); searchTimer = null;}
       if (state.queryRevision !== previous.queryRevision) {pageCursor = null; detailAbort?.abort(); ++detailRun; if (action.type !== 'REFRESH') syncSources(); loadQuery();}
       else if (state.detailRevision !== previous.detailRevision) {syncSensor(); detailAbort?.abort(); ++detailRun; if (state.detailOpen) loadDetail();}
       render();

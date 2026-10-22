@@ -50,6 +50,38 @@ async function settle(page) {
   await page.waitForFunction(() => !window.WiciWorkspace.getState().loading && !window.WiciWorkspace.getState().error);
 }
 
+test('Analiza: a filter click preserves a pending search and restoring a view cancels it', {timeout:60000}, async () => {
+  const env = await setup(), {page} = env;
+  try {
+    await page.locator('.analysis-saved-views summary').click();
+    await page.locator('#analysis-view-name').fill('Wszystkie komunikaty');
+    await page.getByRole('button', {name:'Zapisz nowe', exact:true}).click();
+    await page.waitForFunction(() => document.getElementById('analysis-saved-view').options.length === 2);
+    // Dispatch both real input/click events in one turn, within the debounce window.
+    await page.locator('#analysis-search').focus();
+    await page.evaluate(() => {
+      const search = document.getElementById('analysis-search');
+      search.value = 'Wisła'; search.dispatchEvent(new Event('input', {bubbles:true}));
+      const filter = document.querySelector('[data-object-type="hydro_station"]');
+      filter.focus(); filter.click();
+    });
+    await page.waitForFunction(() => WiciWorkspace.getState().query.q === 'Wisła' && !WiciWorkspace.getState().loading);
+    assert.equal(await page.locator('#analysis-search').inputValue(), 'Wisła');
+    assert.equal(await page.locator('#analysis-table tbody tr').count(), 1);
+    await page.evaluate(() => {
+      const search = document.getElementById('analysis-search');
+      search.value = 'Nieistniejący'; search.dispatchEvent(new Event('input', {bubbles:true}));
+      const open = [...document.querySelectorAll('.analysis-saved-views button')].find(button => button.textContent === 'Otwórz');
+      open.focus(); open.click();
+    });
+    await page.waitForTimeout(400);
+    await settle(page);
+    assert.equal(await page.locator('#analysis-search').inputValue(), '');
+    assert.equal(await page.evaluate(() => WiciWorkspace.getState().query.q), '');
+    assert.deepEqual(env.errors, []);
+  } finally {await env.close();}
+});
+
 test('Analiza: shared selection, cursor, persistence, responsive themes and Atlas return', {timeout:120000}, async () => {
   const env = await setup(), {page} = env;
   try {
@@ -62,6 +94,7 @@ test('Analiza: shared selection, cursor, persistence, responsive themes and Atla
     await page.locator('#analysis-card-title').filter({hasText:'DEMO: wodowskaz Wisła'}).waitFor();
     assert.match(await page.locator('.analysis-reading').innerText(), /274/);
     await page.getByRole('button', {name:'Ostatnie 24 godziny', exact:true}).click(); await settle(page);
+    await page.waitForFunction(() => !document.getElementById('analysis-cursor').disabled);
     await page.locator('#analysis-cursor').evaluate(input => {input.value = '500'; input.dispatchEvent(new Event('input', {bubbles:true}));});
     await page.waitForFunction(() => WiciWorkspace.getState().cursorAt !== null);
     assert.match(await page.locator('[data-ref="hydro_station:imgw:demo-wisla"]').innerText(), /Według kursora/);
