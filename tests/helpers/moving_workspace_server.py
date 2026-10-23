@@ -32,12 +32,12 @@ class Feed:
             return {**common, 'hex': f'48abc{index}', 'id': f'ANALIZA LOT {index + 1}',
                     'registration': f'SP-TST{index}', 'altitude_m': 8000 + step * 2,
                     'speed_kmh': 600 + self.revision * 10 + index, 'track': 80,
-                    'type_code': 'TEST', 'military': False}
+                    'type_code': 'TEST', 'military': (index == 1) if index < 2 else None}
         return {**common, 'latitude': 55.1 + index * .15 + step * .0001,
                 'longitude': 18.1 + index * .15 + step * .0001,
                 'mmsi': str(261000001 + index), 'imo': str(9000001 + index),
                 'name': f'ANALIZA STATEK {index + 1}', 'speed_knots': 12 + self.revision,
-                'course': 50, 'heading': 50, 'type_code': 70}
+                'course': 50, 'heading': 50, 'type_code': [70, 35, None][index]}
 
     async def fetch(self):
         now = self.repo.clock()

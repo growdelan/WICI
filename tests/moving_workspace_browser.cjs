@@ -90,6 +90,46 @@ async function watchedOnly(page, enabled) {
   await page.locator('#analysis-watched-only').setChecked(enabled);
 }
 
+test('Analiza transport: main-map icons, classification colors, labels and selection in light, dark and mobile', {timeout:90000}, async () => {
+  const env = await setup(), {page} = env;
+  try {
+    await types(page, ['aircraft','ship']);
+    await page.waitForFunction(() => document.querySelectorAll('.analysis-transport-marker').length === 6);
+    await page.evaluate(() => state.map.fitBounds(L.latLngBounds(WiciWorkspace.getData().map.points.map(item => [item.latitude,item.longitude])), {padding:[35,35],animate:false}));
+    assert.equal(await page.locator('.analysis-transport-marker.aircraft-marker').count(),3);
+    assert.equal(await page.locator('.analysis-transport-marker .aircraft-military').count(),1);
+    for (const category of ['military','civilian','unclassified']) assert.equal(await page.locator(`.analysis-transport-marker .ship-${category}`).count(),1);
+    await page.evaluate(() => {const item = WiciWorkspace.getData().items.find(item => item.ref === 'aircraft:icao:48abc1'); state.map.setView([item.latitude,item.longitude],9,{animate:false});});
+    const plane = page.locator('.analysis-transport-marker .aircraft-military');
+    await plane.hover(); await page.locator('.leaflet-tooltip').filter({hasText:'ANALIZA LOT 2'}).waitFor();
+    await plane.click(); await page.waitForFunction(() => WiciWorkspace.getState().selectedRef === 'aircraft:icao:48abc1');
+    await page.locator('#analysis-card-title').filter({hasText:'ANALIZA LOT 2'}).waitFor();
+    assert.equal(await page.locator('.analysis-transport-selected .aircraft-military').count(),1);
+    await closeCard(page);
+    await page.locator('#analysis-transport-legend summary').click();
+    assert.match(await page.locator('#analysis-transport-legend').innerText(),/Kolory ikon.*kolory tras/);
+    const colors = await page.locator('.analysis-transport-marker .ship-symbol').evaluateAll(items => items.map(item => getComputedStyle(item).backgroundColor).sort());
+    assert.deepEqual(colors,['rgb(101, 113, 126)','rgb(132, 59, 167)','rgb(18, 107, 120)'].sort());
+    await page.screenshot({path:path.join(evidence,'transport-icons-light.png'),fullPage:true});
+    await page.locator('#theme-toggle').click();
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    assert.deepEqual(await page.locator('.analysis-transport-marker .ship-symbol').evaluateAll(items => items.map(item => getComputedStyle(item).backgroundColor).sort()),colors);
+    await page.screenshot({path:path.join(evidence,'transport-icons-dark.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await page.getByRole('button',{name:'Mapa',exact:true}).click();
+    await page.evaluate(() => {state.map.invalidateSize({pan:false}); const item = WiciWorkspace.getData().items.find(item => item.ref === 'aircraft:icao:48abc1'); state.map.setView([item.latitude,item.longitude],9,{animate:false});});
+    await plane.hover(); await page.locator('.leaflet-tooltip').filter({hasText:'ANALIZA LOT 2'}).waitFor();
+    const tooltip = await page.locator('.analysis-transport-tooltip').boundingBox(), mapBox = await page.locator('#map').boundingBox();
+    assert.ok(tooltip.x >= mapBox.x && tooltip.x + tooltip.width <= mapBox.x + mapBox.width,'mobile tooltip stays inside the map');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert.equal(await page.locator('.analysis-transport-marker').count(),6);
+    await page.screenshot({path:path.join(evidence,'transport-icons-mobile.png'),fullPage:true});
+    await page.locator('[data-view="situation"]').click();
+    assert.equal(await page.locator('.analysis-transport-marker').count(),0);
+    assert.deepEqual(env.errors,[]); assert.deepEqual(env.external,[]);
+  } finally {await env.close();}
+});
+
 test('Analiza transport: catalogue identities, persistent watchlist, recording and Situation return', {timeout:120000}, async () => {
   const env = await setup(), {page, context, url, headers} = env;
   try {
@@ -186,6 +226,11 @@ test('Analiza transport: synchronized comparison leaves observation gaps and see
     await seek(start+10*60000);
     for (const ref of [aircraft,ship]) assert.equal(await page.locator(`#analysis-comparison-table tr[data-ref="${ref}"]`).getAttribute('data-motion-status'),'ready');
     assert.equal(await page.locator('.analysis-replay-marker').count(),2,'map shows both observed objects at the shared cursor');
+    assert.equal(await page.locator('.analysis-replay-marker .aircraft-symbol').count(),1);
+    assert.equal(await page.locator('.analysis-replay-marker .ship-civilian').count(),1);
+    assert.equal(await page.locator('.analysis-replay-marker .ship-old').count(),0,'historical positions use cursor age rather than current time');
+    assert.equal(await page.locator('.analysis-replay-marker .aircraft-symbol').evaluate(item => item.style.transform),'rotate(-10deg)');
+    assert.equal(await page.locator('.analysis-replay-marker .ship-symbol').evaluate(item => item.style.transform),'rotate(50deg)');
     assert.equal(await page.locator('.analysis-recorded-track').count(),3,'two aircraft segments preserve the gap beside one continuous ship route');
     await seek(start+30*60000);
     assert.equal(await page.locator(`#analysis-comparison-table tr[data-ref="${aircraft}"]`).getAttribute('data-motion-status'),'gap');

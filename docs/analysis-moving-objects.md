@@ -24,6 +24,26 @@ w wybranym okresie. W bieżącym katalogu korzysta z ostatniej znanej lokalizacj
 Przy więcej niż 1000 zlokalizowanych obiektów w wyniku zawierającym transport mapa
 pokazuje ograniczony zestaw i informuje o limicie; tabela nadal stronicuje całość.
 
+## Oznaczenia na mapie
+
+Analiza używa tych samych ikon i kolorów co Sytuacja, zarówno dla pozycji bieżących,
+jak i podczas odtwarzania: sylwetki samolotu oraz symbolu statku obróconego według
+raportu kierunku. Samoloty z oznaczeniem wojskowym źródła są brązowe; pozostałe
+ikony samolotów są granatowe. Statki mają kolory według deklarowanego typu AIS:
+fioletowy dla kodu 35, morski dla typów cywilnych i szary dla nieustalonych.
+Brak kodu 35 nie potwierdza cywilnej przynależności. Nieustalony kierunek statku
+zachowuje okrągły symbol z głównej mapy.
+
+Najechanie na ikonę pokazuje nazwę lub znak wywoławczy, klasyfikację i prędkość;
+kliknięcie otwiera kartę obiektu. Obwódka zaznaczenia zachowuje kolor klasyfikacji.
+Legenda **Samoloty i statki · oznaczenia na mapie** wyjaśnia symbole.
+
+Paski na statku oznaczają raport starszy niż pięć minut. W historii wiek raportu
+jest liczony względem kursora, a kierunek pochodzi z zapisanego punktu. Klasyfikacja,
+nazwa i rejestracja pozostają metadanymi bieżącego katalogu; odtwarzanie nie
+rekonstruuje ich dawnych wersji. Kolory linii tras i wykresów identyfikują obiekty
+porównania niezależnie od kolorów ikon.
+
 ## Obserwowane i nagrywanie
 
 Przypięcie obiektu do **obserwowanych** zapisuje wybór w SQLite. Lista przeżywa

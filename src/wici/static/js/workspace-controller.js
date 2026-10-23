@@ -10,7 +10,7 @@ window.WiciWorkspace = (() => {
   let trigger = null, wantsFocus = false, lastControlsQuery = null, lastLayout = null, sourceEnabled = true;
   let replayData = null, replayLoading = false, replayError = null, replayAbort, replayRun = 0, replayKey = '';
   let watchedItems = [], watchedRefs = null, watchlistHost, watchlistSummary, watchlistKey = '', watchlistRun = 0;
-  let regions = [], regionOptionsKey = '', recording = null, recordingBusy = false, recordingRun = 0, regionsRun = 0;
+  let regions = [], regionOptionsKey = '', recording = null, recordingBusy = false, recordingRun = 0, regionsRun = 0, transportLegend;
   let alertReplay = null, alertLoading = false, alertError = null, alertAbort, alertRun = 0, alertKey = '';
   const movingBusy = new Set();
   const controls = new Map(), checkboxOptions = new Map(), localKey = 'wici.analysis.layout.v1';
@@ -159,6 +159,7 @@ window.WiciWorkspace = (() => {
     if (!initialized) return;
     const state = store.getState(), sample = currentSample(), motion = motionContext(), alerts = alertContext();
     U.setTimezone?.(state.displayTimezone); renderRegions(); syncMapScope();
+    transportLegend.hidden = !state.query.types.some(type => ['aircraft', 'ship'].includes(type)) && !state.comparedRefs.length;
     shell.classList.toggle('analysis-card-open', active && state.detailOpen);
     shell.dataset.analysisPanel = state.layout.mobilePanel;
     shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
@@ -350,11 +351,23 @@ window.WiciWorkspace = (() => {
     persistenceNotice = U.el('p', '', 'analysis-message'); persistenceNotice.id = 'analysis-persistence-status'; persistenceNotice.setAttribute('role', 'status');
     status = U.el('p', '', 'analysis-query-status'); status.id = 'analysis-status'; status.setAttribute('role', 'status');
     const coverage = U.el('details', null, 'analysis-source-coverage'); coverage.append(U.el('summary', 'Pokrycie i aktualność źródeł')); sourceCoverage = U.el('div'); coverage.append(sourceCoverage);
+    transportLegend = U.el('details', null, 'analysis-transport-legend'); transportLegend.id = 'analysis-transport-legend';
+    transportLegend.append(U.el('summary', 'Samoloty i statki · oznaczenia na mapie'));
+    const legendItems = U.el('div', null, 'analysis-transport-legend-items');
+    for (const [classes, glyph, label] of [
+      ['aircraft-symbol', '✈', 'Samolot · brak oznaczenia wojskowego'],
+      ['aircraft-symbol aircraft-military', '✈', 'Samolot · wojskowy według źródła'],
+      ['ship-legend-swatch ship-military', '', 'Statek · wojskowy według AIS (kod 35)'],
+      ['ship-legend-swatch ship-civilian', '', 'Statek · typ cywilny według AIS'],
+      ['ship-legend-swatch ship-unclassified', '', 'Statek · typ nieustalony'],
+      ['ship-legend-swatch ship-civilian ship-old', '', 'Paski · pozycja starsza niż 5 minut'],
+    ]) {const entry = U.el('span'), symbol = U.el('i', glyph, classes); symbol.setAttribute('aria-hidden', 'true'); entry.append(symbol, U.el('span', label)); legendItems.append(entry);}
+    transportLegend.append(legendItems, U.el('p', 'Kolory ikon oznaczają klasyfikację źródła; kolory tras identyfikują obiekty w porównaniu. Brak kodu AIS 35 nie potwierdza cywilnej przynależności. Przy odtwarzaniu klasyfikacja pochodzi z bieżącego katalogu, a wiek pozycji jest liczony względem kursora.', 'muted'));
     const recordingBox = U.el('details', null, 'analysis-ukraine-recording'); recordingBox.id = 'analysis-ukraine-recording'; recordingBox.append(U.el('summary', 'Ukraina · rejestracja historii alarmów'));
     recordingControl = U.el('input'); recordingControl.type = 'checkbox'; recordingControl.id = 'analysis-ukraine-record-enabled'; recordingControl.addEventListener('change', () => changeRecording(recordingControl.checked));
     recordingStatus = U.el('p', '', 'muted'); recordingStatus.id = 'analysis-ukraine-record-status'; recordingStatus.setAttribute('role', 'status');
     recordingBox.append(U.field('Rejestruj historię alarmów Ukrainy', recordingControl), recordingStatus, U.el('p', 'Odczyty co 15 s · retencja 30 dni. Obserwowanie regionu i zapisany widok nie zmieniają tej opcji. Błędy źródła oraz przerwy w działaniu WICI pozostawiają luki.', 'muted'));
-    toolbar.append(top, fields, types, advanced, status, message, persistenceNotice, recordingBox, coverage);
+    toolbar.append(top, fields, types, advanced, status, message, persistenceNotice, transportLegend, recordingBox, coverage);
     const watchlist = U.el('details', null, 'analysis-watchlist'); watchlist.id = 'analysis-watchlist'; watchlistSummary = U.el('summary', 'Obserwowane (0)'); watchlistHost = U.el('div'); watchlistHost.id = 'analysis-watchlist-items'; watchlist.append(watchlistSummary, watchlistHost); toolbar.append(watchlist);
     views = window.WiciWorkspaceViews(toolbar, {request, status: notify, getConfig() {
       const state = store.getState(), center = options.map?.getCenter?.();

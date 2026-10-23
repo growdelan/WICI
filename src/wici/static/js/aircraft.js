@@ -45,11 +45,11 @@ window.WiciAircraft = (() => {
     }
     return view.box;
   }
-  function icon(item){
+  function icon(item,{className='',selected=false}={}){
     const wrap=node('span'); wrap.className=item.military===true?'aircraft-symbol aircraft-military':'aircraft-symbol';
     wrap.textContent='✈'; // Glyph points east; track is measured clockwise from north.
     wrap.style.transform=`rotate(${Number.isFinite(item.track)?item.track-90:-90}deg)`;
-    return L.divIcon({className:'aircraft-marker',html:wrap,iconSize:[28,28],iconAnchor:[14,14]});
+    return L.divIcon({className:`aircraft-marker ${className}${selected?' analysis-transport-selected':''}`.trim(),html:wrap,iconSize:[28,28],iconAnchor:[14,14]});
   }
   function render(){
     if(!shown())return;
@@ -137,5 +137,5 @@ window.WiciAircraft = (() => {
     $('enabled').addEventListener('change',()=>sync());
   }
   document.addEventListener?.('wici:regionchange',()=>{if(map)render();});
-  return {init,sync};
+  return {init,sync,icon};
 })();
