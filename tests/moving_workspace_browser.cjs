@@ -102,6 +102,9 @@ test('Analiza transport: main-map icons, classification colors, labels and selec
     await page.evaluate(() => {const item = WiciWorkspace.getData().items.find(item => item.ref === 'aircraft:icao:48abc1'); state.map.setView([item.latitude,item.longitude],9,{animate:false});});
     const plane = page.locator('.analysis-transport-marker .aircraft-military');
     await plane.hover(); await page.locator('.leaflet-tooltip').filter({hasText:'ANALIZA LOT 2'}).waitFor();
+    const desktopTooltip = await page.locator('.analysis-transport-tooltip').boundingBox();
+    assert.ok(desktopTooltip.width >= 160 && desktopTooltip.height <= 180,
+      `desktop tooltip must stay readable rather than stack individual letters: ${JSON.stringify(desktopTooltip)}`);
     await plane.click(); await page.waitForFunction(() => WiciWorkspace.getState().selectedRef === 'aircraft:icao:48abc1');
     await page.locator('#analysis-card-title').filter({hasText:'ANALIZA LOT 2'}).waitFor();
     assert.equal(await page.locator('.analysis-transport-selected .aircraft-military').count(),1);
@@ -120,6 +123,8 @@ test('Analiza transport: main-map icons, classification colors, labels and selec
     await page.evaluate(() => {state.map.invalidateSize({pan:false}); const item = WiciWorkspace.getData().items.find(item => item.ref === 'aircraft:icao:48abc1'); state.map.setView([item.latitude,item.longitude],9,{animate:false});});
     await plane.hover(); await page.locator('.leaflet-tooltip').filter({hasText:'ANALIZA LOT 2'}).waitFor();
     const tooltip = await page.locator('.analysis-transport-tooltip').boundingBox(), mapBox = await page.locator('#map').boundingBox();
+    assert.ok(tooltip.width >= 100 && tooltip.height <= 240,
+      `mobile tooltip must wrap words into readable lines: ${JSON.stringify(tooltip)}`);
     assert.ok(tooltip.x >= mapBox.x && tooltip.x + tooltip.width <= mapBox.x + mapBox.width,'mobile tooltip stays inside the map');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.equal(await page.locator('.analysis-transport-marker').count(),6);
