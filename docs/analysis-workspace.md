@@ -4,6 +4,8 @@ Zakładka **Analiza** otwiera katalog obiektów, tabelę, mapę i oś czasu. Kor
 
 Kolejne rozszerzenie dodaje [samoloty, statki, obserwowane i wspólne odtwarzanie tras](analysis-moving-objects.md). Poniższy opis czasu stacji i pomiarów dotyczy nadal pierwszego etapu; zasady czasu obiektów ruchomych opisano osobno.
 
+Wersja 0.32.0 dodaje [historię alarmów Ukrainy i porównanie regionów](ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320): katalog regionów i epizodów, obserwowane regiony oraz wspólny kursor mapy, tabeli i pasów alarmów. Formularz i prezentację czasu można przełączyć między Warszawą, Kijowem i UTC; zapis pozostaje w UTC.
+
 ## Praca z katalogiem
 
 1. Wybierz typy: komunikaty czterech oficjalnych źródeł, wodowskazy IMGW, stacje jakości powietrza GIOŚ lub obszary PRG. Możesz połączyć kilka typów.
@@ -19,7 +21,7 @@ Na małym ekranie użyj przełącznika **Tabela / Mapa**. W „Zakres i układ�
 
 **Bieżące** pokazuje dzisiejsze publikacje/aktualizacje oraz rozpoznane obowiązujące lub zapowiedziane ostrzeżenia IMGW i obecnie udostępniane komunikaty RSO. Dla stacji pokazuje ostatnie zapisane pomiary wraz z ich aktualnością. Okno udostępniania RSO nie oznacza czasu trwania zagrożenia.
 
-**Przedział** ogranicza publikacje/aktualizacje, opcjonalnie przecinające go okresy ważności/udostępniania i pomiary stacji. Formularz czasu używa Warszawy; koniec jest wyłączny (`[od, do)`). Dni zmiany czasu mogą mieć 23 lub 25 godzin. Obszary administracyjne są bezczasowe i nie wytwarzają zdarzeń histogramu.
+**Przedział** ogranicza publikacje/aktualizacje, opcjonalnie przecinające go okresy ważności/udostępniania i pomiary stacji. Formularz czasu domyślnie używa Warszawy; koniec jest wyłączny (`[od, do)`). Dni zmiany czasu mogą mieć 23 lub 25 godzin. Nieistniejąca godzina jest odrzucana, a powtórzona jesienna godzina wybiera wcześniejsze wystąpienie. Obszary administracyjne są bezczasowe i nie wytwarzają zdarzeń histogramu.
 
 Kliknięcie koszyka histogramu zawęża przedział, zachowując szersze tło osi. Kursor dotyczy **wybranej stacji**: jej karty, wybranego wiersza i wyróżnionego punktu. Pozostałe stacje nadal przedstawiają przegląd okresu. Wartość przy kursorze to ostatnia zapisana próbka nie późniejsza od kursora i mieszcząca się w przedziale. Brak próbki jest jawnym brakiem danych. Przy stronicowanej historii należy najpierw doczytać jej strony, aby kursor miał pełny zestaw próbek.
 

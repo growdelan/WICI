@@ -1,7 +1,9 @@
 """Same-origin analytical workspace routes. Query endpoints never fetch upstream."""
+import inspect
+
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from wici.workspace_models import MovingReplay, SavedView, WorkspaceQuery
+from wici.workspace_models import MovingReplay, SavedView, UkraineRecording, UkraineReplay, WorkspaceQuery
 from wici.workspace_service import QueryChanged
 
 
@@ -32,6 +34,9 @@ def create_workspace_router():
         moving = getattr(request.app.state, 'moving_ingestion', None)
         if moving is not None:
             result['moving_persistence'] = moving.status()
+        ukraine = getattr(request.app.state, 'ukraine_collector', None)
+        if ukraine is not None:
+            result['ukraine_recording'] = ukraine.status()
         return result
 
     @router.get('/watchlist')
@@ -40,15 +45,41 @@ def create_workspace_router():
 
     @router.put('/watchlist/{ref}')
     def watch(request: Request, ref: str):
-        return _call(request.app.state.workspace.moving.watch, ref, True)
+        return _call(request.app.state.workspace.watch, ref, True)
 
     @router.delete('/watchlist/{ref}')
     def unwatch(request: Request, ref: str):
-        return _call(request.app.state.workspace.moving.watch, ref, False)
+        return _call(request.app.state.workspace.watch, ref, False)
 
     @router.post('/moving/replay')
     def replay(request: Request, body: MovingReplay):
         return _call(request.app.state.workspace.moving.replay, body)
+
+    @router.get('/ukraine/regions')
+    def ukraine_regions(request: Request):
+        return request.app.state.workspace.ukraine_regions()
+
+    @router.post('/ukraine/replay')
+    def ukraine_replay(request: Request, body: UkraineReplay):
+        return _call(request.app.state.workspace.ukraine_replay, body)
+
+    @router.get('/ukraine/recording')
+    def ukraine_recording(request: Request):
+        collector = getattr(request.app.state, 'ukraine_collector', None)
+        return collector.status() if collector is not None else request.app.state.workspace.ukraine.status()
+
+    @router.put('/ukraine/recording')
+    async def set_ukraine_recording(request: Request, body: UkraineRecording):
+        collector = getattr(request.app.state, 'ukraine_collector', None)
+        if collector is None:
+            raise HTTPException(503, detail='Kolektor historii Ukrainy jest niedostępny')
+        try:
+            result = collector.set_enabled(body.enabled)
+            if inspect.isawaitable(result):
+                await result
+            return collector.status()
+        except ValueError as error:
+            raise HTTPException(422, detail=str(error)) from error
 
     @router.get('/objects/{ref}')
     def detail(request: Request, ref: str, as_of: str | None = None, data_revision: str | None = None,

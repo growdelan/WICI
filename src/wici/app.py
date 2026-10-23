@@ -38,6 +38,7 @@ from wici.tracking import TrackingService, TrackRequest
 from wici.traffic import RoadService, TrafficService, TrafficUnavailable
 from wici.trains import TrainService
 from wici.ukraine import UkraineService
+from wici.ukraine_collector import UkraineCollector
 from wici.weather import WeatherService
 from wici.workspace_api import create_workspace_router
 from wici.workspace_service import WorkspaceService
@@ -62,6 +63,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         tracking = None
         station_history = None
         moving_ingestion = None
+        ukraine_collector = None
         try:
             repo = Repository(directory/'app.sqlite3',clock=(lambda:DEMO_NOW) if demo else (lambda:datetime.now(UTC)))
             station_history = StationHistory(repo)
@@ -114,6 +116,9 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             if demo:
                 seed(repo)
             app.state.workspace = WorkspaceService(repo)
+            ukraine_collector = UkraineCollector(app.state.ukraine, app.state.workspace.ukraine)
+            app.state.ukraine_collector = ukraine_collector
+            ukraine_collector.start()
             moving_ingestion = MovingIngestion(app.state.workspace.moving)
             app.state.moving_ingestion = moving_ingestion
             app.state.aircraft.on_snapshot = moving_ingestion.enqueue
@@ -123,6 +128,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 'gios:stations': app.state.gios.enabled and not demo,
                 'aircraft': app.state.aircraft.enabled and not demo,
                 'ships': ships.enabled and bool(config.ships_key()) and not demo,
+                'ukraine_alerts': app.state.ukraine.enabled and not demo,
             }
             if demo:
                 from wici.workspace_demo import seed_workspace
@@ -130,6 +136,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             scheduler.start()
             yield
         finally:
+            if ukraine_collector:
+                await ukraine_collector.close()
             if tracking:
                 await tracking.close()
             if quality:
@@ -420,6 +428,12 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
         return await app.state.ukraine.fetch()
+    @app.get('/api/ukraine/alerts')
+    async def ukraine_alerts(request:Request):
+        if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
+                or request.headers.get('origin', origin) != origin):
+            return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
+        return await app.state.ukraine.fetch_alerts()
     @app.get('/api/ukraine/geometry')
     async def ukraine_geometry(request:Request):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'

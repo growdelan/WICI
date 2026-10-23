@@ -2,7 +2,7 @@
 // One spatial scope shared by all layers; retain national caches for instant changes.
 window.WiciRegion = (() => {
   const storageKey='wici.region.v1',features=new Map(),rows=new Map(),jobs=new Map(),outcomes=new Map(),explicit=new Map();
-  let map,control,country,current='',initialized=false,outline,clipFrame=null,scopeRevision=0;
+  let map,control,country,current='',initialized=false,outline,clipFrame=null,scopeRevision=0,analysisOutsidePoland=false;
   const feature=()=>features.get(current);
   const polygons=geometry=>geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;
   function ringContains(lat,lon,ring){
@@ -31,7 +31,7 @@ window.WiciRegion = (() => {
   }
   function clip(){
     if(!map)return;
-    const path=current?'path(evenodd, "'+polygons(feature().geometry).flatMap(p=>p.map(r=>r.map(([lon,lat],i)=>{const p=map.latLngToLayerPoint([lat,lon]);return `${i?'L':'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;}).join(' ')+' Z')).join(' ')+'")':'';
+    const path=current&&!analysisOutsidePoland?'path(evenodd, "'+polygons(feature().geometry).flatMap(p=>p.map(r=>r.map(([lon,lat],i)=>{const p=map.latLngToLayerPoint([lat,lon]);return `${i?'L':'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;}).join(' ')+' Z')).join(' ')+'")':'';
     for(const [name,pane] of Object.entries(map.getPanes()))if(!['mapPane','tilePane','osmBase','administrativeBase','countryBorder','regionBoundary','popupPane','tooltipPane','trackingRoutes','trackingCursor'].includes(name))pane.style.clipPath=path;
   }
   function select(code,{fit=true,notify=true}={}){
@@ -105,5 +105,5 @@ window.WiciRegion = (() => {
     }
     document.addEventListener('visibilitychange',updateProgress);updateProgress();
   }
-  return {init,select,contains,matchesProvince,viewBox,bounds,ready:()=>initialized,code:()=>current,initProgress,progress:(id,value)=>{explicit.set(id,value);updateProgress();},begin,fetch:trackedFetch};
+  return {init,select,setAnalysisOutsidePoland(value){analysisOutsidePoland=Boolean(value);if(outline){if(analysisOutsidePoland)map.removeLayer(outline);else if(!map.hasLayer(outline))outline.addTo(map);}clip();},contains,matchesProvince,viewBox,bounds,ready:()=>initialized,code:()=>current,initProgress,progress:(id,value)=>{explicit.set(id,value);updateProgress();},begin,fetch:trackedFetch};
 })();

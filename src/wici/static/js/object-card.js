@@ -1,11 +1,11 @@
 'use strict';
 window.WiciObjectCard = function (host, actions) {
-  const U = window.WiciWorkspaceUI, M = window.WiciWorkspaceMotion, heading = U.el('div', null, 'analysis-card-heading'), title = U.el('h2', 'Szczegóły obiektu');
+  const U = window.WiciWorkspaceUI, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts, heading = U.el('div', null, 'analysis-card-heading'), title = U.el('h2', 'Szczegóły obiektu');
   title.id = 'analysis-card-title'; title.tabIndex = -1; host.setAttribute('aria-labelledby', title.id);
   const close = U.button('Zamknij ×', actions.close); close.id = 'analysis-close-card'; heading.append(title, close);
   const outside = U.el('p', 'Poza bieżącym zakresem. Karta zachowuje wybrany obiekt.', 'notice'), body = U.el('div', null, 'analysis-card-body');
   outside.id = 'analysis-outside-range'; host.append(heading, outside, body);
-  let lastKey = '', lastDetail = null, lastTimeline = null, reading, readingTime, readingNote, readingClocks, officialIndexNode, lastError = '', movingNodes = null;
+  let lastKey = '', lastDetail = null, lastTimeline = null, reading, readingTime, readingNote, readingClocks, officialIndexNode, lastError = '', movingNodes = null, alertNodes = null;
   const section = (parent, name) => {const node = U.el('section', null, 'analysis-card-section'); node.append(U.el('h3', name)); parent.append(node); return node;};
   function dl(parent, entries) {const node = U.el('dl'); for (const [key, value] of entries) node.append(U.el('dt', key), U.el('dd', value ?? 'Nie podano')); parent.append(node);}
   function drawSeries(parent, samples, onSample) {
@@ -36,22 +36,22 @@ window.WiciObjectCard = function (host, actions) {
     table.append(tbody); const scroll = U.el('div', null, 'analysis-samples-scroll'); scroll.append(table); parent.append(scroll);
     if (samples.length > 100) parent.append(U.el('small', `Tabela: 100 najnowszych z ${samples.length} odczytanych próbek. Wykres obejmuje wszystkie odczytane punkty.`));
   }
-  function render(detail, timeline, state, sample, {inScope = true, loading = false, error = null, selectedIndex = null, motion = null} = {}) {
+  function render(detail, timeline, state, sample, {inScope = true, loading = false, error = null, selectedIndex = null, motion = null, alerts = null} = {}) {
     host.hidden = !state.detailOpen; if (!state.detailOpen) return;
     outside.hidden = inScope;
     const object = detail?.object || detail, key = [state.selectedRef, state.selectedVersion, state.selectedSensor, state.selectedMetric].join('|');
     if (!object || object.ref !== state.selectedRef) {
       title.textContent = loading ? 'Wczytywanie obiektu…' : 'Obiekt niedostępny'; body.replaceChildren(U.el('p', error || 'Pobieranie zapisanych danych…', 'muted')); lastKey = ''; return;
     }
-    if (lastKey !== key || lastDetail !== detail || lastTimeline !== timeline || lastError !== error) {
-      lastKey = key; lastDetail = detail; lastTimeline = timeline; lastError = error;
-      title.textContent = object.label; body.replaceChildren(); reading = readingTime = readingNote = readingClocks = officialIndexNode = movingNodes = null;
+    if (lastKey !== `${key}|${state.displayTimezone || ''}` || lastDetail !== detail || lastTimeline !== timeline || lastError !== error) {
+      lastKey = `${key}|${state.displayTimezone || ''}`; lastDetail = detail; lastTimeline = timeline; lastError = error;
+      title.textContent = object.label; body.replaceChildren(); reading = readingTime = readingNote = readingClocks = officialIndexNode = movingNodes = alertNodes = null;
       const meta = U.el('p', `${U.typeNames[object.type]} · ${object.source_id}`, 'analysis-card-type'); body.append(meta);
       body.append(U.button('Pokaż na mapie', () => actions.show(object)));
       if (error) body.append(U.el('p', `${error} Zachowano ostatni zapisany odczyt.`, 'notice'));
       const data = section(body, 'Dane');
       dl(data, [['Identyfikator', object.ref], ['Dostępność', U.statusNames[object.availability] || object.availability || 'Dostępne'], ['Aktualność', U.statusNames[object.freshness] || object.freshness || 'Według czasu źródła']]);
-      if (!Number.isFinite(object.latitude) && !(object.areas || object.area_refs || []).length) data.append(U.el('p', 'Brak ustalonej geometrii. Obiekt jest dostępny w katalogu.', 'muted'));
+      if (!object.geometry && !Number.isFinite(object.latitude) && !(object.areas || object.area_refs || []).length) data.append(U.el('p', 'Brak ustalonej geometrii. Obiekt jest dostępny w katalogu.', 'muted'));
       if (object.type === 'communication') {
         const communication = detail.communication || {}, versions = detail.versions || communication.history || [], selected = versions.find(version => String(version.id || version.version_id || version.version_number) === String(state.selectedVersion));
         if (selected) data.append(U.el('p', `Wersja źródłowa ${selected.version_number || selected.id}`, 'notice'));
@@ -65,6 +65,29 @@ window.WiciObjectCard = function (host, actions) {
         dl(data, [['Kod PRG', object.native_id || object.source_object_id || object.ref.split(':').at(-1)], ['Charakter', 'Bezczasowy obszar referencyjny']]);
         const code = String(object.native_id || object.source_object_id || object.ref.split(':').at(-1));
         data.append(U.button('Komunikaty tego województwa', () => actions.region(code.slice(0, 2))));
+      } else if (object.type === 'ua_region' || object.type === 'civil_alert') {
+        const history = detail.ukraine || {}, metadata = object.metadata || {}, isRegion = object.type === 'ua_region', regionRef = isRegion ? object.ref : object.region_ref || metadata.region_ref || history.region_ref;
+        const controls = U.el('div', null, 'analysis-moving-actions'); let watch = null, compare = null;
+        if (isRegion) {watch = U.button('Obserwuj ☆', () => actions.watch(object)); watch.id = 'analysis-watch-object'; compare = U.button('Dodaj do porównania', () => actions.compare(object.ref)); compare.id = 'analysis-compare-object'; controls.append(watch, compare);}
+        else if (regionRef) {controls.append(U.button('Otwórz region', () => actions.select(regionRef)), U.button('Porównaj historię regionu', () => actions.compare(regionRef)));}
+        controls.append(U.button('Pobierz bieżący odczyt alarmów', () => actions.fetchSource(object))); data.append(controls);
+        const current = U.el('strong', '', 'analysis-reading'), quality = U.el('p', '', 'muted'); data.append(current, quality);
+        dl(data, isRegion ? [['Zakres', metadata.scope === 'raion' ? 'Rejon' : 'Obwód'], ['Nazwa źródłowa', metadata.native_key || object.native_id], ['Obwód', metadata.oblast || object.label]] : [['Region', regionRef], ['Początek według źródła', U.date(metadata.source_since)], ['Pierwsza obserwacja WICI', U.date(metadata.first_seen_at)], ['Ostatnia obserwacja z alarmem', U.date(metadata.last_seen_at)], ['Zakończenie po', U.date(metadata.ended_after)], ['Zakończenie nie później niż', U.date(metadata.ended_before)]]);
+        if (!isRegion) data.append(U.el('p', metadata.ended_before ? 'Koniec alarmu zaobserwowano między ostatnim poprawnym odczytem z alarmem a pierwszym odczytem bez niego. Dokładna chwila zakończenia pozostaje nieznana.' : 'Nie zarejestrowano potwierdzonego zakończenia tego epizodu. Brak nowych odczytów nie oznacza końca alarmu.', 'muted'));
+        const stats = history.stats;
+        if (stats) {const sectionStats = section(body, 'Statystyki zapisanego przedziału'); dl(sectionStats, [['Epizody', stats.episode_count], ['Zaobserwowany czas alarmu', A.duration(stats.alarm_seconds)], ['Najdłuższy znany ciągły alarm', A.duration(stats.longest_alarm_seconds)], ['Pokrycie rejestracji', Number.isFinite(stats.coverage_ratio) ? `${(stats.coverage_ratio * 100).toFixed(1)}%${stats.coverage_ratio < 1 ? ' · niepełne' : ''}` : 'Brak danych'], ['Luki', A.duration(stats.unknown_seconds)]]);}
+        const episodes = section(body, 'Zarejestrowane epizody');
+        for (const episode of history.episodes || []) {const entry = U.el('div', null, 'analysis-track-session');
+          entry.append(U.button(`${A.stateNames[episode.level] || 'Alarm'} · ${U.date(episode.source_since || episode.first_seen_at)}`, () => actions.select(episode.ref || episode.episode_ref)));
+          entry.append(U.el('p', `Obserwacje: ${U.date(episode.first_seen_at)} – ${U.date(episode.last_seen_at)}${episode.ended_before ? ` · zakończenie w przedziale ${U.date(episode.ended_after)} – ${U.date(episode.ended_before)}` : ' · zakończenie niepotwierdzone'}`, 'muted')); episodes.append(entry);
+        }
+        if (!history.episodes?.length) episodes.append(U.el('p', 'Brak zarejestrowanych epizodów w tym zakresie. Sprawdź pokrycie przed interpretacją wyniku.', 'muted'));
+        const revisions = section(body, 'Zmiany i obserwacje źródła'), entries = history.revisions || timeline?.items || [];
+        for (const entry of entries.slice(-100).reverse()) revisions.append(U.el('p', `${U.date(entry.observed_at || entry.at)} · ${A.stateNames[entry.state] || entry.state || 'Zmiana'} · początek źródłowy: ${U.date(entry.source_since)}`, 'muted'));
+        if (!entries.length) revisions.append(U.el('p', 'Brak zapisanych zmian.', 'muted'));
+        if (entries.length > 100) revisions.append(U.el('p', 'Pokazano 100 najnowszych zmian. Zawęź przedział, aby przejrzeć pozostałe.', 'notice'));
+        revisions.append(U.el('p', 'Awaria źródła i przerwa w działaniu WICI tworzą lukę. Czas źródłowy jest oddzielony od czasu obserwacji. Obserwowanie regionu nie włącza rejestracji.', 'muted'));
+        alertNodes = {watch, compare, current, quality, isRegion};
       } else if (M?.isMoving(object)) {
         const metadata = object.metadata || {}, sessions = detail.track_sessions || [];
         const watch = U.button('Obserwuj ☆', () => actions.watch(object)); watch.id = 'analysis-watch-object';
@@ -114,9 +137,19 @@ window.WiciObjectCard = function (host, actions) {
         if (timeline?.coverage) history.append(U.el('p', typeof timeline.coverage === 'string' ? timeline.coverage : `Zakres historii: ${U.date(timeline.coverage.from)} – ${U.date(timeline.coverage.to)}. Odczyty na żądanie; możliwe luki.`, 'muted'));
       }
       const provenance = section(body, 'Pochodzenie'), source = detail.selected_measurement?.provenance || object.measurement?.provenance || object.provenance || object.metadata?.provenance || {};
-      dl(provenance, [['Źródło', source.attribution || object.metadata?.source_name || object.source_id], ['Odczyt źródła', U.date(detail.selected_measurement?.fetched_at || object.measurement?.fetched_at || object.fetched_at || source.fetched_at)], ['Stan zestawu', U.date(state.asOf)], ['Geometria', M?.isMoving(object) ? 'Raporty pozycji ADS-B / AIS. Zakres czasu pochodzi z lokalnego zapisu sesji.' : object.type.endsWith('_station') ? 'Ostatnie zapisane metadane; bez odtwarzania dawnych lokalizacji' : 'Lokalne granice PRG / GUGiK']]);
+      dl(provenance, [['Źródło', source.attribution || object.metadata?.source_name || object.source_id], ['Odczyt źródła', U.date(detail.selected_measurement?.fetched_at || object.measurement?.fetched_at || object.fetched_at || source.fetched_at)], ['Stan zestawu', U.date(state.asOf)], ['Geometria', ['ua_region', 'civil_alert'].includes(object.type) ? 'Bieżące granice NEPTUN. Dawne wersje granic nie są odtwarzane.' : M?.isMoving(object) ? 'Raporty pozycji ADS-B / AIS. Zakres czasu pochodzi z lokalnego zapisu sesji.' : object.type.endsWith('_station') ? 'Ostatnie zapisane metadane; bez odtwarzania dawnych lokalizacji' : 'Lokalne granice PRG / GUGiK']]);
       const link = U.safeLink(source.url || source.source_url || detail.communication?.source_url || detail.communication?.original_url || object.metadata?.source_url); if (link) provenance.append(link);
       if (object.source_id?.includes('imgw')) provenance.append(U.el('p', 'Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane Instytutu zostały przetworzone.', 'muted'));
+    }
+    if (alertNodes) {
+      const compared = state.comparedRegionRefs?.includes(object.ref), watched = alerts?.watched ? alerts.watched.has(object.ref) : object.watched;
+      if (alertNodes.watch) {alertNodes.watch.textContent = watched ? 'Obserwowany ★' : 'Obserwuj ☆'; alertNodes.watch.setAttribute('aria-pressed', String(Boolean(watched))); alertNodes.watch.disabled = Boolean(alerts?.busy?.has(object.ref));}
+      if (alertNodes.compare) {alertNodes.compare.textContent = compared ? 'Usuń z porównania' : 'Dodaj do porównania'; alertNodes.compare.setAttribute('aria-pressed', String(Boolean(compared))); alertNodes.compare.disabled = !compared && (state.comparedRegionRefs?.length || 0) >= 5;}
+      const historical = state.query.time.mode === 'range', frame = alerts?.frames?.get(alertNodes.isRegion ? object.ref : object.region_ref || object.metadata?.region_ref), current = detail._detailRevision === state.detailRevision && detail._queryRevision === state.queryRevision;
+      const status = historical ? !frame || frame.state === 'unknown' ? 'unknown' : alertNodes.isRegion || frame.segment?.episode_ref === object.ref ? frame.state : 'none' : current ? A.objectState(object) : 'unknown';
+      alertNodes.current.textContent = !current && !historical ? 'Odświeżanie stanu regionu…' : A.stateNames[status] || A.stateNames.unknown;
+      alertNodes.current.dataset.alertState = status;
+      alertNodes.quality.textContent = historical ? frame ? `Według wspólnego kursora · ${U.date(state.cursorAt || new Date(Date.parse(state.query.time.filter_range?.to) - 1).toISOString())}` : 'Dodaj region do porównania, aby zsynchronizować stan z kursorem.' : `Stan według źródła · ${U.date(object.fetched_at)} · ${U.statusNames[object.source_status] || object.source_status || 'Brak odczytu'}`;
     }
     if (movingNodes) {
       const watched = motion?.watched ? motion.watched.has(object.ref) : object.watched, compared = state.comparedRefs.includes(object.ref), busy = motion?.busy?.has(object.ref);

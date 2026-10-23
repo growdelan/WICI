@@ -1,15 +1,18 @@
 'use strict';
 /* Serializable intent state. Network responses and Leaflet handles belong to controllers. */
 (function (root) {
-  const TYPES = ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship'];
+  const TYPES = ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert'];
   const movingRef = ref => typeof ref === 'string' && /^(aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9]\d{8})$/.test(ref);
+  const regionRef = ref => typeof ref === 'string' && /^ua_region:neptun:(oblast|raion):[^\r\n]+$/.test(ref);
+  const timezones = ['Europe/Warsaw', 'Europe/Kyiv', 'UTC'];
+  const comparedRegions = refs => [...new Set((Array.isArray(refs) ? refs : []).filter(regionRef))].slice(0, 5);
   const compared = refs => [...new Set((Array.isArray(refs) ? refs : []).filter(movingRef))].slice(0, 5);
   function initialState() {
-    return {query: {types: ['communication'], source_ids: [], q: '', province: null,
+    return {query: {types: ['communication'], source_ids: [], q: '', province: null, country: null, region_ref: null,
       time: {mode: 'live', overview_range: null, filter_range: null}, include_periods: true,
       include_unlocated: true, include_without_samples: true, watched_only: false, sort: {field: 'label', direction: 'asc'}, page_size: 100},
     selectedRef: null, selectedVersion: null, selectedSensor: null, selectedMetric: null,
-    cursorAt: null, comparedRefs: [], detailOpen: false, layout: {tablePercent: 42, mobilePanel: 'table'},
+    cursorAt: null, comparedRefs: [], comparedRegionRefs: [], displayTimezone: 'Europe/Warsaw', detailOpen: false, layout: {tablePercent: 42, mobilePanel: 'table'},
     columns: ['label', 'type', 'updated_at', 'measurement'], savedViewId: null, queryRevision: 0, detailRevision: 0, dataRevision: null, asOf: null, loading: false, error: null};
   }
   function changed(state, query) {
@@ -42,6 +45,14 @@
         if (state.comparedRefs.includes(action.ref)) return {...state, comparedRefs: state.comparedRefs.filter(ref => ref !== action.ref)};
         return state.comparedRefs.length >= 5 ? state : {...state, comparedRefs: [...state.comparedRefs, action.ref]};
       }
+      case 'TOGGLE_REGION_COMPARE': {
+        if (!regionRef(action.ref)) return state;
+        const refs = state.comparedRegionRefs || [];
+        if (refs.includes(action.ref)) return {...state, comparedRegionRefs: refs.filter(ref => ref !== action.ref)};
+        return refs.length >= 5 ? state : {...state, comparedRegionRefs: [...refs, action.ref]};
+      }
+      case 'CLEAR_REGION_COMPARE': return {...state, comparedRegionRefs: []};
+      case 'SET_TIMEZONE': return timezones.includes(action.timezone) ? {...state, displayTimezone: action.timezone} : state;
       case 'CLEAR_COMPARE': return {...state, comparedRefs: []};
       case 'APPLY_VIEW': {
         const config = action.config || {}, query = {...initialState().query, ...config.query};
@@ -49,7 +60,7 @@
         const next = changed(state, query);
         return {...next, layout: {...state.layout, ...config.layout}, savedViewId: action.id || null,
           columns: config.columns || state.columns, selectedRef: config.selectedRef || null, detailOpen: Boolean(config.selectedRef), selectedVersion: null,
-          selectedSensor: null, selectedMetric: null, comparedRefs: compared(config.comparedRefs), detailRevision: state.detailRevision + 1};
+          selectedSensor: null, selectedMetric: null, comparedRefs: compared(config.comparedRefs), comparedRegionRefs: comparedRegions(config.comparedRegionRefs), displayTimezone: timezones.includes(config.displayTimezone) ? config.displayTimezone : 'Europe/Warsaw', detailRevision: state.detailRevision + 1};
       }
       case 'VIEW_SAVED': return {...state, savedViewId: action.id};
       case 'DATA_LOADING': return {...state, loading: true, error: null};
@@ -75,7 +86,7 @@
         !['future', 'unknown_time'].includes(sample.quality || sample.time_status);
     }).sort((a, b) => Date.parse(b.observed_at || b.at) - Date.parse(a.observed_at || a.at) || (b.revision || 0) - (a.revision || 0))[0] || null;
   }
-  const exported = {TYPES, initialState, reducer, createStore, sampleAt, movingRef};
+  const exported = {TYPES, initialState, reducer, createStore, sampleAt, movingRef, regionRef, timezones};
   root.WiciWorkspaceStore = exported;
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
 })(typeof window !== 'undefined' ? window : globalThis);

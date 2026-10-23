@@ -1,4 +1,4 @@
-"""On-demand NEPTUN civil warning snapshots; no history or movement prediction."""
+"""Shared NEPTUN civil warning snapshots and hooks for locally observed history."""
 import asyncio
 import copy
 import json
@@ -56,6 +56,8 @@ class UkraineService:
         self.timeout = min(timeout, 10)
         self.demo, self.enabled = demo, enabled
         self.lock = asyncio.Lock()
+        self.on_alerts = None
+        self.on_geometry = None
         self.states = {key: {'data': None, 'expires': None, 'retry': None, 'failures': 0, 'error': None}
                        for key in ('alerts', 'threats', 'oblasts', 'raions')}
 
@@ -121,6 +123,22 @@ class UkraineService:
                     'retry_after_seconds': self.next_retry(('alerts', 'threats'), now), 'message': message,
                     'alerts': alerts, 'threats': threats, 'source_url': SOURCE_URL}
 
+    async def fetch_alerts(self):
+        """Share the Situation cache without downloading unrelated threat reports."""
+        async with self.lock:
+            now = self.clock().astimezone(UTC)
+            inactive, message = self.inactive()
+            if not inactive:
+                await self.refresh('alerts', ALERTS_URL, self.normalize_alerts, now)
+                now = self.clock().astimezone(UTC)
+            alerts = self.component('alerts', now)
+            if inactive:
+                alerts.update(status=inactive, items=[], stale=False, error=None)
+            return {'status': inactive or alerts['status'], 'demo': self.demo,
+                    'refresh_seconds': REFRESH_SECONDS,
+                    'retry_after_seconds': self.next_retry(('alerts',), now),
+                    'message': message, 'alerts': alerts, 'source_url': SOURCE_URL}
+
     async def geometry(self):
         async with self.lock:
             now = self.clock().astimezone(UTC)
@@ -150,10 +168,13 @@ class UkraineService:
             if status != 'ready':
                 message = 'Granice Ukrainy są częściowo niedostępne; część alertów może nie pojawić się na mapie.'
             times = [part['fetched_at'] for part in parts.values() if part['fetched_at']]
-            return {'status': status, 'oblasts': parts['oblasts']['collection'],
+            result = {'status': status, 'oblasts': parts['oblasts']['collection'],
                     'raions': parts['raions']['collection'], 'message': message,
                     'fetched_at': min(times) if times else None, 'sources': diagnostics,
                     'retry_after_seconds': self.next_retry(('oblasts', 'raions'), now)}
+            if self.on_geometry is not None:
+                await self.on_geometry(copy.deepcopy(result))
+            return result
 
     async def refresh(self, key, url, normalizer, now, ttl=REFRESH_SECONDS, maximum=MAX_BYTES):
         state = self.states[key]
@@ -177,6 +198,8 @@ class UkraineService:
             delay = min(60 * 2**min(state['failures']-1, 4), 900)
             state['retry'] = max(state['retry'] or now, self.clock().astimezone(UTC)+timedelta(seconds=delay))
             state['error'] = 'Nie udało się pobrać poprawnych danych NEPTUN.'
+        if key == 'alerts' and self.on_alerts is not None:
+            await self.on_alerts(self.component('alerts', self.clock().astimezone(UTC)))
 
     async def download(self, url, state, now, maximum):
         async with self.client.stream('GET', url, timeout=self.timeout, follow_redirects=False,
@@ -250,7 +273,8 @@ class UkraineService:
                 except (ValueError, TypeError, OverflowError):
                     invalid += 1
         return {'status': 'partial' if invalid else 'ready', 'items': items,
-                'updated_at': updated.isoformat(), 'invalid_count': invalid, 'stale_count': 0}
+                'updated_at': updated.isoformat(), 'source_version': payload['version'],
+                'invalid_count': invalid, 'stale_count': 0}
 
     @staticmethod
     def normalize_threats(payload, now):

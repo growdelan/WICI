@@ -6,8 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from wici.geo import units
 
-ObjectType = Literal['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship']
+ObjectType = Literal['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert']
 MovingRef = Annotated[str, Field(pattern=r'^(aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8})$')]
+REGION_REF_PATTERN = r'^ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}$'
+UkraineRegionRef = Annotated[str, Field(pattern=REGION_REF_PATTERN)]
 
 
 class StrictModel(BaseModel):
@@ -54,10 +56,12 @@ class Sort(StrictModel):
 
 
 class WorkspaceQuery(StrictModel):
-    types: list[ObjectType] = Field(default_factory=lambda: ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship'], max_length=6)
-    source_ids: list[Literal['imgw_meteo', 'rso', 'rcb', 'sg', 'imgw', 'gios', 'prg', 'aircraft', 'ships']] = Field(default_factory=list, max_length=9)
+    types: list[ObjectType] = Field(default_factory=lambda: ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert'], max_length=8)
+    source_ids: list[Literal['imgw_meteo', 'rso', 'rcb', 'sg', 'imgw', 'gios', 'prg', 'aircraft', 'ships', 'ukraine_alerts']] = Field(default_factory=list, max_length=10)
     q: str = Field(default='', max_length=200)
     province: str | None = None
+    country: Literal['PL', 'UA'] | None = None
+    region_ref: UkraineRegionRef | None = None
     time: TimeContext = Field(default_factory=TimeContext)
     include_periods: bool = True
     include_unlocated: bool = True
@@ -77,6 +81,14 @@ class WorkspaceQuery(StrictModel):
 
     @model_validator(mode='after')
     def station_window(self):
+        if self.region_ref and self.country == 'PL':
+            raise ValueError('Region Ukrainy wymaga kraju UA lub wszystkich krajów')
+        if self.province and (self.country == 'UA' or self.region_ref):
+            raise ValueError('Województwo PRG nie może ograniczać regionów Ukrainy')
+        if any(t in self.types for t in ('ua_region', 'civil_alert')):
+            for value in (self.time.filter_range, self.time.overview_range):
+                if value and (value.end-value.start).total_seconds() > 30*86400:
+                    raise ValueError('Historia alarmów Ukrainy obejmuje najwyżej 30 dni')
         if any(t in self.types for t in ('hydro_station', 'air_quality_station')):
             for value in (self.time.filter_range, self.time.overview_range):
                 if value and (value.end-value.start).total_seconds() > 14*86400:
@@ -102,11 +114,13 @@ class ViewConfig(StrictModel):
     columns: list[Literal['label', 'type', 'source_id', 'updated_at', 'published_at', 'measurement', 'location', 'status']] | None = Field(default=None, max_length=8)
     camera: ViewCamera | None = None
     layout: ViewLayout | None = None
-    selectedRef: str | None = Field(default=None, max_length=200, pattern=r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|area:prg:[0-9]{2,4}|aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8})$')
+    selectedRef: str | None = Field(default=None, max_length=300, pattern=r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|area:prg:[0-9]{2,4}|aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8}|ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}|civil_alert:neptun:[a-f0-9-]{36})$')
     comparedRefs: list[MovingRef] | None = Field(default=None, max_length=5)
-    relative_seconds: int | None = Field(default=None, ge=60, le=1209600)
+    comparedRegionRefs: list[UkraineRegionRef] | None = Field(default=None, max_length=5)
+    displayTimezone: Literal['Europe/Warsaw', 'Europe/Kyiv', 'UTC'] | None = None
+    relative_seconds: int | None = Field(default=None, ge=60, le=2592000)
 
-    @field_validator('comparedRefs')
+    @field_validator('comparedRefs', 'comparedRegionRefs')
     @classmethod
     def distinct_refs(cls, value):
         if value and len(set(value)) != len(value):
@@ -124,6 +138,22 @@ class MovingReplay(TimeRange):
         if (self.end-self.start).total_seconds() > 14*86400:
             raise ValueError('Porównanie obejmuje najwyżej 14 dni')
         return self
+
+
+class UkraineReplay(TimeRange):
+    refs: list[UkraineRegionRef] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode='after')
+    def bounded(self):
+        if len(set(self.refs)) != len(self.refs):
+            raise ValueError('Regiony porównania nie mogą się powtarzać')
+        if (self.end-self.start).total_seconds() > 30*86400:
+            raise ValueError('Porównanie regionów obejmuje najwyżej 30 dni')
+        return self
+
+
+class UkraineRecording(StrictModel):
+    enabled: bool
 
 
 class SavedView(StrictModel):
