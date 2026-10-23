@@ -1,6 +1,6 @@
 # Model danych WICI
 
-SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`016` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
+SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`018` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
 
 ## Aktywne tabele
 
@@ -56,3 +56,17 @@ Ograniczona kolejka przyjmuje wyłącznie nowe odpowiedzi istniejących usług n
 Klucz obserwacji obejmuje obiekt, stanowisko, parametr i źródłowy czas. Zmiany A → B → A tworzą trzy niezmienne rewizje; `is_current` wskazuje ostatnią rewizję tej obserwacji, umożliwiając zliczanie jej raz na osi czasu. NULL pozostaje jawnym brakiem wartości. Historyczne progi i czas pobrania rewizji nie są zastępowane bieżącymi. Próby ze złym lub przyszłym czasem nie trafiają do poprawnych szeregów. Retencja wartości wynosi 14 dni od czasu obserwacji, a dla czasów błędnych/przyszłych — od pierwszego pobrania; minimalne skróty tożsamości pozostają po usunięciu wartości, aby kolejne kopie nie wydłużały retencji. Lokalny worker usuwa przeterminowane wartości przy starcie, zapisie nowej odpowiedzi i co godzinę podczas pracy aplikacji, również bez pobierania źródeł.
 
 Historia obejmuje odczyty wykonane na żądanie i może mieć luki. Metadane oraz geometria stacji opisują ostatni znany katalog. Przesunięcie kursora nie rekonstruuje historycznej lokalizacji ani stanu wiedzy całej mapy. [Plan i zakres pierwszego etapu](plan-stanowisko-analityczne-etap-1.md).
+
+## Historia alarmów Ukrainy (migracja 018)
+
+Migracja rozszerza typy katalogu o `ua_region` i `civil_alert`. Przebudowa ograniczenia CHECK zachowuje dokumenty, przypisania obszarów, sensory, pomiary, indeksy oraz listę obserwowanych z migracji 017. Klucze obce pozostają włączone.
+
+| Tabela | Znaczenie |
+|---|---|
+| `workspace_ukraine_state` | Trwała decyzja o rejestracji, czasy ostatnich odczytów, wersja źródła, stan i przyczyna luki. |
+| `workspace_ukraine_regions` | Oryginalny klucz, poziom regionu, jawne pochodzenie powiązania z obwodem, ostatnia geometria i bieżący stan. |
+| `workspace_ukraine_episodes` | Lokalna tożsamość epizodu, pierwsza/ostatnia obserwacja, czas źródła i niepewny przedział zakończenia. |
+| `workspace_ukraine_runs` | Rzeczywiste pełne odczyty oraz znaczniki przerw; powtórzenie cache nie tworzy pokrycia. |
+| `workspace_ukraine_observations` | Niezmienne zmiany stanu, powodów i czasu źródłowego z przypisaniem do odczytu i epizodu. |
+
+`ukraine_history.py` projektuje dane i oblicza przedziały wraz z pokryciem; nie wykonuje HTTP. Baza przechowuje czas UTC. Domyślna rejestracja jest wyłączona; lista obserwowanych i konfiguracje widoków nie zmieniają tej opcji. Granice regionów pozostają cache danych pobranych podczas działania aplikacji i nie są dystrybuowane z pakietem. [Semantyka i użycie](ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320).

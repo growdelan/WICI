@@ -13,7 +13,8 @@
     };
     const isIndex = path => path.startsWith('/gios?') && new URL(path, 'http://localhost').searchParams.get('kind') === 'index';
     const isMoving = path => path === '/aircraft' || path === '/ships';
-    const ttl = path => isMoving(path) ? 10000 : path.includes('/hydro') ? 300000 : path.includes('kind=stations') ? 86400000
+    const isAlerts = path => path === '/ukraine/alerts';
+    const ttl = path => path === '/ukraine/geometry' ? 86400000 : isAlerts(path) ? 15000 : isMoving(path) ? 10000 : path.includes('/hydro') ? 300000 : path.includes('kind=stations') ? 86400000
       : path.includes('kind=sensors') ? 21600000 : 1800000;
     const aborted = () => new DOMException('Zapotrzebowanie na źródło wygasło', 'AbortError');
     function emit(event) {for (const fn of listeners) {try {fn(event);} catch { /* Isolated consumers. */ }}}
@@ -77,14 +78,14 @@
         if (!wanted(job)) throw aborted();
         const data = await read(key, body, {...options, signal:undefined});
         const failed = ['error', 'partial'].includes(data.status);
-        const wait = Math.max(0, Number(data.service_retry_after_seconds) || 0) * 1000;
+        const wait = Math.max(0, Number(data.service_retry_after_seconds || (isAlerts(key) ? data.retry_after_seconds : 0)) || 0) * 1000;
         if (isIndex(key)) retryAt = Math.max(retryAt, now() + wait);
         cache.delete(key);
         const fetched = Date.parse(data.fetched_at);
         // AIS fetched_at is the last message, not the local cache read. A quiet
         // stream must not accelerate polling or make an old position look new.
-        const deadline = isMoving(key) ? now() + ttl(key) : Number.isFinite(fetched) ? Math.max(now() + 1000, Math.min(now(), fetched) + ttl(key)) : now() + ttl(key);
-        cache.set(key, {data, until:data.enabled === false ? now() + 300000 : failed ? now() + Math.max(isMoving(key) ? 10000 : 300000, wait) : deadline});
+        const deadline = (isMoving(key) || isAlerts(key)) ? now() + ttl(key) : Number.isFinite(fetched) ? Math.max(now() + 1000, Math.min(now(), fetched) + ttl(key)) : now() + ttl(key);
+        cache.set(key, {data, until:data.enabled === false ? now() + 300000 : failed ? now() + Math.max(isAlerts(key) ? 15000 : isMoving(key) ? 10000 : 300000, wait) : deadline});
         while (cache.size > 2048) cache.delete(cache.keys().next().value);
         emit({resource:key, data}); return data;
       };
@@ -95,7 +96,7 @@
     }
     function schedule(path, entry) {
       if (!live || entry.timer !== null || entry.inFlight || polls.get(path) !== entry) return;
-      const next = Math.max(1000, (cache.get(path)?.until || now() + (isMoving(path) ? 10000 : 300000)) - now());
+      const next = Math.max(1000, (cache.get(path)?.until || now() + (isAlerts(path) ? 15000 : isMoving(path) ? 10000 : 300000)) - now());
       entry.timer = delay(() => {entry.timer = null; if (polls.get(path) === entry) {polls.delete(path); poll(path);}}, next);
     }
     function poll(path) {
@@ -111,6 +112,7 @@
       if (visible && !hidden()) {
         if (live && activeTypes.includes('aircraft')) next.add('/aircraft');
         if (live && activeTypes.includes('ship')) next.add('/ships');
+        if (live && activeTypes.some(type => ['ua_region', 'civil_alert'].includes(type))) {next.add('/ukraine/alerts'); next.add('/ukraine/geometry');}
         if (activeTypes.includes('hydro_station')) next.add(keyFor('/hydro?kind=stations'));
         if (activeTypes.includes('air_quality_station')) {
           next.add(keyFor('/gios?kind=stations'));

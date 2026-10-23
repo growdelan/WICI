@@ -8,6 +8,8 @@ Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zI
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
 
+W **Analizie → Kraj: Ukraina** dostępne są regiony, karty alarmów oraz porównanie do pięciu regionów na wspólnej mapie i osi czasu. Osobny przełącznik **Rejestruj historię alarmów Ukrainy** buduje lokalne archiwum od chwili włączenia; luki w odczytach pozostają widoczne. [Historia alarmów i porównanie regionów](docs/ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320).
+
 Pozwala sprawdzić informacje dla wybranego dnia i województwa, otworzyć pełną zapisaną treść oraz przejrzeć historię zmian komunikatu. Dane i historia pozostają na Twoim komputerze. Aplikacja nie wymaga konta WICI ani klucza do modelu AI.
 
 To pomocniczy przegląd publikacji: nie zapewnia pełnego obrazu sytuacji i nie zastępuje oficjalnych ostrzeżeń ani służb alarmowych.

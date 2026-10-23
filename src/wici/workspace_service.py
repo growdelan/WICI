@@ -12,6 +12,7 @@ from functools import lru_cache
 
 from wici.daily import WARSAW
 from wici.geo import provinces_for_point
+from wici.ukraine_history import UkraineHistory
 from wici.workspace_models import SavedView, WorkspaceQuery
 from wici.workspace_moving import MOVING_TYPES, MovingObjects
 from wici.workspace_repository import WorkspaceRepository, encode, iso, search_text
@@ -45,8 +46,11 @@ class WorkspaceService:
         self.repo, self.db = repo, repo.db
         self.catalog = WorkspaceRepository(repo)
         self.moving = MovingObjects(repo)
+        self.ukraine = UkraineHistory(repo)
         self.db.create_function('workspace_in_province', 3,
             lru_cache(maxsize=4096)(lambda lon, lat, code: int(code in provinces_for_point(lon, lat))), deterministic=True)
+        self.db.create_function('workspace_in_poland', 2,
+            lru_cache(maxsize=4096)(lambda lon, lat: int(bool(provinces_for_point(lon, lat)))), deterministic=True)
         self.db.create_function('workspace_day_start', 1, publication_bound, deterministic=True)
         self.db.create_function('workspace_day_end', 1, lambda value: publication_bound(value, 1), deterministic=True)
         self.secret = secrets.token_bytes(32)
@@ -72,6 +76,12 @@ class WorkspaceService:
         except (ValueError, KeyError, TypeError):
             raise QueryChanged('Kursor wygasł; odśwież cały wynik') from None
 
+    @staticmethod
+    def _includes_ukraine(query):
+        return (query.country != 'PL' and not query.province
+                and any(t in ('ua_region', 'civil_alert') for t in query.types)
+                and (not query.source_ids or 'ukraine_alerts' in query.source_ids))
+
     def _base(self, query, now=None, interval=None):
         where, params = ['1=1'], []
         if not query.types:
@@ -86,6 +96,23 @@ class WorkspaceService:
             where.append("o.search_text LIKE ? ESCAPE '\\'")
             value = search_text(query.q.strip()).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
             params.append('%'+value+'%')
+        if query.country == 'UA':
+            where.append("o.type IN ('ua_region','civil_alert')")
+        elif query.country == 'PL':
+            if query.time.mode == 'range':
+                where.append("""(o.type NOT IN ('ua_region','civil_alert','aircraft','ship') OR
+                    (o.type IN ('aircraft','ship') AND COALESCE((SELECT workspace_in_poland(p.longitude,p.latitude)
+                    FROM object_track_points p JOIN object_tracks t ON t.id=p.track_id WHERE t.kind=o.type
+                    AND t.object_id=o.native_id AND p.position_at>=? AND p.position_at<?
+                    ORDER BY p.position_at DESC,p.track_id LIMIT 1),0)=1))""")
+                params.extend([iso(interval[0]), iso(interval[1])])
+            else:
+                where.append("(o.type NOT IN ('ua_region','civil_alert','aircraft','ship') OR EXISTS (SELECT 1 FROM catalog_object_areas a WHERE a.ref=o.ref))")
+        if query.region_ref:
+            where.append("""EXISTS (SELECT 1 FROM workspace_ukraine_regions r
+                WHERE r.ref=CASE WHEN o.type='ua_region' THEN o.ref ELSE json_extract(o.metadata_json,'$.region_ref') END
+                AND (r.ref=? OR r.parent_ref=?))""")
+            params.extend([query.region_ref, query.region_ref])
         if query.province:
             if query.time.mode == 'range':
                 start, end = map(iso, interval)
@@ -108,7 +135,11 @@ class WorkspaceService:
         return ' AND '.join(where), params
 
     def _located(self, query, interval, now):
-        static = "(o.type NOT IN ('aircraft','ship') AND (o.latitude IS NOT NULL AND o.longitude IS NOT NULL OR EXISTS (SELECT 1 FROM catalog_object_areas a WHERE a.ref=o.ref)))"
+        static = """((o.type NOT IN ('aircraft','ship','ua_region','civil_alert') AND
+            (o.latitude IS NOT NULL AND o.longitude IS NOT NULL OR EXISTS (SELECT 1 FROM catalog_object_areas a WHERE a.ref=o.ref)))
+            OR (o.type IN ('ua_region','civil_alert') AND EXISTS (SELECT 1 FROM workspace_ukraine_regions r
+                WHERE r.ref=CASE WHEN o.type='ua_region' THEN o.ref ELSE json_extract(o.metadata_json,'$.region_ref') END
+                AND r.geometry_json IS NOT NULL)))"""
         if query.time.mode == 'range':
             return static+""" OR (o.type IN ('aircraft','ship') AND EXISTS (SELECT 1 FROM object_tracks t
                 JOIN object_track_points p ON p.track_id=t.id WHERE t.kind=o.type AND t.object_id=o.native_id
@@ -152,6 +183,12 @@ class WorkspaceService:
                 digest.update(encode(metadata).encode())
                 if query.sort.field == 'updated_at':
                     digest.update(str(row['updated_at']).encode())
+            elif ranged and row['type'] in ('ua_region', 'civil_alert'):
+                # Current source status is separate from recorded history. Geometry
+                # and labels remain current catalogue metadata in historical views.
+                digest.update(encode({key: row[key] for key in ('ref', 'type', 'source_id', 'native_id', 'label')}).encode())
+                if query.sort.field == 'updated_at':
+                    digest.update(str(row['updated_at']).encode())
             else:
                 digest.update(f"{row['ref']}:{row['revision']};".encode())
         if ranged and any(t.endswith('_station') for t in query.types):
@@ -187,6 +224,11 @@ class WorkspaceService:
             if not ranged:
                 tracks = self.db.execute(f'SELECT t.* FROM object_tracks t WHERE {track_where} ORDER BY t.id', params)
                 digest.update(encode([dict(r) for r in tracks]).encode())
+        if query and self._includes_ukraine(query):
+            digest.update(encode(self.ukraine.revision_token(*(overview if ranged else (None, None)))).encode())
+            watches = self.db.execute(f'''SELECT w.ref FROM workspace_watchlist w
+                WHERE w.ref IN (SELECT o.ref FROM catalog_objects o WHERE {where}) ORDER BY w.ref''', params)
+            digest.update(encode([r['ref'] for r in watches]).encode())
         revision = digest.hexdigest()[:24]
         self.revisions[cache_key] = revision
         while len(self.revisions) > 16:
@@ -231,7 +273,15 @@ class WorkspaceService:
             movers = '''EXISTS (SELECT 1 FROM object_tracks t JOIN object_track_points p ON p.track_id=t.id
                 WHERE t.kind=o.type AND t.object_id=o.native_id AND p.position_at>=? AND p.position_at<?)'''
             params.extend([start, end])
-        return f"(o.type='area' OR (o.type='communication' AND ({comm})) OR (o.type IN ('hydro_station','air_quality_station') AND ({stations})) OR (o.type IN ('aircraft','ship') AND ({movers})))", params
+        episodes = "e.active=1"
+        if query.time.mode == 'range':
+            retained_start = max(interval[0], now-timedelta(days=30))
+            episodes = 'e.first_seen_at<? AND COALESCE(e.ended_before,?)>? AND ?<?'
+            params.extend([end, iso(now), iso(retained_start), iso(retained_start), end])
+        return f"""(o.type IN ('area','ua_region') OR (o.type='communication' AND ({comm}))
+            OR (o.type IN ('hydro_station','air_quality_station') AND ({stations}))
+            OR (o.type IN ('aircraft','ship') AND ({movers}))
+            OR (o.type='civil_alert' AND EXISTS (SELECT 1 FROM workspace_ukraine_episodes e WHERE e.ref=o.ref AND ({episodes}))))""", params
 
     def _sample(self, ref, start, end, cursor_at=None, sensor_id=None, metric=None):
         clauses = ["object_ref=?", "quality='valid'", 'observed_at>=?', 'observed_at<?']
@@ -285,6 +335,8 @@ class WorkspaceService:
             item['value_context'] = 'current' if query is None or query.time.mode == 'live' else 'period_overview'
         elif item['type'] in MOVING_TYPES:
             return self.moving.present(item, now, interval, historical=query is not None and query.time.mode == 'range')
+        elif item['type'] in ('ua_region', 'civil_alert'):
+            return self.ukraine.present(item, now, interval, historical=query is not None and query.time.mode == 'range')
         return item
 
     def query(self, raw):
@@ -315,7 +367,8 @@ class WorkspaceService:
             histogram_key = revision+encode([iso(x) for x in overview])
             timeline = self.histograms.get(histogram_key)
             if timeline is None:
-                timeline = self._histogram(where, params, overview, interval)
+                timeline = self._histogram(where, params, overview, interval,
+                    self._includes_ukraine(query), now-timedelta(days=30))
                 self.histograms[histogram_key] = timeline
                 while len(self.histograms) > 16:
                     self.histograms.popitem(last=False)
@@ -344,7 +397,7 @@ class WorkspaceService:
         count = self.db.execute(f'SELECT count(*) FROM catalog_objects o WHERE {where} AND {located}', map_params).fetchone()[0]
         result = {'mode': 'objects', 'points': [], 'areas': [], 'aggregates': [], 'located_total': count,
                       'unlocated_total': total-count, 'total': count}
-        movers = self.db.execute(f"SELECT 1 FROM catalog_objects o WHERE {where} AND {located} AND o.type IN ('aircraft','ship') LIMIT 1", map_params).fetchone()
+        movers = self.db.execute(f"SELECT 1 FROM catalog_objects o WHERE {where} AND {located} AND o.type IN ('aircraft','ship','ua_region','civil_alert') LIMIT 1", map_params).fetchone()
         if count <= 1000 or movers:
             result['truncated'] = count > 1000
             rows = self.db.execute(f'SELECT o.* FROM catalog_objects o WHERE {where} AND {located} ORDER BY o.ref LIMIT 1000', map_params).fetchall()
@@ -360,7 +413,7 @@ class WorkspaceService:
         result['items'] = result['points']+result['areas']+result['aggregates']
         return result
 
-    def _histogram(self, where, params, overview, interval):
+    def _histogram(self, where, params, overview, interval, include_ukraine=False, ukraine_cutoff=None):
         start, end = overview
         seconds = (end-start).total_seconds()
         step = next((s for s in (300, 900, 3600, 10800, 21600, 86400, 604800, 2592000, 31536000)
@@ -396,17 +449,26 @@ class WorkspaceService:
         for row in rows:
             index = max(0, row['bucket'])
             counts[index] = counts.get(index, 0)+row['count']
+        if include_ukraine and (ukraine_cutoff is None or end > ukraine_cutoff):
+            retained_start = max(start, ukraine_cutoff) if ukraine_cutoff else start
+            rows = self.db.execute(f'''SELECT CAST((julianday(u.observed_at)-julianday(?))*86400/? AS INTEGER) bucket,
+                count(*) count FROM workspace_ukraine_observations u WHERE EXISTS
+                (SELECT 1 FROM catalog_objects o WHERE {where} AND (o.ref=u.region_ref OR o.ref=u.episode_ref))
+                AND u.observed_at>=? AND u.observed_at<? GROUP BY bucket''', [iso(start), step]+params+[iso(retained_start), iso(end)])
+            for row in rows:
+                index = max(0, row['bucket'])
+                counts[index] = counts.get(index, 0)+row['count']
         buckets = [dict(**{'from': iso(start+timedelta(seconds=i*step)),
                           'to': iso(min(end, start+timedelta(seconds=(i+1)*step)))}, count=counts.get(i, 0))
                    for i in range(math.ceil(seconds/step))]
-        timeless = self.db.execute(f"SELECT count(*) FROM catalog_objects o WHERE {where} AND o.type='area'", params).fetchone()[0]
+        timeless = self.db.execute(f"SELECT count(*) FROM catalog_objects o WHERE {where} AND o.type IN ('area','ua_region')", params).fetchone()[0]
         selected_total = (sum(counts.values()) if overview == interval
-                          else self._histogram(where, params, interval, interval)['event_total'])
+                          else self._histogram(where, params, interval, interval, include_ukraine, ukraine_cutoff)['event_total'])
         return {'buckets': buckets, 'bucket_seconds': step, 'event_total': sum(counts.values()), 'timeless_total': timeless,
                     'selected_event_total': selected_total,
                     'overview_range': {'from': iso(start), 'to': iso(end)},
                     'filter_range': {'from': iso(interval[0]), 'to': iso(interval[1])},
-                    'count_basis': 'Obserwacje stacji, zapisane pozycje tras oraz publikacje/aktualizacje; obszary nie są zdarzeniami'}
+                    'count_basis': 'Obserwacje stacji, zapisane pozycje tras, zmiany alarmów Ukrainy oraz publikacje/aktualizacje; obszary nie są zdarzeniami'}
 
     def _coverage(self):
         rows = self.db.execute('''SELECT * FROM workspace_source_runs WHERE id IN
@@ -423,9 +485,14 @@ class WorkspaceService:
                 'status': 'not_loaded' if self.source_enabled.get(resource, True) else 'disabled',
                 'fetched_at': None, 'item_count': 0}
             sources[resource]['complete'] = False
+        ukraine = self.ukraine.status()
+        sources['ukraine_alerts'] = dict(ukraine, resource='ukraine_alerts', complete=False)
+        if not self.source_enabled.get('ukraine_alerts', True):
+            sources['ukraine_alerts']['status'] = 'disabled'
         return {'sources': list(sources.values()), 'history_days': 14,
                 'moving_history_days': 7,
-                'history_note': 'Historia stacji rośnie po pobraniu źródła. Historia ruchu obejmuje tylko zapisane sesje (7 dni); lista obserwowanych nie włącza zapisu.'}
+                'ukraine_history_days': 30,
+                'history_note': 'Historia stacji rośnie po pobraniu źródła. Historia ruchu obejmuje tylko zapisane sesje (7 dni). Historia alarmów Ukrainy obejmuje lokalną rejestrację (30 dni); lista obserwowanych nie włącza zapisu.'}
 
     def status(self):
         with self.repo.lock:
@@ -502,6 +569,14 @@ class WorkspaceService:
                     historical=query is not None and query.time.mode == 'range', cursor_at=cursor_time)
                 result['track_sessions'] = self.moving.sessions(ref)
                 result['geometry_context'] = 'Pozycja z zapisu w wybranym przedziale' if cursor_time or query and query.time.mode == 'range' else 'Świeża pozycja źródłowa; ostatnia znana pozycja dostępna osobno'
+            elif item['type'] in ('ua_region', 'civil_alert'):
+                cursor_time = parse_time(cursor_at) if cursor_at else None
+                if cursor_time and not interval[0] <= cursor_time < interval[1]:
+                    raise ValueError('Kursor musi mieścić się w wybranym przedziale')
+                result['object'] = self.ukraine.present(item, now, interval,
+                    historical=query is not None and query.time.mode == 'range', cursor_at=cursor_time)
+                result['ukraine'] = self.ukraine.detail(ref, *interval, cursor_at=cursor_time)
+                result['geometry_context'] = 'Aktualna geometria regionu; zapisany stan alarmu z jawnymi lukami obserwacji'
             return result
 
     def timeline(self, ref, start=None, end=None, sensor_id=None, metric=None, cursor=None, limit=2000,
@@ -517,6 +592,8 @@ class WorkspaceService:
             a, b = parse_time(start) if start else interval[0], parse_time(end) if end else interval[1]
             if b <= a or ((item['type'].endswith('_station') or item['type'] in MOVING_TYPES) and (b-a).total_seconds() > 14*86400):
                 raise ValueError('Nieprawidłowy przedział historii')
+            if item['type'] in ('ua_region', 'civil_alert') and (b-a).total_seconds() > 30*86400:
+                raise ValueError('Historia alarmów Ukrainy obejmuje najwyżej 30 dni')
             offset = int(cursor or 0)
             if offset < 0 or offset > 10000000 or not 1 <= limit <= 2000:
                 raise ValueError('Nieprawidłowa strona historii')
@@ -568,6 +645,11 @@ class WorkspaceService:
                     ON t.id=p.track_id WHERE {predicate} ORDER BY p.position_at,p.track_id LIMIT ? OFFSET ?''',
                     (*params, limit, offset))
                 events = [dict(self.moving._point_result(row), ref=ref, kind='track_point') for row in rows]
+            elif item['type'] in ('ua_region', 'civil_alert'):
+                history = self.ukraine.timeline(ref, a, b)
+                all_events = history['items'] if isinstance(history, dict) else history
+                total = len(all_events)
+                events = all_events[offset:offset+limit]
             indices, index_count, index_offset = [], 0, int(index_cursor or 0)
             if index_offset < 0 or index_offset > 10000000:
                 raise ValueError('Nieprawidłowa strona indeksów')
@@ -591,8 +673,29 @@ class WorkspaceService:
         with self.repo.lock:
             rows = self.db.execute('''SELECT o.* FROM catalog_objects o JOIN workspace_watchlist w ON w.ref=o.ref
                 ORDER BY o.label,o.ref''')
-            return {'items': [self.moving.present(self.catalog.decode(row), now,
+            return {'items': [self._present(self.catalog.decode(row), now,
                 (now-timedelta(days=7), now+timedelta(microseconds=1))) for row in rows]}
+
+    def watch(self, ref, watched):
+        with self.repo.lock, self.db:
+            item = self.catalog.object(ref)
+            if item is None:
+                raise KeyError(ref)
+            if item['type'] not in (*MOVING_TYPES, 'ua_region'):
+                raise ValueError('Obserwować można samoloty, statki i regiony Ukrainy')
+            if watched:
+                self.db.execute('INSERT OR IGNORE INTO workspace_watchlist VALUES(?,?)', (ref, iso(self.repo.clock())))
+            else:
+                self.db.execute('DELETE FROM workspace_watchlist WHERE ref=?', (ref,))
+            return {'ref': ref, 'watched': watched}
+
+    def ukraine_regions(self):
+        with self.repo.lock:
+            return {'items': self.ukraine.regions()}
+
+    def ukraine_replay(self, body):
+        with self.repo.lock:
+            return self.ukraine.replay(body.refs, body.start, body.end)
 
     def views(self):
         with self.repo.lock:

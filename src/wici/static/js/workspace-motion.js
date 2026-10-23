@@ -86,7 +86,7 @@
       box.hidden = refs.length === 0;
       if (box.hidden) return;
       day.hidden = Boolean(selectedRange); show.disabled = !selectedRange || !replay?.series?.some(item => item.points?.length);
-      const rangeKey = JSON.stringify(selectedRange);
+      const rangeKey = JSON.stringify([selectedRange, state.displayTimezone]);
       const series = refs.map((ref, index) => ({...replay?.series?.find(item => item.ref === ref), ref, label: replay?.series?.find(item => item.ref === ref)?.label || context?.labels?.get(ref) || ref, color: colors[index]}));
       const key = JSON.stringify(series.map(item => [item.ref, item.label]));
       if (key !== lastRefs || replay !== lastReplay || rangeKey !== lastRange) {

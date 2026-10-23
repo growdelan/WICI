@@ -98,3 +98,34 @@ Ponowna weryfikacja wydania:
 Pierwszy zbiorczy przebieg obejmował 56 pozycji: 54 właściwe scenariusze `node:test`, skrypt jakości pozycji i moduł pomocniczy motywu. Wynik wyniósł 54 zaliczone / 2 nieudane. W hydrologii końcowe sprawdzenie DOM wyprzedzało animację zamknięcia dymka; osobna próba już przed poprawką przeszła, a po dodaniu oczekiwania na animację ponownie zaliczono ten scenariusz. Skrypt jakości pozycji wymaga osobnego serwera — w zbiorczym przebiegu brakowało procesu na porcie 8773. Próbę uruchomiono ponownie z odizolowanym serwerem DEMO i `WICI_UI_URL`; przeszła. W rezultacie zaliczono łącznie 55 scenariuszy Chromium.
 
 Zbiorczy przebieg Chromium uruchomiono poleceniem `node --test --test-concurrency=1 tests/*_browser.cjs tests/browser_theme.cjs` z modułem Playwright przez `NODE_PATH`. Moduł `browser_theme.cjs` jest helperem; nie jest liczony jako osobny scenariusz Chromium. Testy końcowe używały odizolowanych serwerów i baz demo, bez okien na pulpicie. Dodatkowo po poprawce powtórzono 20 powiązanych testów Node i trzy scenariusze Analizy. Przegląd wykazał również poprawny build `uv build`; sprawdzono wersję pakietu, nowe moduły/migracje oraz brak lokalnych baz, konfiguracji prywatnej i filmów w archiwach. GitHub nie zgłasza kontroli CI dla PR #1; powyższe wyniki pochodzą z lokalnych przebiegów.
+
+## Historia alarmów Ukrainy i porównanie regionów — 0.32.0, 23.10.2026
+
+Implementacja na branchu `codex/wici-ukraine-alarm-history`. Weryfikacja korzystała z izolowanych tymczasowych baz i serwerów, bez migracji ani restartowania działającej instancji LIVE. Dane scenariuszy przeglądarkowych są syntetyczne i opisane jako TEST; komunikacja zewnętrzna jest blokowana. Osobne odczyty kontraktu NEPTUN potwierdziły kształt kluczy regionów i nadrzędnych nazw; nie archiwizowano odpowiedzi.
+
+| Kontrola | Wynik |
+|---|---|
+| Pełny Python, `uv run --locked pytest -q` | **979 zaliczonych**, 104,38 s; trzy znane ostrzeżenia Starlette/httpx i Rasterio. |
+| Pełny Node, `node --test tests/*.test.cjs tests/*_ui.cjs` | **345 zaliczonych**. |
+| Nowa Analiza Ukrainy w Chromium | **3 zaliczone**: porównanie/kursor/luki/strefy/zapisane widoki, hierarchia/rejestracja, pierwsze otwarcie pustego katalogu. |
+| Regresje wcześniejszych funkcji w Chromium | **22 zaliczone**: Analiza (3), Analiza transportu (4), trasy (2), Ukraina w Sytuacji (3), samoloty 3D (10). |
+| Ruff, lockfile, składnia JS/CJS i `git diff --check` | Poprawne. |
+| Migracja 017 → 018 | Zachowane dane dzieci katalogu i watchlista; poprawne klucze obce. |
+| Sdist i wheel 0.32.0 | Poprawny build, metadane wersji, nowe moduły, migracja i zasoby; obecne pliki licencyjne. |
+
+Po przeglądzie poprawiono rewizje zakończonych przedziałów historii, ponawianie lokalnego zapisu granic oraz liczenie epizodów na granicach zakresu. Dodano **23 przypadki regresyjne**. Testy odtwarzają HTTP 409 po nieistotnym późniejszym odczycie, zachowanie właściwego konfliktu po zmianie pokrycia lub niepewnego końca alarmu, czyszczenie retencji (również przy zachowanych rekordach granicznych), rzeczywistą blokadę SQLite oraz bezpieczne zamknięcie podczas ponawiania zapisu. Pełne zestawy Python i Node oraz Ruff ponownie przeszły po tych poprawkach. Powtórzona regresja Chromium: **25/25 zaliczonych**, 286,7 s.
+
+Wcześniej zbudowane archiwa nie zawierały baz użytkownika, prywatnej konfiguracji ani nagrań; po poprawkach z przeglądu nie wykonywano nowego wydania. Safari i Firefox nie były sprawdzane; testy offline nie potwierdzają przyszłej dostępności dostawcy.
+
+Sprawdzone przypadki obejmują idempotencję cache, korekty A → B → A, niepewne zakończenie alarmu, odpowiedzi częściowe i awarie, zachowanie luk po restarcie, blokadę SQLite, równoczesne wyłączenie rejestracji i odczyt, czyszczenie przy wyłączonym kolektorze, granicę 30 dni, niezależność obserwowania od zapisu, retencję aktywnej tożsamości, brak odczytów dostawcy podczas odtwarzania, stare zapisane widoki oraz kontrolę CSRF/Origin. Pierwsze otwarcie Ukrainy pobiera granice i alarmy także przy wyłączonej rejestracji.
+
+Próba wydajności na tymczasowej bazie: **172 801 odczytów** (30 dni co 15 s), pięć regionów o niezmiennym stanie, pełny replay w **0,483 s**, po jednym scalonym odcinku na region. To pomiar konkretnej fixture, nie gwarancja czasu dla dowolnej liczby zmian. Odtwarzanie ponad 12 000 zmian regionu wymaga zawężenia zakresu; nie wykonuje się cichego pomijania próbek.
+
+Przeglądarkowe polecenie do ponowienia z dostępnym modułem Playwright:
+
+```sh
+NODE_PATH=/sciezka/do/node_modules node --test --test-concurrency=1 \
+  tests/ukraine_workspace_browser.cjs tests/ukraine_browser.cjs \
+  tests/workspace_browser.cjs tests/moving_workspace_browser.cjs \
+  tests/tracking_browser.cjs tests/aircraft3d_browser.cjs
+```

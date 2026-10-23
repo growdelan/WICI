@@ -22,9 +22,18 @@ def test_demo_endpoints_are_initialized_without_external_network(tmp_path):
         geometry = client.get('/api/ukraine/geometry').json()
         assert geometry['status'] == 'demo_no_data'
         assert geometry['oblasts']['features'] == geometry['raions']['features'] == []
+        alarms = client.get('/api/ukraine/alerts').json()
+        assert alarms['status'] == 'demo_no_data' and alarms['alerts']['items'] == []
+        assert 'threats' not in alarms
+        recording = client.get('/api/workspace/ukraine/recording').json()
+        assert not recording['enabled'] and not recording['available']
+        token = client.get('/api/health').json()['csrf_token']
+        response = client.put('/api/workspace/ukraine/recording', json={'enabled': True}, headers={
+            'Origin': 'http://127.0.0.1:8765', 'X-CSRF-Token': token})
+        assert response.status_code == 422
 
 
-@pytest.mark.parametrize('endpoint', ['/api/ukraine', '/api/ukraine/geometry'])
+@pytest.mark.parametrize('endpoint', ['/api/ukraine', '/api/ukraine/alerts', '/api/ukraine/geometry'])
 @pytest.mark.parametrize('headers', [{'Sec-Fetch-Site': 'cross-site'}, {'Sec-Fetch-Site': 'same-site'},
                                     {'Origin': 'https://example.com'}, {'Host': 'localhost:8765'}])
 def test_origin_guard_rejects_before_upstream_fetch(endpoint, headers, tmp_path):

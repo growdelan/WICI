@@ -1,16 +1,16 @@
 'use strict';
 window.WiciWorkspaceTimeline = (() => {
   const U = window.WiciWorkspaceUI;
-  function localValue(value) {
+  function localValue(value, timezone = 'Europe/Warsaw') {
     if (!value) return ''; const date = new Date(value); if (!Number.isFinite(date.getTime())) return '';
-    const parts = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', {timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).formatToParts(date).map(p => [p.type, p.value]));
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', {timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).formatToParts(date).map(p => [p.type, p.value]));
     return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
   }
   // Round-trip candidate offsets: reject nonexistent local hours at the spring DST transition.
-  function toUTC(value) {
+  function toUTC(value, timezone = 'Europe/Warsaw') {
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
     const raw = Date.parse(`${value}Z`);
-    for (const offset of [120, 60]) {const candidate = new Date(raw - offset * 60000).toISOString(); if (localValue(candidate) === value) return candidate;}
+    for (const offset of timezone === 'UTC' ? [0] : timezone === 'Europe/Kyiv' ? [180, 120] : [120, 60]) {const candidate = new Date(raw - offset * 60000).toISOString(); if (localValue(candidate, timezone) === value) return candidate;}
     return null;
   }
   function create(host, {dispatch, getState, now}) {
@@ -21,10 +21,13 @@ window.WiciWorkspaceTimeline = (() => {
     }); heading.append(live, lastDay);
     const form = U.el('form', null, 'analysis-time-fields'), from = U.el('input'), to = U.el('input');
     from.type = to.type = 'datetime-local'; from.id = 'analysis-time-from'; to.id = 'analysis-time-to'; from.required = to.required = true; from.title = to.title = 'Czas Europe/Warsaw. Dla powtórzonej jesiennej godziny wybieramy wcześniejsze wystąpienie.';
+    const zone = U.el('select'); zone.id = 'analysis-timezone'; zone.setAttribute('aria-label', 'Strefa czasu analizy');
+    for (const [value, label] of [['Europe/Warsaw', 'Warszawa'], ['Europe/Kyiv', 'Kijów'], ['UTC', 'UTC']]) {const option = U.el('option', label); option.value = value; zone.append(option);}
+    zone.addEventListener('change', () => dispatch({type: 'SET_TIMEZONE', timezone: zone.value}));
     const apply = U.button('Ustaw przedział'); apply.type = 'submit';
-    form.append(U.field('Od · Warszawa', from), U.field('Do · wyłącznie', to), apply);
+    form.append(U.field('Od · wybrana strefa', from), U.field('Do · wyłącznie', to), U.field('Strefa czasu', zone), apply);
     const message = U.el('p', '', 'analysis-message'); message.setAttribute('role', 'status');
-    form.addEventListener('submit', event => {event.preventDefault(); const lower = toUTC(from.value), upper = toUTC(to.value);
+    form.addEventListener('submit', event => {event.preventDefault(); const lower = toUTC(from.value, getState().displayTimezone), upper = toUTC(to.value, getState().displayTimezone);
       if (!lower || !upper || lower >= upper) {message.textContent = 'Podaj poprawny przedział. Nieistniejąca godzina zmiany czasu jest odrzucana.'; return;}
       const previous = getState().query.time.overview_range;
       const range = {from: lower, to: upper}, overview = previous && lower >= previous.from && upper <= previous.to ? previous : range;
@@ -33,7 +36,7 @@ window.WiciWorkspaceTimeline = (() => {
     const histogram = U.el('div', null, 'analysis-histogram'); histogram.id = 'analysis-histogram'; histogram.setAttribute('aria-label', 'Zdarzenia w tle przedziału; wybierz koszyk, aby zawęzić zakres');
     const note = U.el('p', '', 'analysis-timeline-note');
     const cursorBox = U.el('div', null, 'analysis-cursor'), cursor = U.el('input'), cursorDate = U.el('input'), cursorOutput = U.el('output');
-    cursor.type = 'range'; cursor.min = '0'; cursor.max = '1000'; cursor.step = '1'; cursor.id = 'analysis-cursor'; cursor.setAttribute('aria-label', 'Wspólny kursor czasu stacji i porównywanych tras');
+    cursor.type = 'range'; cursor.min = '0'; cursor.max = '1000'; cursor.step = '1'; cursor.id = 'analysis-cursor'; cursor.setAttribute('aria-label', 'Wspólny kursor czasu stacji, tras i regionów Ukrainy');
     cursorDate.type = 'datetime-local'; cursorDate.id = 'analysis-cursor-date'; cursorDate.setAttribute('aria-label', 'Dokładny czas kursora · Warszawa');
     cursorOutput.htmlFor = cursor.id;
     let pendingFrame = null, pendingAt;
@@ -41,7 +44,7 @@ window.WiciWorkspaceTimeline = (() => {
       pendingAt = new Date(Date.parse(range.from) + (Date.parse(range.to) - Date.parse(range.from) - 1) * Number(cursor.value) / 1000).toISOString();
       if (pendingFrame === null) pendingFrame = requestAnimationFrame(() => {pendingFrame = null; dispatch({type: 'SET_CURSOR', at: pendingAt});});
     });
-    cursorDate.addEventListener('change', () => {if (cursorDate.disabled) return; const at = toUTC(cursorDate.value); if (at) dispatch({type: 'SET_CURSOR', at});});
+    cursorDate.addEventListener('change', () => {if (cursorDate.disabled) return; const at = toUTC(cursorDate.value, getState().displayTimezone); if (at) dispatch({type: 'SET_CURSOR', at});});
     let playTimer = null, lastTick = 0;
     const pause = () => {if (playTimer !== null) clearInterval(playTimer); playTimer = null; play.textContent = 'Odtwórz'; play.setAttribute('aria-pressed', 'false');};
     const speed = U.el('select'); speed.id = 'analysis-motion-speed'; speed.setAttribute('aria-label', 'Tempo odtwarzania historii');
@@ -59,14 +62,15 @@ window.WiciWorkspaceTimeline = (() => {
     }); play.id = 'analysis-motion-play'; play.setAttribute('aria-pressed', 'false');
     cursorBox.append(U.el('span', 'Wspólny kursor czasu'), play, speed, cursor, cursorDate, cursorOutput);
     host.append(heading, form, message, histogram, note, cursorBox);
-    let lastSummary = null;
-    return {pause, render(data, state, {historyIncomplete = false, detailLoading = false, motion = null} = {}) {
-      const range = state.query.time.filter_range, summary = data?.timeline_summary;
+    let lastSummary = null, lastTimezone = null;
+    return {pause, render(data, state, {historyIncomplete = false, detailLoading = false, motion = null, alerts = null} = {}) {
+      const range = state.query.time.filter_range, summary = data?.timeline_summary, timezone = state.displayTimezone || 'Europe/Warsaw';
+      zone.value = timezone; from.title = to.title = `Czas ${timezone}. Dla powtórzonej jesiennej godziny wybieramy wcześniejsze wystąpienie.`; cursorDate.setAttribute('aria-label', `Dokładny czas kursora · ${timezone}`);
       mode.textContent = state.query.time.mode === 'live' ? 'Bieżące' : 'Przegląd okresu'; live.setAttribute('aria-pressed', String(state.query.time.mode === 'live'));
-      if (document.activeElement !== from) from.value = localValue(range?.from || summary?.filter_range?.from);
-      if (document.activeElement !== to) to.value = localValue(range?.to || summary?.filter_range?.to);
-      if (summary !== lastSummary) {
-        lastSummary = summary; histogram.replaceChildren(); const buckets = summary?.buckets || [], max = Math.max(1, ...buckets.map(bucket => bucket.count));
+      if (document.activeElement !== from) from.value = localValue(range?.from || summary?.filter_range?.from, timezone);
+      if (document.activeElement !== to) to.value = localValue(range?.to || summary?.filter_range?.to, timezone);
+      if (summary !== lastSummary || timezone !== lastTimezone) {
+        lastSummary = summary; lastTimezone = timezone; histogram.replaceChildren(); const buckets = summary?.buckets || [], max = Math.max(1, ...buckets.map(bucket => bucket.count));
         for (const bucket of buckets) {const bar = U.button('', () => dispatch({type: 'SET_TIME_RANGE', range: {from: bucket.from, to: bucket.to}, overview: summary.overview_range}), 'analysis-histogram-bar');
           bar.style.setProperty('--bar-height', `${Math.max(3, 100 * bucket.count / max)}%`); bar.setAttribute('aria-label', `${U.date(bucket.from)} – ${U.date(bucket.to)}: ${bucket.count} zdarzeń`);
           bar.title = bar.getAttribute('aria-label'); const inner = U.el('span'); inner.setAttribute('aria-hidden', 'true'); bar.append(inner);
@@ -77,13 +81,14 @@ window.WiciWorkspaceTimeline = (() => {
       note.textContent = `${summary?.event_total || 0} zdarzeń / pomiarów w tle${summary?.selected_event_total != null ? ` · ${summary.selected_event_total} w zaznaczeniu` : ''} · ${summary?.timeless_total || 0} obszarów bez czasu. Tło: ${U.date(summary?.overview_range?.from)} – ${U.date(summary?.overview_range?.to)}. Obiekty liczymy oddzielnie w tabeli.`;
       const stationCursor = state.selectedRef?.includes('_station:') && !historyIncomplete && !detailLoading;
       const movingCursor = state.comparedRefs?.length && motion?.data && !motion.loading && !motion.error;
-      cursorBox.hidden = !range; cursor.disabled = !(stationCursor || movingCursor); cursorDate.disabled = cursor.disabled;
-      play.disabled = speed.disabled = cursor.disabled; play.hidden = speed.hidden = !state.comparedRefs?.length;
+      const regionCursor = state.comparedRegionRefs?.length && alerts?.data && !alerts.loading && !alerts.error;
+      cursorBox.hidden = !range; cursor.disabled = !(stationCursor || movingCursor || regionCursor); cursorDate.disabled = cursor.disabled;
+      play.disabled = speed.disabled = cursor.disabled; play.hidden = speed.hidden = !(state.comparedRefs?.length || state.comparedRegionRefs?.length);
       if (!range || cursor.disabled) pause();
       if (range) {const current = Date.parse(state.cursorAt || range.to) - (state.cursorAt ? 0 : 1), lower = Date.parse(range.from), upper = Date.parse(range.to);
         cursor.value = String(Math.max(0, Math.min(1000, 1000 * (current - lower) / (upper - lower))));
-        if (document.activeElement !== cursorDate) cursorDate.value = localValue(new Date(current).toISOString());
-        cursorOutput.textContent = historyIncomplete && !movingCursor ? 'Historia częściowa — wczytaj kolejne próbki w karcie, aby użyć kursora' : state.cursorAt ? `Według kursora: ${U.date(state.cursorAt)}` : movingCursor ? 'Przesuń kursor lub uruchom odtwarzanie zapisanych tras' : 'Przesuń kursor, aby sprawdzić zaznaczoną stację';
+        if (document.activeElement !== cursorDate) cursorDate.value = localValue(new Date(current).toISOString(), timezone);
+        cursorOutput.textContent = historyIncomplete && !movingCursor && !regionCursor ? 'Historia częściowa — wczytaj kolejne próbki w karcie, aby użyć kursora' : state.cursorAt ? `Według kursora: ${U.date(state.cursorAt)}` : movingCursor || regionCursor ? 'Przesuń kursor lub uruchom odtwarzanie zapisanej historii' : 'Przesuń kursor, aby sprawdzić zaznaczoną stację';
         cursor.setAttribute('aria-valuetext', U.date(new Date(current).toISOString()));
       }
     }};

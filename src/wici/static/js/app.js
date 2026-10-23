@@ -22,7 +22,7 @@ async function apiDirect(path,body,requestOptions={}){
 }
 if(window.WiciWorkspaceSources?.create)window.WiciWorkspaceSources=window.WiciWorkspaceSources.create({read:apiDirect});
 async function api(path,body,requestOptions={}){
- if((/^\/(hydro|gios)\?/.test(path)||/^\/(aircraft|ships)$/.test(path))&&window.WiciWorkspaceSources?.request)return window.WiciWorkspaceSources.request(path,body,requestOptions);
+ if((/^\/(hydro|gios)\?/.test(path)||/^\/(aircraft|ships|ukraine\/(alerts|geometry))$/.test(path))&&window.WiciWorkspaceSources?.request)return window.WiciWorkspaceSources.request(path,body,requestOptions);
  return apiDirect(path,body,requestOptions);
 }
 function atlasVisible(){return state.view==='situation'&&!document.hidden;}
