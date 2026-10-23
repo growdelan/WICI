@@ -1,7 +1,7 @@
 """Same-origin analytical workspace routes. Query endpoints never fetch upstream."""
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from wici.workspace_models import SavedView, WorkspaceQuery
+from wici.workspace_models import MovingReplay, SavedView, WorkspaceQuery
 from wici.workspace_service import QueryChanged
 
 
@@ -29,7 +29,26 @@ def create_workspace_router():
         history = getattr(request.app.state, 'station_history', None)
         if history is not None and hasattr(history, 'status'):
             result['persistence'] = history.status()
+        moving = getattr(request.app.state, 'moving_ingestion', None)
+        if moving is not None:
+            result['moving_persistence'] = moving.status()
         return result
+
+    @router.get('/watchlist')
+    def watchlist(request: Request):
+        return request.app.state.workspace.watchlist()
+
+    @router.put('/watchlist/{ref}')
+    def watch(request: Request, ref: str):
+        return _call(request.app.state.workspace.moving.watch, ref, True)
+
+    @router.delete('/watchlist/{ref}')
+    def unwatch(request: Request, ref: str):
+        return _call(request.app.state.workspace.moving.watch, ref, False)
+
+    @router.post('/moving/replay')
+    def replay(request: Request, body: MovingReplay):
+        return _call(request.app.state.workspace.moving.replay, body)
 
     @router.get('/objects/{ref}')
     def detail(request: Request, ref: str, as_of: str | None = None, data_revision: str | None = None,

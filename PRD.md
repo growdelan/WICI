@@ -5,6 +5,7 @@ Aktualny stan: lokalne MVP ukończone, rozszerzone na zlecenie użytkownika o au
 - [Bieżące zachowanie, zakres, bezpieczeństwo i ograniczenia](docs/automatic-communications.md).
 - [Stan implementacji i weryfikacji](docs/implementation-status.md).
 - [Stanowisko analityczne — etap 1](docs/analysis-workspace.md) — wdrożony katalog obiektów, karty oraz wspólna mapa, tabela i oś czasu; [plan](docs/plan-stanowisko-analityczne-etap-1.md) i [raport weryfikacji](docs/analysis-workspace-verification.md).
+- [Analiza obiektów ruchomych](docs/analysis-moving-objects.md) — samoloty i statki w katalogu, obserwowane, karty sesji oraz wspólne odtwarzanie do pięciu zapisanych tras.
 - [Uruchamianie](README.md).
 - [Archiwum ukończonych etapów](docs/archive/README.md).
 - [Oryginalny PRD MVP v1.0 z 11.10.2026](docs/archive/PRD.md).

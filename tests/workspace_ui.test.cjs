@@ -41,7 +41,7 @@ test('Warsaw local inputs account for 23h/25h days and reject nonexistent DST ho
 });
 
 function harness() {
-  const requests = [], cardRenders = [], sourceCalls = []; let viewActions, timelineActions; const timers = new Map(); let timerId = 0;
+  const requests = [], cardRenders = [], sourceCalls = []; let viewActions, timelineActions, sourceListener; const timers = new Map(); let timerId = 0;
   function node(tag = 'div') {
     const classes = new Set();
     return {tagName: tag.toUpperCase(), children: [], dataset: {}, value: '', hidden: false, isConnected: true,
@@ -55,7 +55,7 @@ function harness() {
   const U = {el(tag, text, cls) {const item = node(tag); item.textContent = text; item.className = cls; return item;},
     button(text, click, cls) {const item = this.el('button', text, cls); item.click = click; return item;},
     field(label, control) {const item = this.el('label', label); item.append(control); return item;}, date: value => value || 'brak', typeNames: {}, statusNames: {}};
-  const sources = {setVisible(value) {sourceCalls.push(['visible', value]);}, setTypes(types) {sourceCalls.push(['types', [...types]]);}, subscribe() {}, demandIndexes() {}, deactivate() {}, loadSensors() {return Promise.resolve({items: []});}};
+  const sources = {setVisible(value) {sourceCalls.push(['visible', value]);}, setTypes(types) {sourceCalls.push(['types', [...types]]);}, subscribe(listener) {sourceListener = listener;}, demandIndexes() {}, deactivate() {}, loadSensors() {return Promise.resolve({items: []});}};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceStore: Store, WiciWorkspaceSources: sources,
     WiciWorkspaceViews: (host, actions) => {viewActions = actions; return {load() {}};}, WiciWorkspaceTable: () => ({render() {}, focusHeading() {}}),
     WiciWorkspaceTimeline: {create: (host, actions) => {timelineActions = actions; return {render() {}};}}, WiciWorkspaceMap: () => ({render() {}, setActive() {}, show() {}}),
@@ -67,7 +67,7 @@ function harness() {
   });
   window.WiciWorkspace.init({map: {invalidateSize() {}}, health: {now: '2026-10-22T12:00:00Z'}, geometries: new Map(), api: (path, body, options) => new Promise((resolve, reject) => requests.push({path, body, options, resolve, reject}))});
   const queryResponse = {items: [], total: 0, next_cursor: null, map: {items: []}, timeline_summary: {buckets: []}, coverage: {sources: []}, data_revision: 'data1', as_of: '2026-10-22T12:00:00Z'};
-  return {ui: window.WiciWorkspace, document, requests, cardRenders, queryResponse, sourceCalls, viewActions, timelineActions};
+  return {ui: window.WiciWorkspace, document, host, requests, cardRenders, queryResponse, sourceCalls, viewActions, timelineActions, sourceEvent: event => sourceListener(event)};
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function ready(h) {h.ui.setActive(true); h.requests.find(request => request.path === '/workspace/query').resolve(h.queryResponse); h.requests.find(request => request.path === '/workspace/status').resolve({}); await flush();}
@@ -96,6 +96,32 @@ test('controller rejects stale query batches after region change and bounds 409 
   h.ui.refresh();
   for (let retry = 0; retry < 3; retry++) {const request = h.requests.filter(request => request.path === '/workspace/query').at(-1); request.reject(Object.assign(Error('changed'), {status: 409})); await flush();}
   assert.match(h.ui.getState().error, /Odśwież zestaw/); assert.equal(h.ui.getData().total, 9);
+});
+
+test('transport projection errors and pending writes remain visible independently of station history', async () => {
+  const h = harness(); h.ui.setActive(true); h.requests.find(request => request.path === '/workspace/query').resolve(h.queryResponse);
+  h.requests.find(request => request.path === '/workspace/status').resolve({persistence: {pending: 0, errors: {}}, moving_persistence: {pending: 1, errors: {aircraft: 'db write failed'}, coalesced_snapshots: 2}}); await flush();
+  const flatten = node => [node, ...(node.children || []).flatMap(flatten)];
+  const message = flatten(h.host).find(node => node.id === 'analysis-persistence-status');
+  assert.match(message.textContent, /Nie udało się zapisać odczytu samolotów lub statków/);
+  assert.ok(flatten(h.host).some(node => /Katalog samolotów i statków: 1 oczekujących zapisów · 1 błędów/.test(node.textContent || '')));
+  h.sourceEvent({resource: '/ships', data: {analysis_persistence: {pending: 1, errors: {}, coalesced_snapshots: 3}}});
+  assert.match(message.textContent, /oczekuje na zapis w katalogu Analizy/);
+  h.sourceEvent({resource: '/aircraft', data: {analysis_persistence: {pending: 0, errors: {aircraft: 'db write failed'}}}});
+  assert.match(message.textContent, /Nie udało się zapisać odczytu samolotów lub statków/);
+});
+
+test('a successful valid query clears an earlier empty-type validation warning and obsolete query warnings', async () => {
+  const h = harness(); await ready(h);
+  const flatten = node => [node, ...(node.children || []).flatMap(flatten)], nodes = flatten(h.host), message = nodes.find(node => node.id === 'analysis-message');
+  nodes.find(node => node.dataset?.objectType === 'communication').click();
+  assert.match(message.textContent, /Wybierz co najmniej jeden typ/);
+  nodes.find(node => node.dataset?.objectType === 'aircraft').click();
+  h.requests.filter(request => request.path === '/workspace/query').at(-1).resolve({...h.queryResponse, warnings: []}); await flush();
+  assert.equal(message.textContent, '');
+  h.ui.refresh(); h.requests.filter(request => request.path === '/workspace/query').at(-1).resolve({...h.queryResponse, warnings: ['Ostrzeżenie wyłącznie poprzedniego zakresu']}); await flush();
+  assert.match(message.textContent, /poprzedniego zakresu/);
+  h.ui.refresh(); h.requests.filter(request => request.path === '/workspace/query').at(-1).resolve(h.queryResponse); await flush(); assert.equal(message.textContent, '');
 });
 
 
