@@ -53,8 +53,8 @@ test('five stable moving identities can be compared independently of the open ca
 test('historical map suppresses live moving coordinates and removes markers when cursor enters a gap', () => {
   const added = [], removed = [], U = {el: (tag, text) => ({textContent: text}), measurement: item => item.measurement, value: () => 'x', date: value => value, statusNames: {}};
   const layer = (kind, coords, style) => ({kind, coords, style, addTo(group) {this.group = group; added.push(this); return this;}, bindTooltip() {return this;}, on() {return this;}, setStyle() {}, setRadius() {}, setTooltipContent() {}});
-  const L = {layerGroup: () => layer('group'), circleMarker: (coords, style) => layer('marker', coords, style), polyline: (coords, style) => layer('path', coords, style)};
-  const window = {WiciWorkspaceUI: U, WiciWorkspaceMotion: Motion, L};
+  const L = {layerGroup: () => layer('group'), marker: (coords, style) => layer('marker', coords, style), circleMarker: (coords, style) => layer('marker', coords, style), polyline: (coords, style) => layer('path', coords, style)};
+  const window = {WiciWorkspaceUI: U, WiciWorkspaceMotion: Motion, WiciAircraft: {icon: () => ({})}, L};
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-map.js', 'utf8'), {window, L, Date});
   const map = window.WiciWorkspaceMap({map: {removeLayer(value) {removed.push(value);}}, geometries: new Map(), select() {}, narrow() {}}); map.setActive(true);
   const ref = 'aircraft:icao:48abc0', live = {ref, type: 'aircraft', latitude: 50, longitude: 20, position: {latitude: 50, longitude: 20}}, data = {map: {points: [live]}};

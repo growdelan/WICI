@@ -51,12 +51,13 @@ window.WiciShips = (() => {
     }
     return view.box;
   }
-  function icon(item){
-    const wrap=node('span');wrap.className=`ship-symbol ship-${classification(item).key}${age(item)>OLD_AGE?' ship-old':''}`;
+  function icon(item,{referenceAt=Date.now(),className='',selected=false}={}){
+    const positionAt=Date.parse(item.position_at),old=!Number.isFinite(positionAt)||(referenceAt-positionAt)/1000>OLD_AGE;
+    const wrap=node('span');wrap.className=`ship-symbol ship-${classification(item).key}${old?' ship-old':''}`;
     const direction=bearing(item.heading)?item.heading:bearing(item.course)?item.course:null;
     if(direction===null)wrap.className+=' ship-direction-unknown';
     wrap.style.transform=`rotate(${direction??0}deg)`;
-    return L.divIcon({className:'ship-marker',html:wrap,iconSize:[24,28],iconAnchor:[12,14]});
+    return L.divIcon({className:`ship-marker ${className}${selected?' analysis-transport-selected':''}`.trim(),html:wrap,iconSize:[24,28],iconAnchor:[12,14]});
   }
   function render(){
     if(!shown())return;
@@ -133,5 +134,5 @@ window.WiciShips = (() => {
     $('baltic').addEventListener('click',()=>map.fitBounds([[53.4,9.4],[66,30.5]],{padding:[20,20]}));
   }
   document.addEventListener('wici:regionchange',()=>{if(map)render();});
-  return {init,sync,classification};
+  return {init,sync,classification,icon};
 })();

@@ -257,7 +257,10 @@ class MovingObjects:
                         (timestamp(row['position_at'])-timestamp(previous['position_at'])).total_seconds() > MAX_AGE[kind])
                     points.append(point)
                     previous = row
-                result.append({'ref': ref, 'label': obj['label'], 'type': kind, 'points': points,
+                metadata = {key: obj['metadata'].get(key) for key in
+                            ('military', 'type_code', 'registration', 'callsign', 'name')}
+                result.append({'ref': ref, 'label': obj['label'], 'type': kind, 'metadata': metadata,
+                               'metadata_context': 'current', 'points': points,
                                'sessions': self.sessions(ref), 'gap_seconds': MAX_AGE[kind],
                                'total_points': total, 'returned_points': len(points), 'downsampled': False,
                                'sampling': 'all_recorded_points'})

@@ -6,6 +6,35 @@ Zakres obejmuje katalog i karty samolotów/statków, trwałą listę obserwowany
 sterowanie istniejącym zapisem tras oraz porównanie maksymalnie pięciu obiektów
 na wspólnym czasie. [Obsługa, architektura i ograniczenia](analysis-moving-objects.md).
 
+## Poprawka ikon transportu — v0.32.1, 23.10.2026
+
+Branch: `codex/analysis-transport-map-icons`, na bazie `v0.32.0`.
+Mapa Analizy korzysta teraz ze wspólnych funkcji ikon Sytuacji zamiast kółek,
+zarówno dla pozycji bieżących, jak i zapisanego odtwarzania. Sprawdzono kolory
+samolotów i trzech klas AIS, kierunki symboli, nazwy w etykietach, wybór karty,
+obwódkę zaznaczenia oraz paskowanie statków względem czasu kursora.
+Kolory tras nadal identyfikują obiekty porównania. API odtwarzania przekazuje
+wybrane metadane symbolu z jawnym `metadata_context: current`; pozycja i kierunek
+nadal pochodzą wyłącznie z zapisanych punktów.
+
+- Pełny Python: **985 zaliczonych**, 116,47 s. Sześć regresji obejmuje metadane
+  symboli w odtwarzaniu bez zastępowania zapisanego kierunku bieżącym.
+- Pełny Node: **349 zaliczonych**. Cztery nowe scenariusze sprawdzają zgodność
+  ikon z główną mapą, kierunek, zaznaczenie, wiek historycznych pozycji i zachowanie
+  dotychczasowych symboli stacji.
+- Chromium: **13 zaliczonych** — transport (5), bazowa Analiza/GIOŚ (3),
+  Analiza Ukrainy (3) i trasy (2). Nowy scenariusz obejmuje jasny/ciemny motyw
+  oraz szerokość 390 px i etykiety mieszczące się w mapie; istniejące odtwarzanie dodatkowo sprawdza sylwetki
+  i kierunek samolotu/statku oraz brak błędnego paskowania dawnych raportów.
+- Ruff, składnia zmienionych skryptów oraz `git diff --check`: poprawne.
+
+Testy korzystały z izolowanych baz, syntetycznych źródeł i Chromium bez okna
+na pulpicie. Zablokowano żądania zewnętrzne; instancja LIVE nie była zmieniana.
+Trzy znane ostrzeżenia Python dotyczą Starlette/httpx i Rasterio.
+Po dopracowaniu zawijania etykiet na telefonie powtórzono pięć scenariuszy
+transportu oraz cały Node; wszystkie ponownie przeszły. Powtórki nie zwiększają
+powyższej liczby testów.
+
 ## Wyniki
 
 | Sprawdzenie | Wynik |

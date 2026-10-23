@@ -57,6 +57,25 @@ def ranged(ref_type='aircraft', **kwargs):
         'from': (NOW-timedelta(hours=2)).isoformat(), 'to': NOW.isoformat()}}, **kwargs)
 
 
+@pytest.mark.parametrize('kind,classification', [
+    ('aircraft', True), ('aircraft', False), ('aircraft', None),
+    ('ship', 35), ('ship', 70), ('ship', None),
+])
+def test_replay_includes_current_symbol_classification_without_replacing_recorded_bearing(workspace, kind, classification):
+    changes = {'military': classification} if kind == 'aircraft' else {'type_code': classification}
+    if kind == 'aircraft':
+        changes['track'] = 270
+    ref, _ = snapshot(workspace, kind, 'abc123' if kind == 'aircraft' else '261000001', **changes)
+    track(workspace, ref)
+    result = workspace.moving.replay({'refs': [ref], 'from': (NOW-timedelta(hours=2)).isoformat(), 'to': NOW.isoformat()})
+    series = result['series'][0]
+    assert series['metadata_context'] == 'current'
+    assert series['metadata']['military' if kind == 'aircraft' else 'type_code'] == classification
+    assert [point['heading'] for point in series['points']] == [90, 90]
+    assert 'last_known_position' not in series['metadata']
+    assert series['label'] == ('LOT123' if kind == 'aircraft' else 'Żuraw')
+
+
 def test_live_catalog_identifiers_watchlist_metadata_and_converted_ship_units(workspace):
     plane, _ = snapshot(workspace)
     ship, _ = snapshot(workspace, 'ship', '123456789')

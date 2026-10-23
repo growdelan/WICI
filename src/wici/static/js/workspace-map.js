@@ -7,6 +7,16 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
   function coordinates(item) {const lat = item.latitude ?? item.geometry?.coordinates?.[1], lon = item.longitude ?? item.geometry?.coordinates?.[0];
     return Number.isFinite(lat) && Number.isFinite(lon) ? [lat, lon] : null;}
   function register(ref, layer, item) {if (!layers.has(ref)) layers.set(ref, []); layers.get(ref).push({layer, item});}
+  function transportIcon(item, point, referenceAt, selected, className) {
+    const value = {...item.metadata, ...point, track: point?.heading};
+    return item.type === 'aircraft' ? window.WiciAircraft.icon(value, {selected, className})
+      : window.WiciShips.icon(value, {selected, className, referenceAt});
+  }
+  function transportTooltip(item, point, note) {
+    const classification = item.type === 'ship' ? window.WiciShips.classification(item.metadata || {}).label
+      : item.metadata?.military === true ? 'Wojskowy według źródła' : item.metadata?.military === false ? 'Pozostałe według źródła' : 'Klasyfikacja nieustalona';
+    return U.el('span', `${item.label} · ${classification} · ${M.number(point?.speed_kmh, 'km/h')} · ${note}`);
+  }
   function popup(items) {const box = U.el('div', null, 'analysis-map-popup'); box.append(U.el('strong', items.length > 1 ? `${items.length} obiektów obszaru` : U.typeNames[items[0].type]));
     for (const item of items) box.append(U.button(item.label, () => select(item.ref))); return box;}
   function freshAt(observation, referenceAt) {
@@ -42,8 +52,9 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
       currentData = data; lastMode = state.query?.time?.mode; clear(); group = L.layerGroup().addTo(map);
       const result = data?.map || {}, items = result.items || [], points = result.points || items.filter(item => coordinates(item)), areas = result.areas || items.filter(item => !coordinates(item) && item.ref);
       for (const item of points) {const coords = coordinates(item); if (!coords || M?.isMoving(item) && lastMode === 'range') continue;
-        const marker = L.circleMarker(coords, {radius: 6, color: color(item, U.measurement(item), referenceAt), weight: 2, fillOpacity: .8});
-        marker.bindTooltip(U.el('span', `${item.label} · ${M?.isMoving(item) ? M.number(item.position?.speed_kmh, 'km/h') : U.value(U.measurement(item))}`)); marker.on('click', () => select(item.ref)); marker.addTo(group); register(item.ref, marker, item);
+        const marker = M?.isMoving(item) ? L.marker(coords, {icon: transportIcon(item, item.position, referenceAt, false, 'analysis-transport-marker'), title: item.label, bubblingMouseEvents: false})
+          : L.circleMarker(coords, {radius: 6, color: color(item, U.measurement(item), referenceAt), weight: 2, fillOpacity: .8});
+        marker.bindTooltip(U.el('span', `${item.label} · ${M?.isMoving(item) ? M.number(item.position?.speed_kmh, 'km/h') : U.value(U.measurement(item))}`), M?.isMoving(item) ? {className: 'analysis-transport-tooltip'} : {}); marker.on('click', () => select(item.ref)); marker.addTo(group); register(item.ref, marker, item);
       }
       const grouped = new Map();
       for (const item of areas) {if (['ua_region', 'civil_alert'].includes(item.type) && lastMode === 'range') continue; for (const feature of areaFeatures(item)) {const key = String(['ua_region', 'civil_alert'].includes(item.type) ? item.region_ref || item.ref : feature.properties?.admin_code || feature.id || item.ref);
@@ -62,6 +73,11 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     for (const [ref, entries] of layers) for (const {layer, item} of entries) {
       if (visited.has(layer)) continue; visited.add(layer);
       const selected = state.detailOpen && entries.some(() => ref === state.selectedRef) || [...(layers.get(state.selectedRef) || [])].some(entry => entry.layer === layer) && state.detailOpen;
+      if (M?.isMoving(item)) {
+        layer.setIcon(transportIcon(item, item.position, referenceAt, selected, 'analysis-transport-marker'));
+        layer.setTooltipContent(transportTooltip(item, item.position, U.statusNames[item.freshness] || item.freshness || 'Czas źródłowy'));
+        continue;
+      }
       const sample = selected && item.type.endsWith('_station') && (state.cursorAt || selectedSample) ? selectedSample : U.measurement(item);
       const shown = selected && state.cursorAt ? {...item, official_index: selectedIndex} : item;
       const colorAt = selected && state.cursorAt ? Date.parse(state.cursorAt) : referenceAt;
@@ -94,8 +110,9 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     if (replay && M) {
       motionMarkers = L.layerGroup().addTo(map);
       for (const [ref, frame] of motion.frames) {if (!frame.point) continue;
-        const marker = L.circleMarker([frame.point.latitude, frame.point.longitude], {radius: ref === state.selectedRef && state.detailOpen ? 10 : 7, weight: 3, color: frame.color, fillColor: frame.color, fillOpacity: .9, className: 'analysis-replay-marker'});
-        marker.bindTooltip(U.el('span', `${frame.label} · ${M.number(frame.point.speed_kmh, 'km/h')} · ${M.describe(frame, U)}`)); marker.on('click', () => select(ref)); marker.addTo(motionMarkers);
+        const series = replay.series.find(item => item.ref === ref), item = {...series, label: frame.label || series.label};
+        const marker = L.marker([frame.point.latitude, frame.point.longitude], {icon: transportIcon(item, frame.point, Date.parse(state.cursorAt || state.query.time.filter_range.to) - (state.cursorAt ? 0 : 1), ref === state.selectedRef && state.detailOpen, 'analysis-replay-marker'), title: item.label, bubblingMouseEvents: false});
+        marker.bindTooltip(transportTooltip(item, frame.point, `${M.describe(frame, U)} · klasyfikacja z bieżącego katalogu`), {className: 'analysis-transport-tooltip'}); marker.on('click', () => select(ref)); marker.addTo(motionMarkers);
       }
     }
   }
