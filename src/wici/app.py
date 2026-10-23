@@ -24,6 +24,7 @@ from wici.gios import GiosService
 from wici.hydro import HydroService
 from wici.imagery import ImageryService, ImageryUnavailable
 from wici.lightning import LightningService, LightningUnavailable
+from wici.moving_ingestion import MovingIngestion
 from wici.position_quality import PositionQuality
 from wici.radar import RadarService, RadarUnavailable
 from wici.repository import Repository
@@ -60,6 +61,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         quality = None
         tracking = None
         station_history = None
+        moving_ingestion = None
         try:
             repo = Repository(directory/'app.sqlite3',clock=(lambda:DEMO_NOW) if demo else (lambda:datetime.now(UTC)))
             station_history = StationHistory(repo)
@@ -112,9 +114,15 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             if demo:
                 seed(repo)
             app.state.workspace = WorkspaceService(repo)
+            moving_ingestion = MovingIngestion(app.state.workspace.moving)
+            app.state.moving_ingestion = moving_ingestion
+            app.state.aircraft.on_snapshot = moving_ingestion.enqueue
+            ships.on_snapshot = moving_ingestion.enqueue
             app.state.workspace.source_enabled = {
                 'hydro:stations': app.state.hydro.enabled and not demo,
                 'gios:stations': app.state.gios.enabled and not demo,
+                'aircraft': app.state.aircraft.enabled and not demo,
+                'ships': ships.enabled and bool(config.ships_key()) and not demo,
             }
             if demo:
                 from wici.workspace_demo import seed_workspace
@@ -140,6 +148,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 await network.aclose()
             if station_history:
                 await station_history.close()
+            if moving_ingestion:
+                await moving_ingestion.close()
             if repo:
                 repo.close()
             handler.close()
@@ -400,7 +410,10 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     async def aircraft(request:Request):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.aircraft.fetch()
+        snapshot = await app.state.aircraft.fetch()
+        app.state.moving_ingestion.enqueue('aircraft', snapshot)
+        await app.state.moving_ingestion.flush(timeout=0.1)
+        return snapshot
     @app.get('/api/ukraine')
     async def ukraine(request:Request):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
@@ -424,7 +437,10 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.ships.fetch()
+        snapshot = await app.state.ships.fetch()
+        app.state.moving_ingestion.enqueue('ship', snapshot)
+        await app.state.moving_ingestion.flush(timeout=0.1)
+        return snapshot
 
     def tracking_origin_allowed(request):
         return (request.headers.get('sec-fetch-site', 'same-origin') == 'same-origin'

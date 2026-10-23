@@ -1,11 +1,11 @@
 'use strict';
 window.WiciObjectCard = function (host, actions) {
-  const U = window.WiciWorkspaceUI, heading = U.el('div', null, 'analysis-card-heading'), title = U.el('h2', 'Szczegóły obiektu');
+  const U = window.WiciWorkspaceUI, M = window.WiciWorkspaceMotion, heading = U.el('div', null, 'analysis-card-heading'), title = U.el('h2', 'Szczegóły obiektu');
   title.id = 'analysis-card-title'; title.tabIndex = -1; host.setAttribute('aria-labelledby', title.id);
   const close = U.button('Zamknij ×', actions.close); close.id = 'analysis-close-card'; heading.append(title, close);
   const outside = U.el('p', 'Poza bieżącym zakresem. Karta zachowuje wybrany obiekt.', 'notice'), body = U.el('div', null, 'analysis-card-body');
   outside.id = 'analysis-outside-range'; host.append(heading, outside, body);
-  let lastKey = '', lastDetail = null, lastTimeline = null, reading, readingTime, readingNote, readingClocks, officialIndexNode, lastError = '';
+  let lastKey = '', lastDetail = null, lastTimeline = null, reading, readingTime, readingNote, readingClocks, officialIndexNode, lastError = '', movingNodes = null;
   const section = (parent, name) => {const node = U.el('section', null, 'analysis-card-section'); node.append(U.el('h3', name)); parent.append(node); return node;};
   function dl(parent, entries) {const node = U.el('dl'); for (const [key, value] of entries) node.append(U.el('dt', key), U.el('dd', value ?? 'Nie podano')); parent.append(node);}
   function drawSeries(parent, samples, onSample) {
@@ -36,7 +36,7 @@ window.WiciObjectCard = function (host, actions) {
     table.append(tbody); const scroll = U.el('div', null, 'analysis-samples-scroll'); scroll.append(table); parent.append(scroll);
     if (samples.length > 100) parent.append(U.el('small', `Tabela: 100 najnowszych z ${samples.length} odczytanych próbek. Wykres obejmuje wszystkie odczytane punkty.`));
   }
-  function render(detail, timeline, state, sample, {inScope = true, loading = false, error = null, selectedIndex = null} = {}) {
+  function render(detail, timeline, state, sample, {inScope = true, loading = false, error = null, selectedIndex = null, motion = null} = {}) {
     host.hidden = !state.detailOpen; if (!state.detailOpen) return;
     outside.hidden = inScope;
     const object = detail?.object || detail, key = [state.selectedRef, state.selectedVersion, state.selectedSensor, state.selectedMetric].join('|');
@@ -45,7 +45,7 @@ window.WiciObjectCard = function (host, actions) {
     }
     if (lastKey !== key || lastDetail !== detail || lastTimeline !== timeline || lastError !== error) {
       lastKey = key; lastDetail = detail; lastTimeline = timeline; lastError = error;
-      title.textContent = object.label; body.replaceChildren(); reading = readingTime = readingNote = readingClocks = officialIndexNode = null;
+      title.textContent = object.label; body.replaceChildren(); reading = readingTime = readingNote = readingClocks = officialIndexNode = movingNodes = null;
       const meta = U.el('p', `${U.typeNames[object.type]} · ${object.source_id}`, 'analysis-card-type'); body.append(meta);
       body.append(U.button('Pokaż na mapie', () => actions.show(object)));
       if (error) body.append(U.el('p', `${error} Zachowano ostatni zapisany odczyt.`, 'notice'));
@@ -65,6 +65,27 @@ window.WiciObjectCard = function (host, actions) {
         dl(data, [['Kod PRG', object.native_id || object.source_object_id || object.ref.split(':').at(-1)], ['Charakter', 'Bezczasowy obszar referencyjny']]);
         const code = String(object.native_id || object.source_object_id || object.ref.split(':').at(-1));
         data.append(U.button('Komunikaty tego województwa', () => actions.region(code.slice(0, 2))));
+      } else if (M?.isMoving(object)) {
+        const metadata = object.metadata || {}, sessions = detail.track_sessions || [];
+        const watch = U.button('Obserwuj ☆', () => actions.watch(object)); watch.id = 'analysis-watch-object';
+        const compare = U.button('Dodaj do porównania', () => actions.compare(object.ref)); compare.id = 'analysis-compare-object';
+        const start = U.button('Rozpocznij zapis trasy', () => actions.record(object)); start.id = 'analysis-start-recording';
+        const actionsRow = U.el('div', null, 'analysis-moving-actions'); actionsRow.append(watch, compare, start); data.append(actionsRow);
+        dl(data, object.type === 'aircraft' ? [['ICAO', object.native_id || object.ref.split(':').at(-1)], ['Rejestracja', metadata.registration], ['Znak wywoławczy', metadata.callsign], ['Typ samolotu', metadata.type_code], ['Klasyfikacja źródła', metadata.military == null ? 'Nie podano' : metadata.military ? 'Wojskowy według źródła' : 'Pozostałe według źródła']] : [['MMSI', object.native_id || object.ref.split(':').at(-1)], ['IMO', metadata.imo], ['Typ jednostki AIS', metadata.type_code], ['Deklarowany cel', metadata.destination]]);
+        data.append(U.el('p', 'Identyfikatory i metadane pochodzą z ostatniego odczytu źródła. Historia pozycji nie odtwarza dawnych metadanych ani nie potwierdza tożsamości operatora.', 'muted'));
+        const position = section(body, 'Pozycja i ruch'), values = U.el('div'), quality = U.el('p', '', 'muted'); position.append(values, quality);
+        position.append(U.button('Pobierz bieżący odczyt źródła', () => actions.fetchSource(object)));
+        if (object.last_known_position && !object.position) position.append(U.el('p', `Ostatni znany raport: ${U.date(object.last_known_position.position_at)}. Brak świeżej pozycji; nie pokazujemy go jako pozycji bieżącej.`, 'notice'));
+        const history = section(body, 'Sesje zapisu'), stops = [];
+        history.append(U.el('p', 'Obserwowanie zapisuje obiekt na liście. Zapis trasy działa osobno i zbiera kolejne raporty od chwili uruchomienia. Retencja: 7 dni.', 'muted'));
+        for (const session of sessions) {const entry = U.el('div', null, 'analysis-track-session'); entry.dataset.trackId = session.id;
+          entry.append(U.el('strong', `${session.active ? '● Zapis trwa' : 'Zapis zakończony'} · ${U.date(session.started_at)}`), U.el('p', `${session.point_count || 0} raportów · ${U.date(session.first_position_at)} – ${U.date(session.last_position_at)}`, 'muted'));
+          const replay = U.button('Odtwórz tę sesję', () => actions.replaySession(session, object.ref)); replay.disabled = !session.point_count; entry.append(replay);
+          if (session.active) {const stop = U.button('Zatrzymaj zapis', () => actions.record(object, session.id)); stop.dataset.stopTrack = session.id; stops.push(stop); entry.append(stop);}
+          history.append(entry);
+        }
+        if (!sessions.length) history.append(U.el('p', 'Nie ma zapisanych sesji tego obiektu. Rozpocznij zapis, aby zbudować historię.', 'muted'));
+        movingNodes = {watch, compare, start, values, quality, active: sessions.some(session => session.active), stops};
       } else {
         if (object.type === 'hydro_station') {
           const metric = U.el('select'); metric.id = 'analysis-metric';
@@ -93,9 +114,22 @@ window.WiciObjectCard = function (host, actions) {
         if (timeline?.coverage) history.append(U.el('p', typeof timeline.coverage === 'string' ? timeline.coverage : `Zakres historii: ${U.date(timeline.coverage.from)} – ${U.date(timeline.coverage.to)}. Odczyty na żądanie; możliwe luki.`, 'muted'));
       }
       const provenance = section(body, 'Pochodzenie'), source = detail.selected_measurement?.provenance || object.measurement?.provenance || object.provenance || object.metadata?.provenance || {};
-      dl(provenance, [['Źródło', source.attribution || object.source_id], ['Odczyt źródła', U.date(detail.selected_measurement?.fetched_at || object.measurement?.fetched_at || object.fetched_at || source.fetched_at)], ['Stan zestawu', U.date(state.asOf)], ['Geometria', object.type.endsWith('_station') ? 'Ostatnie zapisane metadane; bez odtwarzania dawnych lokalizacji' : 'Lokalne granice PRG / GUGiK']]);
+      dl(provenance, [['Źródło', source.attribution || object.metadata?.source_name || object.source_id], ['Odczyt źródła', U.date(detail.selected_measurement?.fetched_at || object.measurement?.fetched_at || object.fetched_at || source.fetched_at)], ['Stan zestawu', U.date(state.asOf)], ['Geometria', M?.isMoving(object) ? 'Raporty pozycji ADS-B / AIS. Zakres czasu pochodzi z lokalnego zapisu sesji.' : object.type.endsWith('_station') ? 'Ostatnie zapisane metadane; bez odtwarzania dawnych lokalizacji' : 'Lokalne granice PRG / GUGiK']]);
       const link = U.safeLink(source.url || source.source_url || detail.communication?.source_url || detail.communication?.original_url || object.metadata?.source_url); if (link) provenance.append(link);
       if (object.source_id?.includes('imgw')) provenance.append(U.el('p', 'Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane Instytutu zostały przetworzone.', 'muted'));
+    }
+    if (movingNodes) {
+      const watched = motion?.watched ? motion.watched.has(object.ref) : object.watched, compared = state.comparedRefs.includes(object.ref), busy = motion?.busy?.has(object.ref);
+      movingNodes.watch.textContent = watched ? 'Obserwowany ★' : 'Obserwuj ☆'; movingNodes.watch.setAttribute('aria-pressed', String(Boolean(watched))); movingNodes.watch.disabled = Boolean(busy);
+      movingNodes.compare.textContent = compared ? 'Usuń z porównania' : 'Dodaj do porównania'; movingNodes.compare.setAttribute('aria-pressed', String(compared)); movingNodes.compare.disabled = !compared && state.comparedRefs.length >= 5;
+      movingNodes.start.textContent = movingNodes.active ? 'Zapis trwa' : 'Rozpocznij zapis trasy';
+      movingNodes.start.disabled = Boolean(busy || movingNodes.active); for (const stop of movingNodes.stops) stop.disabled = Boolean(busy);
+      const historical = state.query.time.mode === 'range', frame = motion?.frames?.get(object.ref), current = detail._detailRevision === state.detailRevision && detail._queryRevision === state.queryRevision;
+      const position = historical ? frame?.point : current ? object.position : null;
+      movingNodes.values.replaceChildren();
+      if (!historical && !current) movingNodes.values.append(U.el('p', loading || !error ? 'Odświeżanie pozycji dla aktualnego zestawu…' : 'Pozycja wymaga ponownego odczytu spójnego zestawu. Użyj „Odśwież zestaw”.', 'muted'));
+      else dl(movingNodes.values, [['Czas raportu', U.date(position?.position_at || position?.at)], ['Szerokość', Number.isFinite(position?.latitude) ? position.latitude.toFixed(5) : 'Brak pozycji'], ['Długość', Number.isFinite(position?.longitude) ? position.longitude.toFixed(5) : 'Brak pozycji'], ['Prędkość', M.number(position?.speed_kmh, 'km/h')], ...(object.type === 'aircraft' ? [['Wysokość', M.number(position?.altitude_m, 'm')]] : []), ['Kurs', M.number(position?.heading, '°')]]);
+      movingNodes.quality.textContent = historical ? `Według wspólnego kursora · ${M.describe(frame, U)}` : !current ? 'Szczegóły pochodzą z poprzedniego zestawu; trwa uzgadnianie z katalogiem.' : `${U.statusNames[object.freshness] || object.freshness || 'Czas nieznany'} · status źródła: ${U.statusNames[object.source_status] || object.source_status || 'nie podano'}`;
     }
     if (officialIndexNode) officialIndexNode.textContent = selectedIndex ? `Oficjalny indeks ogólny: ${selectedIndex.name || (selectedIndex.value ?? 'brak')} · ${U.date(selectedIndex.observed_at)}${state.cursorAt ? ' · Według kursora' : ''}` : 'Brak zapisanego oficjalnego indeksu dla tego czasu.';
     if (reading) {

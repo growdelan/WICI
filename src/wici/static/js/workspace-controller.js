@@ -1,19 +1,80 @@
 'use strict';
 window.WiciWorkspace = (() => {
-  const U = window.WiciWorkspaceUI, S = window.WiciWorkspaceStore;
-  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views;
-  let host, shell, toolbar, catalog, timelineHost, cardHost, search, province, message, status, split, sourceSelect, sourceCoverage;
+  const U = window.WiciWorkspaceUI, S = window.WiciWorkspaceStore, M = window.WiciWorkspaceMotion;
+  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView;
+  let host, shell, toolbar, catalog, timelineHost, cardHost, search, province, message, status, split, sourceSelect, sourceCoverage, persistenceNotice;
   const columnControls = new Map();
   let data = null, detail = null, timeline = null, detailError = null, detailLoading = false;
   let queryAbort, detailAbort, queryRun = 0, detailRun = 0, pageCursor = null, searchTimer, refreshTimer, sourceRefreshTimer;
-  let persistence = null, persistenceWarning = false;
+  let persistence = null, movingPersistence = null, persistenceWarning = false;
   let trigger = null, wantsFocus = false, lastControlsQuery = null, lastLayout = null, sourceEnabled = true;
+  let replayData = null, replayLoading = false, replayError = null, replayAbort, replayRun = 0, replayKey = '';
+  let watchedItems = [], watchedRefs = null, watchlistHost, watchlistSummary, watchlistKey = '', watchlistRun = 0;
+  const movingBusy = new Set();
   const controls = new Map(), checkboxOptions = new Map(), localKey = 'wici.analysis.layout.v1';
+  let messageKind = 'general';
   const health = () => typeof options.health === 'function' ? options.health() : options.health || {};
   const now = () => health().now || new Date().toISOString();
   const request = (...args) => options.api(...args);
   const dispatch = action => store.dispatch(action);
-  function notify(text) {message.textContent = text || '';}
+  function notify(text, kind = 'general') {messageKind = kind; message.textContent = text || '';}
+  function motionContext() {
+    const state = store.getState(), labels = new Map([...watchedItems, ...(data?.items || [])].map(item => [item.ref, item.label]));
+    if (detail?.object) labels.set(detail.object.ref, detail.object.label);
+    const frames = new Map();
+    if (state.query.time.mode === 'range') for (const [index, ref] of state.comparedRefs.entries()) {
+      const series = replayData?.series?.find(item => item.ref === ref), frame = replayLoading ? {status: 'loading', point: null} : replayError ? {status: 'error', point: null} : M?.frameAt(series, state.cursorAt, state.query.time.filter_range) || {status: 'empty', point: null};
+      frames.set(ref, {...frame, label: series?.label || labels.get(ref) || ref, color: M?.colors[index]});
+    }
+    return {data: replayData, loading: replayLoading, error: replayError, frames, labels, watched: watchedRefs, busy: movingBusy};
+  }
+  function renderWatchlist() {
+    if (!watchlistHost) return;
+    const state = store.getState(), key = JSON.stringify([watchedItems.map(item => [item.ref, item.label]), state.comparedRefs, [...movingBusy]]);
+    if (key === watchlistKey) return; watchlistKey = key;
+    watchlistSummary.textContent = `Obserwowane (${watchedItems.length})`;
+    watchlistHost.replaceChildren(U.el('p', 'Lista jest zapisywana w lokalnej bazie WICI. Obserwowanie nie uruchamia zapisu trasy.', 'muted'));
+    for (const item of watchedItems) {const row = U.el('div', null, 'analysis-watchlist-row'); row.dataset.ref = item.ref;
+      const compared = state.comparedRefs.includes(item.ref), compare = U.button(compared ? 'Usuń z porównania' : 'Porównaj', () => toggleCompare(item.ref)), remove = U.button('Przestań obserwować', () => toggleWatch(item));
+      compare.disabled = !compared && state.comparedRefs.length >= 5; compare.setAttribute('aria-pressed', String(compared)); remove.disabled = movingBusy.has(item.ref);
+      row.append(U.button(item.label || item.ref, () => selectObject(item.ref)), compare, remove); watchlistHost.append(row);
+    }
+    if (!watchedItems.length) watchlistHost.append(U.el('p', 'Dodaj samolot lub statek przyciskiem „Obserwuj” w katalogu albo w karcie.', 'muted'));
+  }
+  async function loadWatchlist() {
+    const run = ++watchlistRun;
+    try {const result = await request('/workspace/watchlist'); if (run !== watchlistRun) return; watchedItems = result.items || []; watchedRefs = new Set(watchedItems.map(item => item.ref)); watchlistKey = ''; render();}
+    catch (error) {notify(`Nie udało się odczytać listy obserwowanych: ${error.message}`);}
+  }
+  async function toggleWatch(object) {
+    if (movingBusy.has(object.ref)) return;
+    const watched = watchedRefs ? watchedRefs.has(object.ref) : object.watched; movingBusy.add(object.ref); render();
+    try {await request(`/workspace/watchlist/${encodeURIComponent(object.ref)}`, watched ? null : {}, {method: watched ? 'DELETE' : 'PUT'});
+      watchedItems = watchedItems.filter(item => item.ref !== object.ref); if (!watched) watchedItems.push({...object, watched: true}); watchedRefs = new Set(watchedItems.map(item => item.ref));
+      await loadWatchlist(); dispatch({type: 'REFRESH'}); notify(watched ? 'Usunięto z obserwowanych. Sesje zapisu trwają niezależnie.' : 'Dodano do obserwowanych. Zapis trasy uruchomisz osobno w karcie.');}
+    catch (error) {notify(`Nie udało się zmienić obserwowania: ${error.message}`);} finally {movingBusy.delete(object.ref); render();}
+  }
+  function toggleCompare(ref) {
+    const state = store.getState(); if (!state.comparedRefs.includes(ref) && state.comparedRefs.length >= 5) {notify('Możesz porównywać do pięciu obiektów. Usuń jeden z porównania.'); return;}
+    dispatch({type: 'TOGGLE_COMPARE', ref});
+  }
+  function compareDay() {const end = new Date(now()).getTime(); dispatch({type: 'SET_TIME_RANGE', range: {from: new Date(end - 86400000).toISOString(), to: new Date(end).toISOString()}});}
+  async function loadReplay(force = false) {
+    const state = store.getState(), range = state.query.time.filter_range, key = JSON.stringify([state.comparedRefs, range]);
+    if (!force && key === replayKey) return;
+    replayKey = key; replayAbort?.abort(); const run = ++replayRun; replayData = null; replayError = null; replayLoading = false;
+    if (!active || !visible || document.hidden || !range || !state.comparedRefs.length || !M) {render(); return;}
+    replayAbort = new AbortController(); replayLoading = true; render();
+    try {const result = await request('/workspace/moving/replay', {refs: state.comparedRefs, ...range}, {signal: replayAbort.signal});
+      if (run !== replayRun || !active) return; replayData = result; replayLoading = false; render();
+    } catch (error) {if (error.name === 'AbortError' || run !== replayRun) return; replayLoading = false; replayError = error.message; render();}
+  }
+  async function record(object, sessionId = null) {
+    if (movingBusy.has(object.ref)) return; movingBusy.add(object.ref); render();
+    try {await request(sessionId == null ? '/tracks' : `/tracks/${encodeURIComponent(sessionId)}/stop`, sessionId == null ? {kind: object.type, object_id: object.ref.split(':').at(-1)} : {});
+      notify(sessionId == null ? 'Uruchomiono zapis kolejnych obserwacji. Wcześniejsze pozycje nie są uzupełniane.' : 'Zatrzymano zapis. Zapisana sesja pozostaje dostępna do porównania.'); await loadQuery(); loadReplay(true);
+    } catch (error) {notify(`Nie udało się zmienić zapisu trasy: ${error.message}`);} finally {movingBusy.delete(object.ref); render();}
+  }
   function currentSample() {
     const state = store.getState(), object = detail?.object || detail;
     if (object?.ref !== state.selectedRef || detail?._detailRevision !== state.detailRevision || detail?._queryRevision !== state.queryRevision) return null;
@@ -37,7 +98,7 @@ window.WiciWorkspace = (() => {
   }
   function render() {
     if (!initialized) return;
-    const state = store.getState(), sample = currentSample();
+    const state = store.getState(), sample = currentSample(), motion = motionContext();
     shell.classList.toggle('analysis-card-open', active && state.detailOpen);
     shell.dataset.analysisPanel = state.layout.mobilePanel;
     shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
@@ -54,15 +115,18 @@ window.WiciWorkspace = (() => {
       options.map?.invalidateSize?.();
     }
     for (const [column, control] of columnControls) control.checked = state.columns.includes(column);
-    tableView.render(data, state, sample); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading}); mapView.render(data, state, sample, currentIndex());
+    tableView.render(data, state, sample, motion); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion}); mapView.render(data, state, sample, currentIndex(), motion); motionView?.render(state, motion); renderWatchlist();
     const mapItems = data?.map?.items || [...(data?.map?.points || []), ...(data?.map?.areas || [])];
     const inScope = detail?.in_scope ?? (!data || data.items.some(item => item.ref === state.selectedRef) || mapItems.some(item => item.ref === state.selectedRef));
-    cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: currentIndex()});
+    cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: currentIndex(), motion});
     sourceCoverage.replaceChildren();
     for (const source of data?.coverage?.sources || []) sourceCoverage.append(U.el('p', `${source.resource}: ${U.statusNames[source.status] || source.status} · ${source.item_count || 0} rekordów · odczyt ${U.date(source.fetched_at)}${source.complete === false || source.complete === 0 ? ' · zakres niepełny' : ''}`, 'muted'));
     if (persistence) sourceCoverage.append(U.el('p', `Zapis historii: ${persistence.pending || 0} w kolejce · ${Object.keys(persistence.errors || {}).length} błędów · ${persistence.rejected_submissions || 0} pominiętych odczytów`, 'muted'));
+    if (movingPersistence) sourceCoverage.append(U.el('p', `Katalog samolotów i statków: ${movingPersistence.pending || 0} oczekujących zapisów · ${Object.keys(movingPersistence.errors || {}).length} błędów · ${movingPersistence.coalesced_snapshots || 0} odczytów zastąpionych nowszymi w kolejce. Zapis tras działa osobno.`, Object.keys(movingPersistence.errors || {}).length ? 'notice' : 'muted'));
+    persistenceNotice.textContent = Object.keys(movingPersistence?.errors || {}).length ? 'Nie udało się zapisać odczytu samolotów lub statków w katalogu Analizy. Katalog może być nieaktualny. Ponów odczyt źródła w karcie; szczegóły są w „Pokrycie i aktualność źródeł”.' : movingPersistence?.pending ? 'Odczyt transportu oczekuje na zapis w katalogu Analizy. Po zakończeniu odśwież zestaw; źródło i katalog mogą chwilowo różnić się aktualnością.' : '';
     sourceCoverage.append(U.el('small', 'Historia pomiarów powstaje z odczytów na żądanie, przez 14 dni. Daty pierwszego i ostatniego pomiaru nie gwarantują ciągłego pokrycia.'));
-    status.textContent = state.error ? `Odczyt nie powiódł się: ${state.error}. Ostatni zestaw pozostaje dostępny.` : state.loading ? 'Odświeżanie wspólnego zestawu…' : data ? `${data.total} obiektów · mapa: ${data.map?.located_total ?? 0} z geometrią, ${data.map?.unlocated_total ?? 0} bez geometrii · stan na ${U.date(data.as_of)}${data.map?.mode === 'aggregates' ? ' · agregaty: zawęź typ, region lub nazwę' : ''}` : 'Przygotowywanie katalogu…';
+    const replayStatus = state.query.time.mode === 'range' && state.query.types.some(type => ['aircraft', 'ship'].includes(type)) ? ` · mapa tras przy kursorze: ${[...motion.frames.values()].filter(frame => frame.point).length} z ${state.comparedRefs.length} porównywanych obiektów` : '';
+    status.textContent = state.error ? `Odczyt nie powiódł się: ${state.error}. Ostatni zestaw pozostaje dostępny.` : state.loading ? 'Odświeżanie wspólnego zestawu…' : data ? `${data.total} obiektów · ${replayStatus ? 'katalog' : 'mapa'}: ${data.map?.located_total ?? 0} z geometrią, ${data.map?.unlocated_total ?? 0} bez geometrii${replayStatus} · stan na ${U.date(data.as_of)}${data.map?.mode === 'aggregates' ? ' · agregaty: zawęź typ, region lub nazwę' : ''}` : 'Przygotowywanie katalogu…';
     positionCard();
   }
   function queryPayload(state, cursor) {return {...state.query, cursor, query_revision: state.queryRevision};}
@@ -75,7 +139,8 @@ window.WiciWorkspace = (() => {
       if (run !== queryRun || revision !== store.getState().queryRevision || !active) return;
       data = {...result, _pageCursor: cursor}; pageCursor = cursor;
       dispatch({type: 'DATA_READY', revision, dataRevision: result.data_revision, asOf: result.as_of});
-      if (result.warnings?.length) notify(result.warnings.map(item => typeof item === 'string' ? item : item.message || item.code || JSON.stringify(item)).join(' · '));
+      const warning = (result.warnings || []).map(item => typeof item === 'string' ? item : item.message || item.code || JSON.stringify(item)).join(' · ');
+      if (warning || messageKind === 'query') notify(warning, 'query');
       if (sourceEnabled && state.query.time.mode === 'live') sourceManager?.demandIndexes?.((result.items || []).filter(item => item.type === 'air_quality_station').map(item => item.native_id || item.source_object_id || item.ref.split(':').at(-1)));
       if (store.getState().detailOpen) loadDetail();
     } catch (error) {
@@ -140,6 +205,7 @@ window.WiciWorkspace = (() => {
     notify('Odczyt źródła… Wybrany przedział pozostaje bez zmian.');
     try {
       if (object.type === 'hydro_station') await sourceManager.request('/hydro?kind=stations');
+      if (object.type === 'aircraft' || object.type === 'ship') await sourceManager.request(object.type === 'aircraft' ? '/aircraft' : '/ships');
       if (object.type === 'air_quality_station') {
         const stationId = object.native_id || object.source_object_id || object.ref.split(':').at(-1);
         const sensors = await sourceManager.loadSensors(stationId);
@@ -152,15 +218,20 @@ window.WiciWorkspace = (() => {
     } catch (error) {notify(`Nie udało się pobrać danych: ${error.message}`);}
   }
   function refreshSourceStatus() {
-    return request('/workspace/status').then(result => {persistence = result.persistence || null; const incomplete = Boolean(persistence && (Number(persistence.rejected_submissions) > 0 || Object.keys(persistence.errors || {}).length));
+    return request('/workspace/status').then(result => {persistence = result.persistence || null; movingPersistence = result.moving_persistence || null;
+      const incomplete = Boolean(persistence && (Number(persistence.rejected_submissions) > 0 || Object.keys(persistence.errors || {}).length)), movingFailed = Boolean(Object.keys(movingPersistence?.errors || {}).length);
       if (incomplete) notify('Zapis historii jest niepełny: kolejka odnotowała pominięte lub nieudane zapisy.');
-      else if (persistenceWarning) notify('Zapis historii działa ponownie. Wcześniejsze luki nie są automatycznie uzupełniane.');
-      persistenceWarning = incomplete; render();
+      else if (persistenceWarning && !movingFailed && !movingPersistence?.pending) notify('Zapis katalogu i historii działa ponownie. Odśwież zestaw. Wcześniejsze luki historii nie są automatycznie uzupełniane.');
+      persistenceWarning = incomplete || movingFailed; render();
     }).catch(() => {});
   }
   function sourceChanged(event) {
     if (!active || !visible || document.hidden) return;
     if (event.error) {if (event.error.name !== 'AbortError') notify(`Źródło chwilowo niedostępne: ${event.error.message}. Zapisane dane pozostają dostępne.`); return;}
+    if (event.data?.analysis_persistence) {movingPersistence = event.data.analysis_persistence;
+      if (Object.keys(movingPersistence.errors || {}).length) persistenceWarning = true;
+      render();
+    }
     if (sourceRefreshTimer) return;
     sourceRefreshTimer = setTimeout(() => {sourceRefreshTimer = null; if (active) {dispatch({type: 'REFRESH'}); refreshSourceStatus();}}, 1000);
   }
@@ -182,22 +253,22 @@ window.WiciWorkspace = (() => {
       clearTimeout(searchTimer); const value = search.value;
       searchTimer = setTimeout(() => {searchTimer = null; dispatch({type: 'SET_QUERY', patch: {q: value}});}, 250);
     });
-    province = U.el('select'); province.id = 'analysis-province'; const all = U.el('option', 'Cała Polska'); all.value = ''; province.append(all);
+    province = U.el('select'); province.id = 'analysis-province'; const all = U.el('option', 'Wszystkie obszary'); all.value = ''; province.append(all);
     const regions = [...(options.geometries || new Map())].filter(([key]) => /^\d{2}$/.test(key)).sort((a, b) => a[1].properties.name.localeCompare(b[1].properties.name, 'pl'));
     for (const [code, feature] of regions) {const option = U.el('option', feature.properties.name); option.value = code; province.append(option);}
     province.addEventListener('change', () => chooseRegion(province.value)); fields.append(U.field('Szukaj w katalogu', search), U.field('Obszar danych', province));
     const types = U.el('div', null, 'analysis-type-filters'); types.setAttribute('role', 'group'); types.setAttribute('aria-label', 'Typy obiektów');
     for (const type of S.TYPES) {const button = U.button(U.typeNames[type], () => {
       const current = store.getState().query.types, next = current.includes(type) ? current.filter(item => item !== type) : [...current, type];
-      if (!next.length) {notify('Wybierz co najmniej jeden typ obiektu.'); return;} sourceEnabled = true; dispatch({type: 'SET_QUERY', patch: {types: next}});
+      if (!next.length) {notify('Wybierz co najmniej jeden typ obiektu.', 'query'); return;} sourceEnabled = true; dispatch({type: 'SET_QUERY', patch: {types: next}});
     }); button.dataset.objectType = type; button.setAttribute('aria-pressed', 'false'); controls.set(type, button); types.append(button);}
     sourceSelect = U.el('select'); sourceSelect.id = 'analysis-source';
-    for (const [id, name] of [['', 'Wszystkie źródła'], ['imgw_meteo', 'Ostrzeżenia IMGW'], ['rso', 'RSO'], ['rcb', 'RCB'], ['sg', 'Straż Graniczna'], ['imgw', 'Wodowskazy IMGW'], ['gios', 'GIOŚ'], ['prg', 'PRG']]) {const option = U.el('option', name); option.value = id; sourceSelect.append(option);}
+    for (const [id, name] of [['', 'Wszystkie źródła'], ['imgw_meteo', 'Ostrzeżenia IMGW'], ['rso', 'RSO'], ['rcb', 'RCB'], ['sg', 'Straż Graniczna'], ['imgw', 'Wodowskazy IMGW'], ['gios', 'GIOŚ'], ['prg', 'PRG'], ['aircraft', 'Samoloty · ADS-B'], ['ships', 'Statki · AIS']]) {const option = U.el('option', name); option.value = id; sourceSelect.append(option);}
     sourceSelect.addEventListener('change', () => dispatch({type: 'SET_QUERY', patch: {source_ids: sourceSelect.value ? [sourceSelect.value] : []}})); fields.append(U.field('Źródło', sourceSelect));
     const advanced = U.el('details', null, 'analysis-query-options'); advanced.append(U.el('summary', 'Zakres i układ'));
     const advancedBody = U.el('div', null, 'analysis-option-fields');
-    for (const [key, label] of [['include_periods', 'Także okresy ważności i udostępniania'], ['include_unlocated', 'Uwzględnij obiekty bez geometrii'], ['include_without_samples', 'Tylko stacje z pomiarami w przedziale']]) {
-      const checkbox = U.el('input'); checkbox.type = 'checkbox'; checkbox.id = `analysis-${key}`;
+    for (const [key, label] of [['include_periods', 'Także okresy ważności i udostępniania'], ['include_unlocated', 'Uwzględnij obiekty bez geometrii'], ['include_without_samples', 'Tylko stacje z pomiarami w przedziale'], ['watched_only', 'Tylko obserwowane samoloty i statki']]) {
+      const checkbox = U.el('input'); checkbox.type = 'checkbox'; checkbox.id = key === 'watched_only' ? 'analysis-watched-only' : `analysis-${key}`;
       checkbox.addEventListener('change', () => dispatch({type: 'SET_QUERY', patch: {[key]: key === 'include_without_samples' ? !checkbox.checked : checkbox.checked}}));
       const labelNode = U.field(label, checkbox); labelNode.className = 'analysis-checkbox'; advancedBody.append(labelNode); checkboxOptions.set(key, checkbox);
     }
@@ -205,12 +276,14 @@ window.WiciWorkspace = (() => {
     split = U.el('input'); split.type = 'range'; split.min = '25'; split.max = '65'; split.step = '1'; split.id = 'analysis-table-size';
     split.addEventListener('input', () => dispatch({type: 'SET_LAYOUT', patch: {tablePercent: Number(split.value)}})); advancedBody.append(U.field('Szerokość tabeli względem mapy', split)); advanced.append(advancedBody);
     message = U.el('p', '', 'analysis-message'); message.id = 'analysis-message'; message.setAttribute('role', 'status');
+    persistenceNotice = U.el('p', '', 'analysis-message'); persistenceNotice.id = 'analysis-persistence-status'; persistenceNotice.setAttribute('role', 'status');
     status = U.el('p', '', 'analysis-query-status'); status.id = 'analysis-status'; status.setAttribute('role', 'status');
     const coverage = U.el('details', null, 'analysis-source-coverage'); coverage.append(U.el('summary', 'Pokrycie i aktualność źródeł')); sourceCoverage = U.el('div'); coverage.append(sourceCoverage);
-    toolbar.append(top, fields, types, advanced, status, message, coverage);
+    toolbar.append(top, fields, types, advanced, status, message, persistenceNotice, coverage);
+    const watchlist = U.el('details', null, 'analysis-watchlist'); watchlist.id = 'analysis-watchlist'; watchlistSummary = U.el('summary', 'Obserwowane (0)'); watchlistHost = U.el('div'); watchlistHost.id = 'analysis-watchlist-items'; watchlist.append(watchlistSummary, watchlistHost); toolbar.append(watchlist);
     views = window.WiciWorkspaceViews(toolbar, {request, status: notify, getConfig() {
       const state = store.getState(), center = options.map?.getCenter?.();
-      return {query: structuredClone(state.query), layout: {...state.layout}, columns: [...state.columns], selectedRef: state.selectedRef,
+      return {query: structuredClone(state.query), layout: {...state.layout}, columns: [...state.columns], selectedRef: state.selectedRef, comparedRefs: [...state.comparedRefs],
         camera: center ? {lat: center.lat, lng: center.lng, zoom: options.map.getZoom()} : null};
     }, apply(config, id) {
       sourceEnabled = false; sourceManager?.deactivate?.();
@@ -225,31 +298,42 @@ window.WiciWorkspace = (() => {
     try {const saved = JSON.parse(localStorage.getItem(localKey)); if (saved && typeof saved === 'object') store.dispatch({type: 'SET_LAYOUT', patch: {tablePercent: Math.max(25, Math.min(65, Number(saved.tablePercent) || 42)), mobilePanel: saved.mobilePanel === 'map' ? 'map' : 'table'}});} catch { /* Default layout is sufficient. */ }
     toolbar = U.el('section', null, 'analysis-toolbar'); catalog = U.el('section', null, 'analysis-catalog'); timelineHost = U.el('section', null, 'analysis-timeline'); cardHost = U.el('aside', null, 'analysis-card');
     cardHost.id = 'analysis-card'; cardHost.hidden = true; host.append(toolbar, catalog, timelineHost, cardHost); createToolbar();
-    tableView = window.WiciWorkspaceTable(catalog, {select: selectObject, sort(field) {const current = store.getState().query.sort; dispatch({type: 'SET_QUERY', patch: {sort: {field, direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc'}}});}, next: () => loadQuery(data?.next_cursor), first: () => loadQuery(null)});
+    tableView = window.WiciWorkspaceTable(catalog, {select: selectObject, compare: toggleCompare, watch: toggleWatch, sort(field) {const current = store.getState().query.sort; dispatch({type: 'SET_QUERY', patch: {sort: {field, direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc'}}});}, next: () => loadQuery(data?.next_cursor), first: () => loadQuery(null)});
     timelineView = window.WiciWorkspaceTimeline.create(timelineHost, {dispatch, getState: store.getState, now});
+    motionView = M?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_COMPARE'}), select: selectObject, range: compareDay, fit: () => mapView.fitTracks?.(replayData)});
     mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: selectObject, narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
-    cardView = window.WiciObjectCard(cardHost, {close: closeCard, show(object) {dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}}); if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => selectObject(store.getState().selectedRef, document.activeElement, version), region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
+    cardView = window.WiciObjectCard(cardHost, {close: closeCard, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
+      const lower = Date.parse(session.first_position_at || session.started_at), upper = Date.parse(session.last_position_at || session.stopped_at || now());
+      if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
+      if (!store.getState().comparedRefs.includes(ref)) toggleCompare(ref);
+      if (!store.getState().comparedRefs.includes(ref)) return;
+      dispatch({type: 'SET_TIME_RANGE', range: {from: new Date(Math.floor(lower / 60000) * 60000).toISOString(), to: new Date(Math.max(lower + 60000, Math.ceil((upper + 1) / 60000) * 60000)).toISOString()}});
+    }, show(object) {dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}});
+      if (M?.isMoving(object) && store.getState().query.time.mode === 'range') {const point = motionContext().frames.get(object.ref)?.point; if (!point) {notify('Brak zapisanej pozycji przy kursorze. Dodaj obiekt do porównania i wybierz czas raportu.'); return;} object = {...object, latitude: point.latitude, longitude: point.longitude};}
+      if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => selectObject(store.getState().selectedRef, document.activeElement, version), region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
     store.subscribe((state, previous, action) => {
       if (action.type === 'APPLY_VIEW') {clearTimeout(searchTimer); searchTimer = null;}
-      if (state.queryRevision !== previous.queryRevision) {pageCursor = null; detailAbort?.abort(); ++detailRun; if (action.type !== 'REFRESH') syncSources(); loadQuery();}
+      if (state.queryRevision !== previous.queryRevision) {pageCursor = null; detailAbort?.abort(); ++detailRun; if (action.type !== 'REFRESH') syncSources(); loadQuery(); loadReplay(action.type === 'REFRESH');}
       else if (state.detailRevision !== previous.detailRevision) {syncSensor(); detailAbort?.abort(); ++detailRun; if (state.detailOpen) loadDetail();}
+      if (state.comparedRefs !== previous.comparedRefs && state.queryRevision === previous.queryRevision) loadReplay();
+      if (action.type === 'SET_TIME_RANGE' || action.type === 'RETURN_TO_LIVE' || action.type === 'APPLY_VIEW') timelineView.pause?.();
       render();
     });
     sourceManager?.subscribe?.(sourceChanged);
     window.addEventListener?.('resize', positionCard);
     document.addEventListener('keydown', event => {if (active && event.key === 'Escape' && store.getState().detailOpen) {event.preventDefault(); closeCard();}});
-    document.addEventListener('visibilitychange', () => {syncSources(); if (!document.hidden && active && visible) loadQuery(pageCursor);});
+    document.addEventListener('visibilitychange', () => {syncSources(); if (document.hidden) timelineView.pause?.(); if (!document.hidden && active && visible) {loadQuery(pageCursor); loadReplay(true);}});
     for (const disclosure of toolbar.querySelectorAll?.('details') || []) disclosure.addEventListener('toggle', positionCard);
     initialized = true; render(); host.hidden = true;
   }
   function setActive(value) {
     if (!initialized || active === Boolean(value)) return; active = Boolean(value); host.hidden = !active; shell.classList.toggle('analysis-active', active); mapView.setActive(active); syncSources();
     clearInterval(refreshTimer); refreshTimer = null;
-    if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); refreshSourceStatus(); refreshTimer = setInterval(() => {if (store.getState().query.time.mode === 'live' && visible && !document.hidden) loadQuery(pageCursor);}, 60000);}
-    else {queryAbort?.abort(); detailAbort?.abort(); ++queryRun; ++detailRun; shell.classList.remove('analysis-card-open');}
+    if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); refreshSourceStatus(); loadWatchlist(); loadReplay(true); refreshTimer = setInterval(() => {if (store.getState().query.time.mode === 'live' && visible && !document.hidden) loadQuery(pageCursor);}, 60000);}
+    else {queryAbort?.abort(); detailAbort?.abort(); replayAbort?.abort(); ++queryRun; ++detailRun; ++replayRun; timelineView.pause?.(); shell.classList.remove('analysis-card-open');}
     options.map?.invalidateSize?.(); options.onModeChange?.(active);
   }
-  function setVisible(value) {if (visible === Boolean(value)) return; visible = Boolean(value); syncSources(); if (visible && active) loadQuery(pageCursor);}
+  function setVisible(value) {if (visible === Boolean(value)) return; visible = Boolean(value); syncSources(); if (!visible) timelineView.pause?.(); if (visible && active) {loadQuery(pageCursor); loadReplay(true);}}
   return {init, setActive, setVisible, setRegion, refresh: () => initialized && dispatch({type: 'REFRESH'}), selectObject,
     isActive: () => active, getState: () => store?.getState(), getData: () => data};
 })();

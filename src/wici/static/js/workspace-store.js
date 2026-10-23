@@ -1,13 +1,15 @@
 'use strict';
 /* Serializable intent state. Network responses and Leaflet handles belong to controllers. */
 (function (root) {
-  const TYPES = ['communication', 'hydro_station', 'air_quality_station', 'area'];
+  const TYPES = ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship'];
+  const movingRef = ref => typeof ref === 'string' && /^(aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9]\d{8})$/.test(ref);
+  const compared = refs => [...new Set((Array.isArray(refs) ? refs : []).filter(movingRef))].slice(0, 5);
   function initialState() {
     return {query: {types: ['communication'], source_ids: [], q: '', province: null,
       time: {mode: 'live', overview_range: null, filter_range: null}, include_periods: true,
-      include_unlocated: true, include_without_samples: true, sort: {field: 'label', direction: 'asc'}, page_size: 100},
+      include_unlocated: true, include_without_samples: true, watched_only: false, sort: {field: 'label', direction: 'asc'}, page_size: 100},
     selectedRef: null, selectedVersion: null, selectedSensor: null, selectedMetric: null,
-    cursorAt: null, detailOpen: false, layout: {tablePercent: 42, mobilePanel: 'table'},
+    cursorAt: null, comparedRefs: [], detailOpen: false, layout: {tablePercent: 42, mobilePanel: 'table'},
     columns: ['label', 'type', 'updated_at', 'measurement'], savedViewId: null, queryRevision: 0, detailRevision: 0, dataRevision: null, asOf: null, loading: false, error: null};
   }
   function changed(state, query) {
@@ -35,13 +37,19 @@
       }
       case 'SET_COLUMNS': return {...state, columns: action.columns.includes('label') ? action.columns : ['label', ...action.columns]};
       case 'SET_LAYOUT': return {...state, layout: {...state.layout, ...action.patch}};
+      case 'TOGGLE_COMPARE': {
+        if (!movingRef(action.ref)) return state;
+        if (state.comparedRefs.includes(action.ref)) return {...state, comparedRefs: state.comparedRefs.filter(ref => ref !== action.ref)};
+        return state.comparedRefs.length >= 5 ? state : {...state, comparedRefs: [...state.comparedRefs, action.ref]};
+      }
+      case 'CLEAR_COMPARE': return {...state, comparedRefs: []};
       case 'APPLY_VIEW': {
         const config = action.config || {}, query = {...initialState().query, ...config.query};
         if (query.time?.mode === 'range') {const normalize = range => range ? {from: range.from || range.start, to: range.to || range.end} : null; query.time = {...query.time, overview_range: normalize(query.time.overview_range), filter_range: normalize(query.time.filter_range)};}
         const next = changed(state, query);
         return {...next, layout: {...state.layout, ...config.layout}, savedViewId: action.id || null,
           columns: config.columns || state.columns, selectedRef: config.selectedRef || null, detailOpen: Boolean(config.selectedRef), selectedVersion: null,
-          selectedSensor: null, selectedMetric: null, detailRevision: state.detailRevision + 1};
+          selectedSensor: null, selectedMetric: null, comparedRefs: compared(config.comparedRefs), detailRevision: state.detailRevision + 1};
       }
       case 'VIEW_SAVED': return {...state, savedViewId: action.id};
       case 'DATA_LOADING': return {...state, loading: true, error: null};
@@ -67,7 +75,7 @@
         !['future', 'unknown_time'].includes(sample.quality || sample.time_status);
     }).sort((a, b) => Date.parse(b.observed_at || b.at) - Date.parse(a.observed_at || a.at) || (b.revision || 0) - (a.revision || 0))[0] || null;
   }
-  const exported = {TYPES, initialState, reducer, createStore, sampleAt};
+  const exported = {TYPES, initialState, reducer, createStore, sampleAt, movingRef};
   root.WiciWorkspaceStore = exported;
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
 })(typeof window !== 'undefined' ? window : globalThis);

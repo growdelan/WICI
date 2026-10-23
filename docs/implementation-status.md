@@ -258,3 +258,23 @@ Zakładka „Analiza” udostępnia katalog komunikatów, wodowskazów IMGW, sta
 Addytywne migracje 015/016 wprowadzają projekcję katalogu i 14-dniową historię odczytów na żądanie. Korekty oraz brak pomiaru pozostają jawne, a oficjalny indeks GIOŚ jest niezależny od stężenia substancji. Wspólny manager odczytów zachowuje cache i limity. Przejście między Sytuacją i Analizą zachowuje ustawienia Atlasu oraz aktywny zapis tras. [Instrukcja](analysis-workspace.md).
 
 Weryfikacja: **880 testów Python, 322 testy Node, 2 nowe scenariusze Chromium i 27 istniejących scenariuszy Chromium** zaliczonych, w tym ponowne próby po poprawkach preferencji, regionu i GIOŚ. Ruff, składnia JS, lockfile i diff poprawne. Dla miliona pomiarów p95 lokalnego zapytania po rozgrzaniu wyniosło 54,99 ms, a pierwsze zapytanie 2204,74 ms. Testy offline na tymczasowych bazach; bez weryfikacji usług LIVE, Safari i Firefox. [Raport, polecenia i ograniczenia](analysis-workspace-verification.md).
+
+## v0.31.0 — Analiza samolotów i statków — 23.10.2026
+
+Na branchu `codex/wici-analysis-moving-objects` katalog Analizy obejmuje samoloty
+i statki. Karty udostępniają metadane, aktualność, zapisane sesje oraz rozpoczęcie
+i zakończenie zapisu. Trwała lista obserwowanych jest niezależna od nagrywania.
+Można porównać do pięciu obiektów na zsynchronizowanej mapie, tabeli i osi czasu,
+z wykresami prędkości i wysokości. Kursor korzysta wyłącznie z zapisanych raportów;
+luki i granice sesji pozostają widoczne. [Instrukcja](analysis-moving-objects.md).
+
+Migracja 017 zachowuje istniejący katalog i historię stacji. Ograniczona kolejka
+projekcji korzysta ze wspólnych odczytów adsb.fi/AISStream; dotychczasowy kolektor
+tras nadal odpowiada za zapis punktów. Błędy utrwalenia są widoczne, a zajęta baza
+nie zatrzymuje odpowiedzi istniejącej warstwy samolotów na czas oczekiwania SQLite.
+
+Weryfikacja obejmuje pełny zestaw Python/Node, cztery nowe i piętnaście wcześniejszych
+scenariuszy Chromium, budowę paczki oraz kontrolę migracji i regresji.
+Testy automatyczne są offline, na tymczasowych bazach. Osobna próba LIVE potwierdziła
+odczyt adsb.fi/AISStream, obserwowanie, zapis i wspólne odtwarzanie dwóch obiektów.
+Safari i Firefox nie były sprawdzane. [Wyniki, polecenia i ograniczenia](analysis-moving-objects-verification.md).

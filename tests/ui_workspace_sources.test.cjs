@@ -136,3 +136,30 @@ test('an external consumer keeps a queued shared index alive after workspace dem
   assert.ok(calls.some(call => call.path.includes('id=2&kind=index')));
   source.deactivate(); await tick();
 });
+
+test('transport shares reads at ten seconds and historical/hidden views withdraw all demand', async () => {
+  const clock = clocked(), {source, calls} = clock;
+  source.setTypes(['aircraft', 'ship'], {live:false}); source.setVisible(true); await tick();
+  assert.equal(calls.length, 0);
+  source.setTypes(['aircraft', 'ship']); await tick();
+  assert.deepEqual(calls.map(call => call.path).sort(), ['/aircraft', '/ships']);
+  await Promise.all([source.request('/aircraft'), source.request('/ships')]);
+  assert.equal(calls.length, 2);
+  await clock.advance(9999); assert.equal(calls.length, 2);
+  await clock.advance(1); assert.equal(calls.length, 4);
+  source.setTypes(['aircraft', 'ship'], {live:false});
+  await clock.advance(60000); assert.equal(calls.length, 4);
+  source.setTypes(['aircraft', 'ship']); await tick(); assert.equal(calls.length, 6);
+  clock.hide(); await clock.advance(60000); assert.equal(calls.length, 6);
+});
+
+test('quiet AIS uses polling TTL without rejuvenating the source timestamp', async () => {
+  const stamp = '2020-01-01T00:00:00Z';
+  let reads = 0;
+  const clock = clocked({read:async () => {reads++; return {status:'ready', fetched_at:stamp, items:[]};}});
+  clock.source.setTypes(['ship']); clock.source.setVisible(true); await tick();
+  await clock.advance(9999); assert.equal(reads, 1);
+  await clock.advance(1); assert.equal(reads, 2);
+  assert.equal((await clock.source.request('/ships')).fetched_at, stamp);
+  clock.source.deactivate();
+});

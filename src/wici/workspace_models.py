@@ -1,12 +1,13 @@
 """Strict public contracts for the local analytical workspace."""
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from wici.geo import units
 
-ObjectType = Literal['communication', 'hydro_station', 'air_quality_station', 'area']
+ObjectType = Literal['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship']
+MovingRef = Annotated[str, Field(pattern=r'^(aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8})$')]
 
 
 class StrictModel(BaseModel):
@@ -53,14 +54,15 @@ class Sort(StrictModel):
 
 
 class WorkspaceQuery(StrictModel):
-    types: list[ObjectType] = Field(default_factory=lambda: ['communication', 'hydro_station', 'air_quality_station', 'area'], max_length=4)
-    source_ids: list[Literal['imgw_meteo', 'rso', 'rcb', 'sg', 'imgw', 'gios', 'prg']] = Field(default_factory=list, max_length=7)
+    types: list[ObjectType] = Field(default_factory=lambda: ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship'], max_length=6)
+    source_ids: list[Literal['imgw_meteo', 'rso', 'rcb', 'sg', 'imgw', 'gios', 'prg', 'aircraft', 'ships']] = Field(default_factory=list, max_length=9)
     q: str = Field(default='', max_length=200)
     province: str | None = None
     time: TimeContext = Field(default_factory=TimeContext)
     include_periods: bool = True
     include_unlocated: bool = True
     include_without_samples: bool = True
+    watched_only: bool = False
     sort: Sort = Field(default_factory=Sort)
     page_size: int = Field(default=100, ge=1, le=200)
     cursor: str | None = Field(default=None, max_length=4096)
@@ -100,8 +102,28 @@ class ViewConfig(StrictModel):
     columns: list[Literal['label', 'type', 'source_id', 'updated_at', 'published_at', 'measurement', 'location', 'status']] | None = Field(default=None, max_length=8)
     camera: ViewCamera | None = None
     layout: ViewLayout | None = None
-    selectedRef: str | None = Field(default=None, max_length=200, pattern=r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|area:prg:[0-9]{2,4})$')
+    selectedRef: str | None = Field(default=None, max_length=200, pattern=r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|area:prg:[0-9]{2,4}|aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8})$')
+    comparedRefs: list[MovingRef] | None = Field(default=None, max_length=5)
     relative_seconds: int | None = Field(default=None, ge=60, le=1209600)
+
+    @field_validator('comparedRefs')
+    @classmethod
+    def distinct_refs(cls, value):
+        if value and len(set(value)) != len(value):
+            raise ValueError('Obiekty porównania nie mogą się powtarzać')
+        return value
+
+
+class MovingReplay(TimeRange):
+    refs: list[MovingRef] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode='after')
+    def bounded(self):
+        if len(set(self.refs)) != len(self.refs):
+            raise ValueError('Obiekty porównania nie mogą się powtarzać')
+        if (self.end-self.start).total_seconds() > 14*86400:
+            raise ValueError('Porównanie obejmuje najwyżej 14 dni')
+        return self
 
 
 class SavedView(StrictModel):

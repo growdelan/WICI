@@ -60,6 +60,7 @@ class ShipService:
         self.deadline = 0
         self.status = 'connecting'
         self.last_received = None
+        self.on_snapshot = None
 
     def prune(self):
         now = self.clock().astimezone(UTC)
@@ -96,7 +97,10 @@ class ShipService:
             if self.task is None or self.task.done():
                 self.status = 'connecting'
                 self.task = asyncio.create_task(self.run(), name='wici-aisstream')
-        return self.snapshot()
+        snapshot = self.snapshot()
+        if self.on_snapshot is not None:
+            self.on_snapshot('ship', snapshot)
+        return snapshot
 
     async def stop(self):
         if self.task:

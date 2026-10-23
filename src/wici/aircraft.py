@@ -59,6 +59,7 @@ class AircraftService:
         self.retry_at = None
         self.last_error = ''
         self.quality = None
+        self.on_snapshot = None
 
     def base(self):
         return {'items': [], 'status': 'ready', 'stale': False, 'fetched_at': None,
@@ -79,6 +80,12 @@ class AircraftService:
         return result
 
     async def fetch(self):
+        snapshot = await self._fetch()
+        if self.on_snapshot is not None:
+            self.on_snapshot('aircraft', snapshot)
+        return snapshot
+
+    async def _fetch(self):
         async with self.lock:
             now = self.clock().astimezone(UTC)
             if not self.enabled:

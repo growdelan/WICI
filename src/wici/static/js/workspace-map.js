@@ -1,8 +1,8 @@
 'use strict';
 window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
-  const U = window.WiciWorkspaceUI; let group = null, currentData = null, active = false; const layers = new Map();
-  const colors = {communication: '#c38235', hydro_station: '#16819c', air_quality_station: '#787e91', area: '#587a8a'};
-  function clear() {if (group && map) map.removeLayer(group); group = null; layers.clear();}
+  const U = window.WiciWorkspaceUI, M = window.WiciWorkspaceMotion; let group = null, currentData = null, active = false, motionGroup = null, motionMarkers = null, lastMotion = null, lastMode = null; const layers = new Map();
+  const colors = {communication: '#c38235', hydro_station: '#16819c', air_quality_station: '#787e91', area: '#587a8a', aircraft: '#237a99', ship: '#93682f'};
+  function clear() {for (const layer of [group, motionGroup, motionMarkers]) if (layer && map) map.removeLayer(layer); group = motionGroup = motionMarkers = null; lastMotion = null; layers.clear();}
   function areaFeatures(item) {return (item.areas || item.area_refs || []).map(area => geometries?.get(String(typeof area === 'string' ? area.replace('area:prg:', '') : area.admin_code))).filter(Boolean);}
   function coordinates(item) {const lat = item.latitude ?? item.geometry?.coordinates?.[1], lon = item.longitude ?? item.geometry?.coordinates?.[0];
     return Number.isFinite(lat) && Number.isFinite(lon) ? [lat, lon] : null;}
@@ -34,15 +34,15 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     }
     return colors[item.type] || '#587a8a';
   }
-  function render(data, state, selectedSample, selectedIndex) {
+  function render(data, state, selectedSample, selectedIndex, motion) {
     if (!active || !map || !window.L) return;
     const referenceAt = state.query?.time?.mode === 'range' ? Date.parse(state.query.time.filter_range?.to) - 1 : Date.parse(data?.as_of || state.asOf);
-    if (data !== currentData) {
-      currentData = data; clear(); group = L.layerGroup().addTo(map);
+    if (data !== currentData || lastMode !== state.query?.time?.mode) {
+      currentData = data; lastMode = state.query?.time?.mode; clear(); group = L.layerGroup().addTo(map);
       const result = data?.map || {}, items = result.items || [], points = result.points || items.filter(item => coordinates(item)), areas = result.areas || items.filter(item => !coordinates(item) && item.ref);
-      for (const item of points) {const coords = coordinates(item); if (!coords) continue;
+      for (const item of points) {const coords = coordinates(item); if (!coords || M?.isMoving(item) && lastMode === 'range') continue;
         const marker = L.circleMarker(coords, {radius: 6, color: color(item, U.measurement(item), referenceAt), weight: 2, fillOpacity: .8});
-        marker.bindTooltip(U.el('span', `${item.label} · ${U.value(U.measurement(item))}`)); marker.on('click', () => select(item.ref)); marker.addTo(group); register(item.ref, marker, item);
+        marker.bindTooltip(U.el('span', `${item.label} · ${M?.isMoving(item) ? M.number(item.position?.speed_kmh, 'km/h') : U.value(U.measurement(item))}`)); marker.on('click', () => select(item.ref)); marker.addTo(group); register(item.ref, marker, item);
       }
       const grouped = new Map();
       for (const item of areas) for (const feature of areaFeatures(item)) {const key = String(feature.properties?.admin_code || feature.id);
@@ -65,11 +65,29 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
       const shown = selected && state.cursorAt ? {...item, official_index: selectedIndex} : item;
       const colorAt = selected && state.cursorAt ? Date.parse(state.cursorAt) : referenceAt;
       const style = {weight: selected ? 4 : 1.5, fillOpacity: selected ? .7 : coordinates(item) ? .8 : .13, color: color(shown, sample, colorAt)};
-      layer.setStyle?.(style); if (coordinates(item)) {layer.setRadius?.(selected ? 10 : 6); layer.setTooltipContent?.(U.el('span', `${item.label} · ${U.value(sample)}${selected && state.cursorAt ? ' · Według kursora' : ''}`));}
+      layer.setStyle?.(style); if (coordinates(item)) {layer.setRadius?.(selected ? 10 : 6); layer.setTooltipContent?.(U.el('span', `${item.label} · ${M?.isMoving(item) ? `${M.number(item.position?.speed_kmh, 'km/h')} · ${U.statusNames[item.freshness] || item.freshness || 'Czas źródłowy'}` : U.value(sample)}${selected && state.cursorAt ? ' · Według kursora' : ''}`));}
+    }
+    if (motionMarkers) map.removeLayer(motionMarkers); motionMarkers = null;
+    const historical = state.query?.time?.mode === 'range', replay = historical && !motion?.loading && !motion?.error ? motion?.data : null;
+    if (lastMotion !== replay) {
+      if (motionGroup) map.removeLayer(motionGroup); motionGroup = null; lastMotion = replay;
+      if (replay && M) {motionGroup = L.layerGroup().addTo(map);
+        for (const series of replay.series || []) {const color = M.colors[Math.max(0, (state.comparedRefs || []).indexOf(series.ref))];
+          for (const segment of M.segments(series, state.query.time.filter_range)) if (segment.length > 1) L.polyline(segment.map(point => [point.latitude, point.longitude]), {color, weight: 2, opacity: .6, className: 'analysis-recorded-track'}).bindTooltip(U.el('span', `${series.label} · zapisane raporty w całym przedziale`)).addTo(motionGroup);
+        }
+      }
+    }
+    if (replay && M) {
+      motionMarkers = L.layerGroup().addTo(map);
+      for (const [ref, frame] of motion.frames) {if (!frame.point) continue;
+        const marker = L.circleMarker([frame.point.latitude, frame.point.longitude], {radius: ref === state.selectedRef && state.detailOpen ? 10 : 7, weight: 3, color: frame.color, fillColor: frame.color, fillOpacity: .9, className: 'analysis-replay-marker'});
+        marker.bindTooltip(U.el('span', `${frame.label} · ${M.number(frame.point.speed_kmh, 'km/h')} · ${M.describe(frame, U)}`)); marker.on('click', () => select(ref)); marker.addTo(motionMarkers);
+      }
     }
   }
   function show(item) {if (!map || !item) return false; const coords = coordinates(item); if (coords) {map.setView(coords, Math.max(map.getZoom(), 10)); return true;}
     const features = areaFeatures(item); if (features.length) {const bounds = L.geoJSON({type: 'FeatureCollection', features}).getBounds(); if (bounds.isValid()) {map.fitBounds(bounds, {padding: [30, 40], maxZoom: 10}); return true;}} return false;
   }
-  return {render, show, setActive(value) {active = value; if (!value) {clear(); currentData = null;}}, destroy: clear};
+  function fitTracks(replay) {const points = (replay?.series || []).flatMap(series => M?.pointsInRange(series, replay.range) || []); if (!points.length || !map || !window.L) return false; const bounds = L.latLngBounds(points.map(point => [point.latitude, point.longitude])); map.fitBounds(bounds, {padding: [30, 40], maxZoom: 12}); return true;}
+  return {render, show, fitTracks, setActive(value) {active = value; if (!value) {clear(); currentData = null;}}, destroy: clear};
 };

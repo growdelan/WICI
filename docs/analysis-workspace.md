@@ -2,6 +2,8 @@
 
 Zakładka **Analiza** otwiera katalog obiektów, tabelę, mapę i oś czasu. Korzysta z tej samej mapy Leaflet i tej samej lokalnej bazy co widok Sytuacja. Szczegółowy projekt: [plan etapu 1](plan-stanowisko-analityczne-etap-1.md).
 
+Kolejne rozszerzenie dodaje [samoloty, statki, obserwowane i wspólne odtwarzanie tras](analysis-moving-objects.md). Poniższy opis czasu stacji i pomiarów dotyczy nadal pierwszego etapu; zasady czasu obiektów ruchomych opisano osobno.
+
 ## Praca z katalogiem
 
 1. Wybierz typy: komunikaty czterech oficjalnych źródeł, wodowskazy IMGW, stacje jakości powietrza GIOŚ lub obszary PRG. Możesz połączyć kilka typów.
@@ -31,7 +33,7 @@ Korekty pomiarów zachowują osobne rewizje, także przy zmianie A → B → A. 
 
 Próg wodowskazu w historii jest progiem zapisanym razem z obserwacją. Oficjalny indeks GIOŚ jest odrębny od stężenia wybranej substancji. Czujniki tej samej substancji na jednej stacji mają osobne identyfikatory i przebiegi.
 
-Demo zawiera wyraźnie oznaczone syntetyczne stacje, lukę i dwa czujniki PM10. Nie wykonuje odczytów sieciowych. Transport, pozostałe rastry i warstwy są dostępne w widoku **Sytuacja**. Przełączenie na Analizę wstrzymuje ich prezentację, zachowuje checkboxy i nie kończy aktywnych zapisów tras.
+Demo zawiera wyraźnie oznaczone syntetyczne stacje, lukę i dwa czujniki PM10. Nie wykonuje odczytów sieciowych. Warstwy Sytuacji zachowują swoje checkboxy podczas przełączenia na Analizę; aktywne zapisy tras nie są kończone. Samoloty i statki są dostępne także jako typy katalogu Analizy, natomiast pozostałe warstwy i rastry pozostają w **Sytuacji**.
 
 ## Zapisane stanowiska
 

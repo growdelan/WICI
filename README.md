@@ -92,6 +92,8 @@ Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostęp
 
 ### Samoloty i statki — zapis tras i odtwarzanie
 
+W zakładce **Analiza** samoloty i statki mają własne karty, wyszukiwanie po identyfikatorach oraz trwałą listę obserwowanych. Możesz rozpocząć zapis w karcie i porównać do pięciu zapisanych tras na wspólnej mapie, osi czasu oraz wykresach prędkości i wysokości. Obserwowanie nie uruchamia nagrywania. [Obsługa, zakres danych i ograniczenia](docs/analysis-moving-objects.md).
+
 Kliknij samolot lub statek i wybierz **„Śledź trasę”**. Wokół wybranego obiektu pojawią się znaczniki zaznaczenia, a na mapie będzie przyrastała jego zapisana trasa. W panelu **„Trasy obserwacji”** wybierzesz obserwację, przewiniesz czas suwakiem i odtworzysz ruch z wybraną prędkością. Powrót do trybu bieżącego pokazuje najnowszy zapis. Zatrzymanie zapisu zachowuje dotychczasową historię.
 
 WICI zapisuje wybrane obiekty w lokalnej bazie także po wyłączeniu warstwy lub zamknięciu karty przeglądarki. **Proces WICI musi działać, a komputer pozostawać aktywny.** Aktywne obserwacje są wznawiane po restarcie; przerwy nie są uzupełniane wstecz. Przechowywane jest ostatnie **7 dni**, maksymalnie 20 aktywnych obserwacji jednocześnie. Śledzenie zaczyna się od wybrania obiektu i obejmuje dostępne pozycje samolotów nad Polską oraz statków w obsługiwanym obszarze Bałtyku. [Obsługa i ograniczenia historii](docs/tracking.md).
