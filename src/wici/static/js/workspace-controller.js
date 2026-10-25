@@ -1,7 +1,7 @@
 'use strict';
 window.WiciWorkspace = (() => {
   const U = window.WiciWorkspaceUI, S = window.WiciWorkspaceStore, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts;
-  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView, dossiers, graphView;
+  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView, dossiers, graphView, areasView, rulesView, eventsView, eventLayer, eventCaption, eventNavigation = 0;
   let host, shell, toolbar, catalog, timelineHost, cardHost, graphHost, graphTableScope, search, province, message, status, split, sourceSelect, sourceCoverage, persistenceNotice, country, oblast, raion, provinceField, oblastField, raionField, recordingControl, recordingStatus, regionHint;
   const columnControls = new Map();
   let data = null, detail = null, timeline = null, detailError = null, detailLoading = false;
@@ -366,7 +366,7 @@ window.WiciWorkspace = (() => {
       if (!next.length) {notify('Wybierz co najmniej jeden typ obiektu.', 'query'); return;} sourceEnabled = true; dispatch({type: 'SET_QUERY', patch: {types: next, ...(next.includes(type) && ['ua_region', 'civil_alert'].includes(type) ? {country: 'UA', province: null} : {})}});
     }); button.dataset.objectType = type; button.setAttribute('aria-pressed', 'false'); controls.set(type, button); types.append(button);}
     sourceSelect = U.el('select'); sourceSelect.id = 'analysis-source';
-    for (const [id, name] of [['', 'Wszystkie źródła'], ['imgw_meteo', 'Ostrzeżenia IMGW'], ['rso', 'RSO'], ['rcb', 'RCB'], ['sg', 'Straż Graniczna'], ['imgw', 'Wodowskazy IMGW'], ['gios', 'GIOŚ'], ['prg', 'PRG'], ['aircraft', 'Samoloty · ADS-B'], ['ships', 'Statki · AIS'], ['ukraine_alerts', 'Ukraina · alarmy NEPTUN']]) {const option = U.el('option', name); option.value = id; sourceSelect.append(option);}
+    for (const [id, name] of [['', 'Wszystkie źródła'], ['imgw_meteo', 'Ostrzeżenia IMGW'], ['rso', 'RSO'], ['rcb', 'RCB'], ['sg', 'Straż Graniczna'], ['imgw', 'Wodowskazy IMGW'], ['gios', 'GIOŚ'], ['prg', 'PRG'], ['custom', 'Własne obszary'], ['aircraft', 'Samoloty · ADS-B'], ['ships', 'Statki · AIS'], ['ukraine_alerts', 'Ukraina · alarmy NEPTUN']]) {const option = U.el('option', name); option.value = id; sourceSelect.append(option);}
     sourceSelect.addEventListener('change', () => dispatch({type: 'SET_QUERY', patch: {source_ids: sourceSelect.value ? [sourceSelect.value] : []}})); fields.append(U.field('Źródło', sourceSelect));
     const advanced = U.el('details', null, 'analysis-query-options'); advanced.append(U.el('summary', 'Zakres i układ'));
     const advancedBody = U.el('div', null, 'analysis-option-fields');
@@ -419,6 +419,12 @@ window.WiciWorkspace = (() => {
     try {const saved = JSON.parse(localStorage.getItem(localKey)); if (saved && typeof saved === 'object') {store.dispatch({type: 'SET_LAYOUT', patch: {tablePercent: Math.max(25, Math.min(65, Number(saved.tablePercent) || 42)), mobilePanel: ['map', 'graph'].includes(saved.mobilePanel) ? saved.mobilePanel : 'table'}}); if (saved.mobilePanel === 'graph') store.dispatch({type: 'SET_GRAPH_MODE', mode: 'graph'});}} catch { /* Default layout is sufficient. */ }
     toolbar = U.el('section', null, 'analysis-toolbar'); catalog = U.el('section', null, 'analysis-catalog'); timelineHost = U.el('section', null, 'analysis-timeline'); cardHost = U.el('aside', null, 'analysis-card'); graphHost = U.el('section', null, 'analysis-graph'); graphHost.id = 'analysis-graph-panel'; graphHost.hidden = true;
     cardHost.id = 'analysis-card'; cardHost.hidden = true; host.append(toolbar, catalog, timelineHost, cardHost, graphHost); createToolbar();
+    eventCaption = U.el('div', null, 'analysis-event-evidence-caption'); eventCaption.id = 'analysis-event-evidence'; eventCaption.hidden = true; toolbar.append(eventCaption);
+    const monitoring = U.el('div', null, 'analysis-monitor-launchers'); monitoring.id = 'analysis-monitoring'; toolbar.append(monitoring);
+    const showAnalysisMap = () => {dispatch({type: 'SET_GRAPH_MODE', mode: 'map'}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}}); options.map?.invalidateSize?.();};
+    rulesView = window.WiciWorkspaceRules?.(monitoring, {request, context: dossierContext, now, geometries: settings.geometries, changed: () => dispatch({type: 'REFRESH'})});
+    areasView = window.WiciWorkspaceAreas?.(monitoring, {request, map: settings.map, selectObject, showMap: showAnalysisMap, changed: () => dispatch({type: 'REFRESH'}), createRule: seed => rulesView?.open(seed)});
+    eventsView = window.WiciWorkspaceEvents?.(monitoring, {request, showEvent: navigateEvent, openGraph: event => {const refs = [event.object_ref, event.evidence?.area?.ref].filter(Boolean); if (refs.length) openGraph({seed_refs: refs});}, changed: () => dispatch({type: 'REFRESH'})});
     graphTableScope = U.el('select'); graphTableScope.id = 'analysis-table-scope'; graphTableScope.setAttribute('aria-label', 'Zawartość tabeli'); for (const [value, label] of [['catalog', 'Wynik katalogu'], ['graph', 'Węzły grafu']]) {const option = U.el('option', label); option.value = value; graphTableScope.append(option);} graphTableScope.addEventListener('change', () => dispatch({type: 'SET_TABLE_SCOPE', scope: graphTableScope.value})); catalog.append(U.field('Tabela', graphTableScope));
     graphView = window.WiciWorkspaceGraph?.(graphHost, {request, getContext: dossierContext, select: (ref, version) => selectObject(ref, undefined, version, {fetchSensors: false}), changed: () => {if (initialized) render();}, notify});
     tableView = window.WiciWorkspaceTable(catalog, {select: (ref, origin) => selectObject(ref, origin, store.getState().tableScope === 'graph' ? graphView?.getVersion?.(ref) : null, {fetchSensors: store.getState().tableScope !== 'graph'}), compare: toggleCompare, watch: toggleWatch, sort(field) {const current = store.getState().query.sort; dispatch({type: 'SET_QUERY', patch: {sort: {field, direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc'}}});}, next: () => loadQuery(data?.next_cursor), first: () => loadQuery(null)});
@@ -426,7 +432,7 @@ window.WiciWorkspace = (() => {
     motionView = M?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_COMPARE'}), select: selectObject, range: compareDay, fit: () => mapView.fitTracks?.(replayData)});
     alertsView = A?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_REGION_COMPARE'}), select: selectObject, range: compareDay, cursor: at => dispatch({type: 'SET_CURSOR', at}), fit: () => mapView.fitRegions?.(alertContext())});
     mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: ref => selectObject(ref, undefined, graphView?.getVersion?.(ref), {fetchSensors: !graphView?.getVisibleData?.().nodes.some(node => node.ref === ref)}), narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
-    cardView = window.WiciObjectCard(cardHost, {graph: object => openGraph({seed_refs: [object.ref]}), pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
+    cardView = window.WiciObjectCard(cardHost, {rule: object => rulesView?.open({object}), editArea: id => areasView?.open(id), graph: object => openGraph({seed_refs: [object.ref]}), pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
       const lower = Date.parse(session.first_position_at || session.started_at), upper = Date.parse(session.last_position_at || session.stopped_at || now());
       if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
       if (!store.getState().comparedRefs.includes(ref)) toggleCompare(ref);
@@ -436,6 +442,7 @@ window.WiciWorkspace = (() => {
       if (M?.isMoving(object) && store.getState().query.time.mode === 'range') {const frames = motionContext().frames, point = frames.has(object.ref) ? frames.get(object.ref)?.point : graphPositionAtCursor(object.ref); if (!point) {notify('Brak zapisanej pozycji przy kursorze. Dodaj obiekt do porównania i wybierz czas raportu.'); return;} object = {...object, latitude: point.latitude, longitude: point.longitude};}
       if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => {graphView?.setVersion?.(store.getState().selectedRef, version); selectObject(store.getState().selectedRef, document.activeElement, version);}, region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
     store.subscribe((state, previous, action) => {
+      if (['SET_QUERY','SET_REGION','SET_TIME_RANGE','RETURN_TO_LIVE','SET_CURSOR','SELECT_OBJECT','SELECT_SENSOR','APPLY_VIEW','SET_GRAPH_MODE'].includes(action.type)) clearEventEvidence();
       if (action.type === 'SET_LAYOUT' || action.type === 'SET_GRAPH_MODE') graphView?.setActive?.(active && (state.graphMode !== 'map' || state.layout.mobilePanel === 'graph'));
       if (action.type === 'REFRESH') graphView?.refresh?.();
       if (action.type === 'APPLY_VIEW') {clearTimeout(searchTimer); searchTimer = null;}
@@ -458,10 +465,53 @@ window.WiciWorkspace = (() => {
     clearInterval(refreshTimer); refreshTimer = null;
     graphView?.setActive?.(active && (store.getState().graphMode !== 'map' || store.getState().layout.mobilePanel === 'graph'));
     if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); dossiers?.load(); refreshSourceStatus(); loadWatchlist(); loadReplay(true); loadRegions(); loadRecording(); loadAlertReplay(true); refreshTimer = setInterval(() => {if (visible && !document.hidden) {if (store.getState().query.time.mode === 'live') loadQuery(pageCursor); loadRecording();}}, 60000);}
-    else {dossiers?.close(); queryAbort?.abort(); detailAbort?.abort(); replayAbort?.abort(); alertAbort?.abort(); ++alertRun; ++queryRun; ++detailRun; ++replayRun; timelineView.pause?.(); shell.classList.remove('analysis-card-open');}
+    else {areasView?.close(); rulesView?.close(); eventsView?.close(); clearEventEvidence(); dossiers?.close(); queryAbort?.abort(); detailAbort?.abort(); replayAbort?.abort(); alertAbort?.abort(); ++alertRun; ++queryRun; ++detailRun; ++replayRun; timelineView.pause?.(); shell.classList.remove('analysis-card-open');}
     syncMapScope(); options.map?.invalidateSize?.(); options.onModeChange?.(active);
   }
-  function setVisible(value) {if (visible === Boolean(value)) return; visible = Boolean(value); syncSources(); if (!visible) timelineView.pause?.(); if (visible && active) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}}
+  function clearEventEvidence() {
+    ++eventNavigation; if (eventLayer) options.map?.removeLayer?.(eventLayer); eventLayer = null;
+    if (eventCaption) {eventCaption.hidden = true; eventCaption.replaceChildren();}
+  }
+  async function navigateEvent(event, atTime) {
+    clearEventEvidence();
+    const evidence = event.evidence || {}, observation = evidence.observation || {}, payload = observation.payload || observation, position = payload.position || payload.point || payload, area = evidence.area;
+    const at = Date.parse(event.observed_at), sourceNow = Date.parse(now());
+    if (atTime && Number.isFinite(at)) {
+      const from = new Date(at - 1800000).toISOString(), to = new Date(Math.max(at + 1, Math.min(sourceNow, at + 1800000))).toISOString();
+      dispatch({type: 'SET_TIME_RANGE', range: {from, to}}); dispatch({type: 'SET_CURSOR', at: event.observed_at});
+      notify('Otworzono czas obserwacji. Dane po retencji mogą być niedostępne; podstawa zdarzenia pozostaje w jego szczegółach.');
+    }
+    dispatch({type: 'SET_GRAPH_MODE', mode: 'map'}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}}); options.map?.invalidateSize?.();
+    if (event.object_ref) {
+      selectObject(event.object_ref, undefined, payload.version_id || null, {fetchSensors: false});
+      if (event.object_type?.endsWith('_station') || event.object_ref.startsWith('hydro_station:') || event.object_ref.startsWith('air_quality_station:')) {
+        dispatch({type: 'SELECT_SENSOR', sensor: payload.sensor_id || null, metric: payload.metric || null});
+      }
+    }
+    const run = ++eventNavigation;
+    if (!options.map || !window.L) return;
+    eventLayer = L.featureGroup().addTo(options.map); const layer = eventLayer;
+    const caption = U.el('span', `Podstawa zdarzenia: ${U.date(event.observed_at)} · ${event.description}`); eventCaption.replaceChildren(caption, U.button('Ukryj podstawę zdarzenia', clearEventEvidence)); eventCaption.hidden = false;
+    if (area?.geometry) L.geoJSON(area.geometry, {style: {color: area.color || '#217c83', weight: 3, fillOpacity: .12}}).bindTooltip(U.el('span', `${area.name} · rewizja ${area.revision} z chwili zdarzenia`)).addTo(layer);
+    if (payload.geometry) L.geoJSON(payload.geometry, {style: {color: '#c38235', weight: 3, fillOpacity: .12}}).bindTooltip(U.el('span', `Geometria zachowana w podstawie · ${U.date(event.observed_at)}`)).addTo(layer);
+    for (const item of payload.areas || []) {
+      const code = typeof item === 'string' ? item.replace('area:prg:', '') : item.admin_code;
+      const geometry = options.geometries?.get?.(String(code));
+      if (geometry) L.geoJSON(geometry, {style: {color: '#c38235', weight: 3, fillOpacity: .12}}).bindTooltip(U.el('span', `Przypisanie wersji komunikatu: ${code} · aktualne granice PRG`)).addTo(layer);
+    }
+    if (Number.isFinite(position.latitude) && Number.isFinite(position.longitude)) L.circleMarker([position.latitude, position.longitude], {radius: 9, color: '#c38235', fillOpacity: .85}).bindTooltip(U.el('span', `Zapisany raport · ${U.date(event.observed_at)}`)).addTo(layer);
+    let bounds = layer.getBounds();
+    if (!bounds.isValid() && event.object_ref) {
+      try {const detail = await request(`/workspace/objects/${encodeURIComponent(event.object_ref)}${payload.version_id ? '?version_id='+encodeURIComponent(payload.version_id) : ''}`);
+        if (run !== eventNavigation || layer !== eventLayer || !active) return;
+        if (mapView.show(detail.object)) caption.textContent += ' · geometria z aktualnego lokalnego katalogu; może różnić się od chwili obserwacji';
+        else caption.textContent += ' · brak dostępnej geometrii';
+      } catch (error) {if (run === eventNavigation) caption.textContent += ' · obiekt niedostępny; zachowana podstawa pozostaje w zdarzeniu';}
+      return;
+    }
+    if (bounds.isValid()) options.map.fitBounds(bounds, {padding: [40, 40], maxZoom: 12});
+  }
+  function setVisible(value) {if (visible === Boolean(value)) return; visible = Boolean(value); syncSources(); if (!visible) {timelineView.pause?.(); areasView?.close();} if (visible && active) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}}
   async function openGraph({seed_refs, dossier_id, config} = {}) {if (!graphView) return; const state = store.getState(); const refs = seed_refs || config?.graph?.seed_refs || (state.selectedRef ? [state.selectedRef] : []);
     if (['Europe/Warsaw', 'Europe/Kyiv', 'UTC'].includes(config?.graph?.display_timezone)) dispatch({type: 'SET_TIMEZONE', timezone: config.graph.display_timezone});
     if (config?.graph?.time?.mode === 'range' && config.graph.time.filter_range) {

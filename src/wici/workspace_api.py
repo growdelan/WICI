@@ -3,8 +3,11 @@ import inspect
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from wici.area_models import AreaInput
 from wici.dossier_models import DossierInput, DossierNote, DossierPin, MaterialCapture
+from wici.event_models import EventCapture, EventComment, EventHandling
 from wici.relation_models import AnalystRelation, GraphNeighbors, GraphQuery, WorkingGraph
+from wici.rule_models import RuleInput, RulePreview
 from wici.workspace_models import MovingReplay, SavedView, UkraineRecording, UkraineReplay, WorkspaceQuery
 from wici.workspace_service import QueryChanged
 
@@ -118,6 +121,88 @@ def create_workspace_router():
     @router.get('/dossiers')
     def dossiers(request: Request):
         return request.app.state.workspace.dossiers.list()
+
+    @router.get('/areas')
+    def areas(request: Request, include_archived: bool = False):
+        return _call(request.app.state.workspace.areas.list, include_archived)
+
+    @router.post('/areas', status_code=201)
+    def create_area(request: Request, body: AreaInput):
+        return _call(request.app.state.workspace.areas.save, body)
+
+    @router.get('/areas/{area_id}')
+    def area(request: Request, area_id: str, revision: int | None = Query(None, ge=1)):
+        return _call(request.app.state.workspace.areas.detail, area_id, revision)
+
+    @router.put('/areas/{area_id}')
+    def update_area(request: Request, area_id: str, body: AreaInput):
+        return _call(request.app.state.workspace.areas.save, body, area_id)
+
+    @router.get('/areas/{area_id}/history')
+    def area_history(request: Request, area_id: str):
+        return _call(request.app.state.workspace.areas.history, area_id)
+
+    @router.post('/areas/{area_id}/duplicate', status_code=201)
+    def duplicate_area(request: Request, area_id: str):
+        return _call(request.app.state.workspace.areas.duplicate, area_id)
+
+    @router.get('/areas/{area_id}/members')
+    def area_members(request: Request, area_id: str, limit: int = Query(100, ge=1, le=200)):
+        return _call(request.app.state.workspace.areas.members, area_id, limit)
+
+    @router.get('/rules')
+    def rules(request: Request):
+        return _call(request.app.state.workspace.rules.list)
+
+    @router.post('/rules', status_code=201)
+    def create_rule(request: Request, body: RuleInput):
+        return _call(request.app.state.workspace.rules.save, body)
+
+    @router.post('/rules/preview')
+    def preview_rule(request: Request, body: RulePreview):
+        return _call(request.app.state.workspace.rules.preview, body)
+
+    @router.get('/rules/{rule_id}')
+    def rule(request: Request, rule_id: str):
+        return _call(request.app.state.workspace.rules.detail, rule_id)
+
+    @router.put('/rules/{rule_id}')
+    def update_rule(request: Request, rule_id: str, body: RuleInput):
+        return _call(request.app.state.workspace.rules.save, body, rule_id)
+
+    @router.get('/rules/{rule_id}/history')
+    def rule_history(request: Request, rule_id: str):
+        return _call(request.app.state.workspace.rules.history, rule_id)
+
+    @router.get('/monitor/status')
+    def monitor_status(request: Request):
+        return _call(request.app.state.workspace.monitor.status)
+
+    @router.get('/events')
+    def events(request: Request, rule_id: str | None = None, area_id: str | None = None,
+               object_type: str | None = None, priority: str | None = None,
+               start: str | None = Query(None, alias='from'), end: str | None = Query(None, alias='to'),
+               status: str | None = None, condition_state: str | None = None,
+               limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0)):
+        return _call(request.app.state.workspace.events.list, rule_id=rule_id, area_id=area_id,
+                     object_type=object_type, priority=priority, start=start, end=end,
+                     status=status, condition_state=condition_state, limit=limit, offset=offset)
+
+    @router.get('/events/{event_id}')
+    def event(request: Request, event_id: str):
+        return _call(request.app.state.workspace.events.detail, event_id)
+
+    @router.patch('/events/{event_id}')
+    def handle_event(request: Request, event_id: str, body: EventHandling):
+        return _call(request.app.state.workspace.events.handle, event_id, body)
+
+    @router.post('/events/{event_id}/comments', status_code=201)
+    def comment_event(request: Request, event_id: str, body: EventComment):
+        return _call(request.app.state.workspace.events.comment, event_id, body)
+
+    @router.post('/events/{event_id}/capture', status_code=201)
+    def capture_event(request: Request, event_id: str, body: EventCapture):
+        return _call(request.app.state.workspace.events.capture, event_id, body)
 
     @router.post('/graph/query')
     def graph_query(request: Request, body: GraphQuery):

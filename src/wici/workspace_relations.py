@@ -32,6 +32,7 @@ class WorkspaceRelations:
     def _begin_read(self):
         self._raw_cache, self._node_cache, self._out_cache = {}, {}, {}
         self._moving_status = None
+        self._custom_areas = self.workspace.areas.list()['items']
 
     def _raw(self, ref):
         if ref not in self._raw_cache:
@@ -246,6 +247,8 @@ class WorkspaceRelations:
                              'method': 'reported_point_in_prg', 'geometry_context': 'current',
                              'track_id': point.get('track_id'), 'latitude': point['latitude'], 'longitude': point['longitude']},
                             {'kind': 'observation', 'observed_at': point['position_at']}))
+        if item and self._allowed(query, 'custom_area_member', 'derived'):
+            edges.extend(self._custom_edges(item, query, now))
         if query.dossier_id and self._allowed(query, 'analyst_related', 'analyst'):
             rows = self.db.execute('''SELECT * FROM workspace_relations WHERE dossier_id=? AND deleted=0
                 AND (source_ref=? OR target_ref=?) ORDER BY id''', (query.dossier_id, ref, ref))
@@ -258,6 +261,30 @@ class WorkspaceRelations:
                     {'kind': 'analyst_assertion'}, identity=value['id'], directed=False))
         return [edge for edge in edges if (not query.relation_types or edge['type'] in query.relation_types)
                 and (not query.categories or edge['category'] in query.categories)]
+
+    def _custom_edges(self, item, query, now):
+        from wici.workspace_areas import contains
+        if item['type'] in ('aircraft', 'ship'):
+            point = self._position(item, query, now)
+            time_context = {'kind': 'observation', 'observed_at': point['position_at']} if point else None
+        elif item['type'].endswith('_station'):
+            point = {'longitude': item.get('longitude'), 'latitude': item.get('latitude')}
+            time_context = {'kind': 'current_metadata', 'as_of': iso(now)}
+        else:
+            return []
+        if not point:
+            return []
+        edges = []
+        for area in self._custom_areas:
+            if contains(area, point.get('longitude'), point.get('latitude')):
+                edges.append(self._edge(item['ref'], area['ref'], 'custom_area_member',
+                    'Położenie we własnym obszarze', 'derived',
+                    {'source_id': item['source_id'], 'method': 'point_in_custom_area',
+                     'area_id': area['id'], 'area_revision': area['revision'],
+                     'geometry_context': 'revision', 'geometry_updated_at': area['updated_at'],
+                     'longitude': point['longitude'], 'latitude': point['latitude'],
+                     'track_id': point.get('track_id')}, time_context))
+        return edges
 
     @staticmethod
     def _allowed(query, typ, category=None):
@@ -348,6 +375,15 @@ class WorkspaceRelations:
         return refs
 
     def _adjacent(self, ref, query, now):
+        if ref.startswith('custom_area:'):
+            edges = list(self._outgoing(ref, query, now))
+            if self._allowed(query, 'custom_area_member', 'derived'):
+                rows = self.db.execute("SELECT ref FROM catalog_objects WHERE type IN ('hydro_station','air_quality_station','aircraft','ship') LIMIT ?", (MAX_CANDIDATES+1,)).fetchall()
+                if len(rows) > MAX_CANDIDATES:
+                    raise ValueError('Otoczenie przekracza 5000 kandydatów. Wybierz bardziej szczegółowy obiekt.')
+                for row in rows:
+                    edges.extend(edge for edge in self._outgoing(row['ref'], query, now) if edge['target_ref'] == ref)
+            return list({edge['id']: edge for edge in edges}.values())
         if ref.startswith('area:prg:'):
             return list({edge['id']: edge for edge in self._area_adjacent(ref, query, now)}.values())
         edges = {}

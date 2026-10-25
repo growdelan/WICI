@@ -11,6 +11,8 @@ import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
+from wici.monitor_epochs import RECEIPT_KEY, receipt, stamp_payload
+
 LOG = logging.getLogger(__name__)
 RETENTION = timedelta(days=14)
 
@@ -57,9 +59,10 @@ class StationHistory:
             return False
         self.start()
         self.generation += 1
+        received = receipt(self.repo)
         try:
             # The legacy UI may subsequently change freshness/selection fields.
-            self.queue.put_nowait((resource, copy.deepcopy(response), self.generation))
+            self.queue.put_nowait((resource, stamp_payload(self.repo, copy.deepcopy(response), received), self.generation))
             return True
         except asyncio.QueueFull:
             self.rejected_submissions += 1
@@ -112,7 +115,7 @@ class StationHistory:
                     return
                 resource, response, generation = entry
                 try:
-                    await asyncio.to_thread(self.write, resource, response)
+                    await asyncio.to_thread(self.write, resource, response, generation)
                     self.last_written_at = self.repo.clock().astimezone(UTC).isoformat()
                     # A queued older response succeeding cannot clear the loss of
                     # a newer response that did not fit into the queue.
@@ -127,10 +130,11 @@ class StationHistory:
             finally:
                 self.queue.task_done()
 
-    def write(self, resource, response):
+    def write(self, resource, response, generation=None):
         """Persist one response atomically; public for isolated fixture import."""
         from wici.workspace_repository import WorkspaceRepository
 
+        response = stamp_payload(self.repo, response)
         fetched = date(response.get('fetched_at')) or self.repo.clock().astimezone(UTC)
         provider, kind, *identity_parts = resource.split(':')
         identity = identity_parts[0] if identity_parts else None
@@ -140,12 +144,22 @@ class StationHistory:
         items = response.get('items', [])
         complete = status in ('ready', 'empty') and not response.get('rejected_count', 0)
         with self.repo.lock, self.repo.db:
+            if generation is not None and resource in self.errors and generation > self.error_generations.get(resource, 0):
+                from wici.workspace_monitor import append_observation
+                append_observation(self.repo, 'gap', '*', 'gios' if provider == 'gios' else 'imgw',
+                                   fetched, ['storage_recovery', resource, generation],
+                                   {'resource': resource, 'reason': 'Przerwa zapisu lub przepełnienie kolejki historii.'},
+                                   False, receipt=response[RECEIPT_KEY])
             self.repo.db.execute('''INSERT INTO workspace_source_runs
                 (resource,fetched_at,status,item_count,rejected_count,complete,message) VALUES(?,?,?,?,?,?,?)''',
                 (resource, fetched.isoformat(), status, len(items), response.get('rejected_count', 0),
                  int(complete), str(response.get('message', ''))[:500]))
             self._prune(fetched)
             if response.get('_failure') or status in ('error', 'disabled'):
+                from wici.workspace_monitor import append_observation
+                append_observation(self.repo, 'gap', '*', 'gios' if provider == 'gios' else 'imgw',
+                                   fetched, [resource, fetched.isoformat(), status],
+                                   {'resource': resource, 'reason': status}, False, receipt=response[RECEIPT_KEY])
                 return
             catalogue = WorkspaceRepository(self.repo)
             changed = {}
@@ -281,6 +295,23 @@ class StationHistory:
              fetched.isoformat(), previous['first_fetched_at'] if previous else first,
              previous['revision'] + 1 if previous else 1, quality, content_hash,
              self._provenance(response), encode(thresholds)))
+        from wici.workspace_monitor import append_observation
+        revision = previous['revision'] + 1 if previous else 1
+        station = self.repo.db.execute('SELECT label,latitude,longitude FROM catalog_objects WHERE ref=?', (ref,)).fetchone()
+        append_observation(self.repo, 'measurement', ref, 'gios' if sensor else 'imgw', observed,
+                           [sensor, metric, key, revision],
+                           {'sensor_id': str(sensor), 'metric': metric, 'unit': sample.get('unit'),
+                            'value': sample.get('value'), 'source_time': sample.get('source_time'),
+                            'quality': quality, 'revision': revision, 'fetched_at': fetched.isoformat(),
+                            'label': station['label'] if station else ref,
+                            'latitude': station['latitude'] if station else None,
+                            'longitude': station['longitude'] if station else None,
+                            'source_url': response.get('source_url'),
+                            'provenance': json.loads(self._provenance(response))},
+                           quality == 'valid' and not sample.get('stale')
+                           and sample.get('freshness', 'fresh') == 'fresh'
+                           and sample.get('status', 'value' if sensor else 'fresh') == ('value' if sensor else 'fresh'),
+                           receipt=response[RECEIPT_KEY])
         return observed if quality == 'valid' else True
 
     def _index(self, ref, sample, fetched, response):

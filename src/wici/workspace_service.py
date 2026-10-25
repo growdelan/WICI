@@ -58,12 +58,20 @@ class WorkspaceService:
         self.histograms = OrderedDict()
         self.revisions = OrderedDict()
         self.source_enabled = {}
+        from wici.workspace_areas import WorkspaceAreas
+        self.areas = WorkspaceAreas(self)
         self.catalog.backfill()
         self.moving.backfill_tracks()
         from wici.workspace_dossiers import WorkspaceDossiers
         self.dossiers = WorkspaceDossiers(self)
         from wici.workspace_relations import WorkspaceRelations
         self.relations = WorkspaceRelations(self)
+        from wici.workspace_events import WorkspaceEvents
+        from wici.workspace_monitor import WorkspaceMonitor
+        from wici.workspace_rules import WorkspaceRules
+        self.events = WorkspaceEvents(self)
+        self.rules = WorkspaceRules(self)
+        self.monitor = WorkspaceMonitor(self)
 
     def _encode_cursor(self, value):
         payload = base64.urlsafe_b64encode(encode(value).encode()).decode().rstrip('=')
@@ -87,7 +95,7 @@ class WorkspaceService:
                 and (not query.source_ids or 'ukraine_alerts' in query.source_ids))
 
     def _base(self, query, now=None, interval=None):
-        where, params = ['1=1'], []
+        where, params = ["(o.type!='custom_area' OR json_extract(o.metadata_json,'$.archived')=0)"], []
         if not query.types:
             where.append('0=1')
         else:
@@ -140,7 +148,7 @@ class WorkspaceService:
 
     def _located(self, query, interval, now):
         static = """((o.type NOT IN ('aircraft','ship','ua_region','civil_alert') AND
-            (o.latitude IS NOT NULL AND o.longitude IS NOT NULL OR EXISTS (SELECT 1 FROM catalog_object_areas a WHERE a.ref=o.ref)))
+            (o.type='custom_area' OR o.latitude IS NOT NULL AND o.longitude IS NOT NULL OR EXISTS (SELECT 1 FROM catalog_object_areas a WHERE a.ref=o.ref)))
             OR (o.type IN ('ua_region','civil_alert') AND EXISTS (SELECT 1 FROM workspace_ukraine_regions r
                 WHERE r.ref=CASE WHEN o.type='ua_region' THEN o.ref ELSE json_extract(o.metadata_json,'$.region_ref') END
                 AND r.geometry_json IS NOT NULL)))"""
@@ -282,7 +290,7 @@ class WorkspaceService:
             retained_start = max(interval[0], now-timedelta(days=30))
             episodes = 'e.first_seen_at<? AND COALESCE(e.ended_before,?)>? AND ?<?'
             params.extend([end, iso(now), iso(retained_start), iso(retained_start), end])
-        return f"""(o.type IN ('area','ua_region') OR (o.type='communication' AND ({comm}))
+        return f"""(o.type IN ('area','ua_region','custom_area') OR (o.type='communication' AND ({comm}))
             OR (o.type IN ('hydro_station','air_quality_station') AND ({stations}))
             OR (o.type IN ('aircraft','ship') AND ({movers}))
             OR (o.type='civil_alert' AND EXISTS (SELECT 1 FROM workspace_ukraine_episodes e WHERE e.ref=o.ref AND ({episodes}))))""", params
@@ -337,6 +345,9 @@ class WorkspaceService:
             item['freshness'] = ('unknown_time' if not observed else 'future' if parse_time(observed) > now
                                  else 'stale' if (now-parse_time(observed)).total_seconds() > 10800 else 'fresh')
             item['value_context'] = 'current' if query is None or query.time.mode == 'live' else 'period_overview'
+        elif item['type'] == 'custom_area':
+            item['geometry'] = item['metadata']['geometry']
+            item['color'] = item['metadata']['color']
         elif item['type'] in MOVING_TYPES:
             return self.moving.present(item, now, interval, historical=query is not None and query.time.mode == 'range')
         elif item['type'] in ('ua_region', 'civil_alert'):
@@ -465,7 +476,7 @@ class WorkspaceService:
         buckets = [dict(**{'from': iso(start+timedelta(seconds=i*step)),
                           'to': iso(min(end, start+timedelta(seconds=(i+1)*step)))}, count=counts.get(i, 0))
                    for i in range(math.ceil(seconds/step))]
-        timeless = self.db.execute(f"SELECT count(*) FROM catalog_objects o WHERE {where} AND o.type IN ('area','ua_region')", params).fetchone()[0]
+        timeless = self.db.execute(f"SELECT count(*) FROM catalog_objects o WHERE {where} AND o.type IN ('area','ua_region','custom_area')", params).fetchone()[0]
         selected_total = (sum(counts.values()) if overview == interval
                           else self._histogram(where, params, interval, interval, include_ukraine, ukraine_cutoff)['event_total'])
         return {'buckets': buckets, 'bucket_seconds': step, 'event_total': sum(counts.values()), 'timeless_total': timeless,
@@ -528,7 +539,11 @@ class WorkspaceService:
                                                      context[1]+time_params+[ref]).fetchone() is not None
             else:
                 result['in_scope'] = True
-            if item['type'] == 'communication':
+            if item['type'] == 'custom_area':
+                result['custom_area'] = self.areas.detail(item['native_id'])
+                result['area_history'] = self.areas.history(item['native_id'])['items']
+                result['geometry_context'] = 'Własny obszar, rewizja '+str(result['custom_area']['revision'])
+            elif item['type'] == 'communication':
                 detail = self.repo.communication_detail(item['document_id'])
                 detail['warning_status'] = item['warning_status']
                 result['communication'] = detail

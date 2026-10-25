@@ -1,7 +1,7 @@
 'use strict';
 /* Serializable intent state. Network responses and Leaflet handles belong to controllers. */
 (function (root) {
-  const TYPES = ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert'];
+  const TYPES = ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert', 'custom_area'];
   const movingRef = ref => typeof ref === 'string' && /^(aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9]\d{8})$/.test(ref);
   const regionRef = ref => typeof ref === 'string' && /^ua_region:neptun:(oblast|raion):[^\r\n]+$/.test(ref);
   const timezones = ['Europe/Warsaw', 'Europe/Kyiv', 'UTC'];

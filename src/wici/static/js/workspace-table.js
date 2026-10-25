@@ -1,6 +1,6 @@
 'use strict';
 window.WiciWorkspaceUI = (() => {
-  const typeNames = {communication: 'Komunikat', hydro_station: 'Wodowskaz', air_quality_station: 'Stacja GIOŚ', area: 'Obszar', aircraft: 'Samolot', ship: 'Statek', ua_region: 'Region Ukrainy', civil_alert: 'Alarm Ukrainy'};
+  const typeNames = {communication: 'Komunikat', hydro_station: 'Wodowskaz', air_quality_station: 'Stacja GIOŚ', area: 'Obszar', aircraft: 'Samolot', ship: 'Statek', ua_region: 'Region Ukrainy', civil_alert: 'Alarm Ukrainy', custom_area: 'Własny obszar'};
   const statusNames = {ready: 'Dostępne', partial: 'Dane częściowe', empty: 'Brak danych', disabled: 'Wyłączone',
     error: 'Błąd odczytu', not_loaded: 'Nie pobrano', fresh: 'Aktualne', stale: 'Nieaktualne', unknown_time: 'Czas nieznany', future: 'Czas przyszły', recorded: 'Zapis historyczny', no_data: 'Brak danych'};
   const metricNames = {water_level: 'Stan wody', discharge: 'Przepływ', temperature: 'Temperatura'};
@@ -77,7 +77,7 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
         continue;
       }
       time.textContent = U.date(cursor ? sample?.observed_at : sample?.observed_at || item.updated_at || item.published_at || item.fetched_at);
-      reading.replaceChildren(U.el('span', item.type.endsWith('_station') ? U.value(sample) : item.type === 'area' ? 'Kontekst bezczasowy' : U.statusNames[item.availability] || 'Materiał źródłowy'));
+      reading.replaceChildren(U.el('span', item.type.endsWith('_station') ? U.value(sample) : ['area', 'custom_area'].includes(item.type) ? 'Kontekst bezczasowy' : U.statusNames[item.availability] || 'Materiał źródłowy'));
       const note = cursor ? 'Według kursora' : item.freshness ? U.statusNames[item.freshness] || item.freshness : item.type.endsWith('_station') && state.query.time.mode === 'range' ? 'Przegląd okresu' : '';
       if (note) reading.append(U.el('small', note));
     }

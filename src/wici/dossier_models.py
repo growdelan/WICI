@@ -9,7 +9,7 @@ from wici.workspace_models import MovingRef, ObjectType, StrictModel, UkraineReg
 ObjectRef = Annotated[str, Field(max_length=300, pattern=(
     r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|'
     r'area:prg:[0-9]{2,4}|aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8}|'
-    r'ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}|civil_alert:neptun:[a-f0-9-]{36})$'))]
+    r'ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}|civil_alert:neptun:[a-f0-9-]{36}|custom_area:[a-f0-9-]{36})$'))]
 
 
 class DossierInput(StrictModel):
