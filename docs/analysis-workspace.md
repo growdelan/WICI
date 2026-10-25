@@ -6,6 +6,8 @@ Kolejne rozszerzenie dodaje [samoloty, statki, obserwowane i wspólne odtwarzani
 
 Wersja 0.32.0 dodaje [historię alarmów Ukrainy i porównanie regionów](ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320): katalog regionów i epizodów, obserwowane regiony oraz wspólny kursor mapy, tabeli i pasów alarmów. Formularz i prezentację czasu można przełączyć między Warszawą, Kijowem i UTC; zapis pozostaje w UTC.
 
+Wersja 0.33.0 dodaje [teczki analiz](analysis-dossiers.md): notatki, przypięte obiekty i niezmienne kopie wybranego materiału, które pozostają dostępne po upływie retencji historii źródłowej.
+
 ## Praca z katalogiem
 
 1. Wybierz typy: komunikaty czterech oficjalnych źródeł, wodowskazy IMGW, stacje jakości powietrza GIOŚ lub obszary PRG. Możesz połączyć kilka typów.

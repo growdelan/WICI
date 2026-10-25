@@ -3,6 +3,7 @@ import inspect
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from wici.dossier_models import DossierInput, DossierNote, DossierPin, MaterialCapture
 from wici.workspace_models import MovingReplay, SavedView, UkraineRecording, UkraineReplay, WorkspaceQuery
 from wici.workspace_service import QueryChanged
 
@@ -112,5 +113,57 @@ def create_workspace_router():
     @router.delete('/views/{view_id}')
     def delete_view(request: Request, view_id: str):
         return _call(request.app.state.workspace.delete_view, view_id)
+
+    @router.get('/dossiers')
+    def dossiers(request: Request):
+        return request.app.state.workspace.dossiers.list()
+
+    @router.post('/dossiers', status_code=201)
+    def create_dossier(request: Request, body: DossierInput):
+        return _call(request.app.state.workspace.dossiers.save, body)
+
+    @router.get('/dossiers/{dossier_id}')
+    def dossier(request: Request, dossier_id: str):
+        return _call(request.app.state.workspace.dossiers.detail, dossier_id)
+
+    @router.put('/dossiers/{dossier_id}')
+    def update_dossier(request: Request, dossier_id: str, body: DossierInput):
+        return _call(request.app.state.workspace.dossiers.save, body, dossier_id)
+
+    @router.delete('/dossiers/{dossier_id}')
+    def delete_dossier(request: Request, dossier_id: str, revision: int = Query(..., ge=1)):
+        return _call(request.app.state.workspace.dossiers.delete, dossier_id, revision)
+
+    @router.post('/dossiers/{dossier_id}/pins', status_code=201)
+    def pin_object(request: Request, dossier_id: str, body: DossierPin):
+        return _call(request.app.state.workspace.dossiers.pin, dossier_id, body)
+
+    @router.delete('/dossiers/{dossier_id}/pins/{ref}')
+    def unpin_object(request: Request, dossier_id: str, ref: str):
+        return _call(request.app.state.workspace.dossiers.unpin, dossier_id, ref)
+
+    @router.post('/dossiers/{dossier_id}/notes', status_code=201)
+    def create_note(request: Request, dossier_id: str, body: DossierNote):
+        return _call(request.app.state.workspace.dossiers.save_note, dossier_id, body)
+
+    @router.put('/dossiers/{dossier_id}/notes/{note_id}')
+    def update_note(request: Request, dossier_id: str, note_id: str, body: DossierNote):
+        return _call(request.app.state.workspace.dossiers.save_note, dossier_id, body, note_id)
+
+    @router.delete('/dossiers/{dossier_id}/notes/{note_id}')
+    def delete_note(request: Request, dossier_id: str, note_id: str, revision: int = Query(..., ge=1)):
+        return _call(request.app.state.workspace.dossiers.delete_note, dossier_id, note_id, revision)
+
+    @router.post('/dossiers/{dossier_id}/materials', status_code=201)
+    def capture_material(request: Request, dossier_id: str, body: MaterialCapture):
+        return _call(request.app.state.workspace.dossiers.capture, dossier_id, body)
+
+    @router.get('/dossiers/{dossier_id}/materials/{material_id}')
+    def material(request: Request, dossier_id: str, material_id: str):
+        return _call(request.app.state.workspace.dossiers.material, dossier_id, material_id)
+
+    @router.delete('/dossiers/{dossier_id}/materials/{material_id}')
+    def delete_material(request: Request, dossier_id: str, material_id: str):
+        return _call(request.app.state.workspace.dossiers.delete_material, dossier_id, material_id)
 
     return router
