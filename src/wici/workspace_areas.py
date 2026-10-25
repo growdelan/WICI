@@ -6,6 +6,7 @@ from datetime import timedelta
 from itertools import pairwise
 
 from wici.area_models import AreaInput, on_segment
+from wici.monitor_epochs import advance_epoch
 from wici.workspace_repository import encode, iso, search_text
 
 EARTH_RADIUS = 6371008.8
@@ -114,6 +115,7 @@ class WorkspaceAreas:
                 rule_ids = [row['id'] for row in self.db.execute('''SELECT id FROM workspace_rules
                     WHERE template='transport' AND json_extract(config_json,'$.area_id') IN (?,?)''',
                     (identity, result['ref']))]
+                advance_epoch(self.repo, rule_ids)
                 checkpoint = self.db.execute('SELECT COALESCE(max(id),0) FROM workspace_observations').fetchone()[0]
                 for rule_id in rule_ids:
                     self.db.execute('''UPDATE workspace_rules SET checkpoint_id=?,condition_state='unknown',

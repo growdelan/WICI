@@ -2,7 +2,11 @@
 
 Data: 25.10.2026. Branch: `codex/wici-areas-rules-events-v0350`.
 
-## Zakres i testy
+Pierwsze sekcje opisują weryfikację commita `cb92a06`. Wyniki napraw po dodatkowym
+niezależnym przeglądzie (1151 Python, 375 Node, 52 Chromium) znajdują się w
+[końcowej części raportu](#poprawki-po-niezależnym-przeglądzie-cb92a06).
+
+## Zakres i testy — pierwotny commit
 
 Zmiana obejmuje migrację 021, wydzielone usługi obszarów, reguł, monitora
 i skrzynki, integracje z rzeczywistymi ścieżkami zapisu oraz trzy moduły UI.
@@ -123,3 +127,52 @@ Logi i zrzuty są lokalnie w ignorowanym `tmp/`; nie są pakowane do wydania.
 Nie zmieniano istniejącej bazy `var/live`, kluczy ani konfiguracji lokalnej.
 Nie uruchamiano autostartu ani wdrożenia. Safari i Firefox oraz długotrwały
 monitoring dostawców i pełne obciążenie 50 reguł nie były sprawdzane.
+
+## Poprawki po niezależnym przeglądzie `cb92a06`
+
+Trzej niezależni recenzenci wskazali osiem usterek pierwszej implementacji.
+Wszystkie otrzymały poprawki i regresje:
+
+| Usterka | Poprawka i potwierdzenie |
+|---|---|
+| Prawidłowe pomiary GIOŚ były niewiarygodne | Obsługa źródłowego `status=value`, oddzielnie od hydrologicznego `fresh`; zachowana kontrola świeżości i jakości czasu. Test prowadzi przez rzeczywisty `GiosService`, normalizator, kolejkę historii i regułę, także dla zera, NULL, starych, przyszłych i niejednoznacznych pomiarów. |
+| Wolne źródło blokowało całą ocenę | Osobne zadania pobierania dla zasobów, ograniczenie 100 zadań i deduplikacja. Ocena oraz pozostałe źródła działają podczas oczekiwania. Zachowano zależność metadanych czujnika przed wartościami GIOŚ i bezpieczne zatrzymanie z zakończeniem rozpoczętych zapisów. |
+| Surowy raport sprzed edycji przechodził do nowej rewizji | Znacznik odbioru jest nadawany przed kolejką; rewizja reguły/obszaru ustanawia własną granicę odbiorów. Testy używają rzeczywistych kolejek transportu i stacji, stałego zegara, restartu oraz błędu transakcji. Niezmienione reguły zachowują swoje obserwacje. |
+| Podgląd Ukrainy ignorował poprawne odczyty | Stan jest potwierdzany przez rzeczywiste udane odczyty, nie tylko rzadkie zmiany stanu. Jawne przerwy, brak odczytów i zatrzymanie rejestracji nadal tworzą luki; strumień bieżący i archiwum zachowują swoje progi pokrycia. |
+| Archiwizacja obszaru uniemożliwiała wyłączenie reguły | Istniejącą regułę z niezmienionym selektorem można wyłączyć. Ponowne włączenie lub zmiana definicji nadal podlegają walidacji. Edytor zachowuje wybrany obszar archiwalny lub niedostępny; sprawdzono CSRF i konflikt rewizji. |
+| Stronicowanie mieszało wyniki po zmianie filtrów | Nowe zapytanie zeruje listę i offset; kolejne strony są blokowane do otrzymania pierwszej. Test zatrzymuje odpowiedź filtrowania i próbuje pobrać kolejną stronę. |
+| Czytniki nie pokazywały przejść stanów audytu | Skrzynka i teczka czytają rzeczywiste `payload.from` / `payload.status`. Testy korzystają ze struktury API i sprawdzają przejścia Nowe → Przyjęte → Zamknięte. |
+| Komentarz ze spacjami pozostawał po wysłaniu | Porównanie odbywa się z oryginalnym wysłanym szkicem. Niezmieniony tekst jest czyszczony, a nowa edycja wpisana podczas żądania pozostaje zachowana. |
+
+Dla GIOŚ i wyłączania reguły uruchomiono nowe testy z modułami poprzedniego
+commita załadowanymi wyłącznie w pamięci: 4 testy zawiodły. Z poprawkami cały
+zestaw 8 testów przeszedł. Pięć regresji rzeczywistych kolejek oraz regresje
+stronicowania, audytu i selektora obszaru również potwierdziły RED → GREEN.
+
+Nowy znacznik odbioru wykorzystuje istniejące `workspace_monitor_meta`
+i JSON obserwacji. Nie zmienia schematu SQLite i nie porównuje źródłowego
+czasu pomiaru z czasem edycji. Dzięki temu świeżo otrzymany raport z wcześniejszym
+czasem źródłowym nadal może być oceniony, a oczekujący stary raport jest pomijany.
+
+Ponowny niezależny przegląd całego diffu poprawek nie wskazał nowych usterek;
+recenzent uruchomił dodatkowo 63 testy celowane. Nie wykonywał osobno testów
+przeglądarkowych ani długiego obciążenia 50 reguł.
+
+Końcowe wyniki poprawek: **1151 testów Python i 375 testów Node zaliczonych**;
+pozostały trzy wcześniej opisane ostrzeżenia bibliotek. Ruff, lockfile,
+`git diff --check` oraz budowa paczki są poprawne. Ponowiona próba LIVE
+hydrologii IMGW na bazie tymczasowej potwierdziła wykrycie, deduplikację
+oraz trwałą kopię w teczce.
+
+Końcowa regresja przeglądarkowa po poprawkach: **52/52 Chromium** (Analiza,
+transport, Ukraina, teczki, graf, nowe panele, GIOŚ, hydrologia i trasy).
+Pierwszy szeroki przebieg miał wynik 51/52: nowy test niedostępnego obszaru
+wybierał poprzednią opcję przed zakończeniem ponownego odczytu metadanych.
+Poprawiono wyłącznie sekwencję testu — jawnie zatrzymaną odpowiedź i oczekiwanie
+na inicjalizację edytora — bez zmiany asercji lub kodu produktu. Izolowana
+próba, cały zestaw 13 testów monitora i ponowny szeroki przebieg przeszły.
+
+Dodatkowo przeszły **2/2 próby 3D z rzeczywistym WebGL**: samolot (kamery,
+wstrzymanie, powrót i istniejący feed) oraz autobus (model, obie kamery,
+wstrzymanie i odzyskanie danych). Są to wybrane scenariusze kontrolne,
+nie ponowienie wszystkich wcześniejszych testów 3D.

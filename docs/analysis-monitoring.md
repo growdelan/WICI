@@ -23,6 +23,9 @@ rozpoczyna nową ocenę powiązanych reguł; oczekujące raporty ze starego okre
 nie są oceniane jako nowe przekroczenia zmienionej granicy. Dawne zdarzenia
 i zapisane materiały zachowują pierwotną geometrię.
 
+Kolejność odbioru jest zapamiętywana przed kolejką zapisu, niezależnie od
+zegara źródła. Dotyczy to również raportów oczekujących w pamięci.
+
 ## Reguły i podgląd
 
 Regułę utworzysz w panelu **Reguły**, z karty lub własnego obszaru.
@@ -40,6 +43,8 @@ jawnie tryb źródła:
 Kilka reguł dla tego samego źródła lub czujnika współdzieli odczyt.
 Komunikaty korzystają z dotychczasowego schedulera. Reguła alarmów Ukrainy
 nie włącza samoczynnie odrębnego archiwum historii alarmów.
+Wolne pobieranie jednego zasobu nie wstrzymuje oceny zapisanych danych
+ani niezależnych źródeł. Regułę można wyłączyć także po archiwizacji jej obszaru.
 
 | Szablon | Wymagany wybór | Znaczenie |
 |---|---|---|

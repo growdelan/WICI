@@ -15,6 +15,12 @@ po retencji. Migracja 021 zachowuje stare historie i bajty materiałów.
 Limity to 100 obszarów, 50 aktywnych reguł i 90 dni zdarzeń.
 [Instrukcja](analysis-monitoring.md), [weryfikacja i ograniczenia](analysis-monitoring-verification.md).
 
+Po dodatkowym niezależnym przeglądzie poprawiono osiem usterek: rzeczywisty
+status pomiarów GIOŚ, niezależność oceny od pobierania, granice rewizji dla
+surowych kolejek, pokrycie historycznych alarmów, wyłączanie reguły po
+archiwizacji obszaru, stronicowanie skrzynki, audyt i szkic komentarza.
+Dodano regresje; [szczegóły i wyniki](analysis-monitoring-verification.md#poprawki-po-niezależnym-przeglądzie-cb92a06).
+
 Poniżej zachowano historyczne raporty wcześniejszych etapów.
 
 Aktualny tryb: automatyczne komunikaty czterech oficjalnych źródeł, bez modeli i bez zatwierdzania. Zapisane komunikaty trafiają do widoku dnia, na listę i — jeśli mają rozpoznany obszar — na lokalną mapę PRG z karteczkami województw. Pełna oczyszczona treść, oryginały i wersje są dostępne w szczegółach. Dawny tryb interpretacji, jego API i formularze zostały usunięte; historyczne tabele SQLite są zachowane.

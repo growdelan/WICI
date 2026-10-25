@@ -256,7 +256,9 @@
       eventSection.append(U.el('p', evidence.notice || snapshot.notice || 'Podstawa z chwili wykrycia; kopia nie odpytuje źródeł.', 'muted'));
       const basis = U.el('details'); basis.append(U.el('summary', 'Reguła, obszar i dane stanowiące podstawę'), U.el('pre', JSON.stringify(evidence, null, 2))); eventSection.append(basis);
       const comments = section('Komentarze i obsługa zachowane w kopii'); for (const entry of event.comments || []) comments.append(U.el('p', entry.body, 'analysis-note-text'), U.el('small', stamp(entry.at || entry.created_at)));
-      table(comments, event.history || [], [['Czas', row => stamp(row.at || row.created_at)], ['Działanie', row => row.action], ['Stan', row => row.status]], 'Historia obsługi');
+      const handlingNames={new:'Nowe',accepted:'Przyjęte',closed:'Zamknięte'};
+      const handlingTransition=row=>[row.payload?.from,row.payload?.status||row.status].filter(Boolean).map(value=>handlingNames[value]||value).join(' → ');
+      table(comments, event.history || [], [['Czas', row => stamp(row.at || row.created_at)], ['Działanie', row => ({create:'Utworzenie',status:'Zmiana stanu',comment:'Komentarz'})[row.action]||row.action], ['Stan', handlingTransition]], 'Historia obsługi');
     }
     if (snapshot.graph) {
       const graphSection = section('Zapisany graf powiązań');

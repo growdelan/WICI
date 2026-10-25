@@ -253,3 +253,88 @@ def test_specific_aircraft_preview_uses_aircraft_gap_limit(workspace):
     result = preview(workspace, rule)
     assert result['coverage']['unknown_intervals'][-1]['from'] == at
     assert result['coverage']['unknown_intervals'][-1]['to'] == (NOW+timedelta(seconds=1)).isoformat()
+
+
+def archive_ukraine_poll(workspace, seconds, state='red'):
+    at = NOW+timedelta(seconds=seconds)
+    workspace.repo.clock = lambda: at
+    items = ([{'scope': 'oblast', 'key': 'coverage', 'name': 'Obwód', 'level': state}]
+             if state != 'none' else [])
+    return workspace.ukraine.ingest({'status': 'ready', 'fetched_at': at.isoformat(), 'items': items}, record=True)
+
+
+def ukraine_archive_preview(workspace):
+    workspace.repo.clock = lambda: NOW
+    # Simulate pre-stream data or compaction; the actual sparse source archive
+    # and its successful full-snapshot runs remain authoritative.
+    with workspace.repo.lock, workspace.db:
+        workspace.db.execute('DELETE FROM workspace_observations')
+    before = workspace.db.total_changes
+    result = workspace.rules.preview({'rule': {'name': 'Archiwum alarmów', 'template': 'ukraine',
+        'config': {'region_ref': 'ua_region:neptun:oblast:coverage'}},
+        'from': NOW-timedelta(seconds=125), 'to': NOW+timedelta(seconds=1)})
+    assert workspace.db.total_changes == before
+    assert workspace.events.list()['total'] == 0
+    return result
+
+
+def test_legacy_ukraine_ready_runs_preserve_long_alarm_and_known_clear(workspace):
+    for seconds in range(-120, 1, 15):
+        archive_ukraine_poll(workspace, seconds, 'none' if seconds == 0 else 'red')
+    assert workspace.db.execute('SELECT count(*) FROM workspace_ukraine_observations').fetchone()[0] == 2
+    assert workspace.db.execute("SELECT count(*) FROM workspace_ukraine_runs WHERE status='ready'").fetchone()[0] == 9
+    result = ukraine_archive_preview(workspace)
+    assert [item['trigger'] for item in result['items']] == ['observed_active', 'state_change']
+    assert result['items'][-1]['condition_state'] == 'unmet'
+    assert result['coverage']['gaps'] == 0
+
+
+@pytest.mark.parametrize('reason', ['recording_stopped', 'restart', 'storage_error'])
+def test_legacy_ukraine_ready_runs_preserve_explicit_breaks(workspace, reason):
+    for seconds in (-120, -105, -90, -75):
+        archive_ukraine_poll(workspace, seconds)
+    workspace.repo.clock = lambda: NOW-timedelta(seconds=60)
+    workspace.ukraine.mark_gap(reason)
+    for seconds in (-45, -30, -15, 0):
+        archive_ukraine_poll(workspace, seconds, 'none' if seconds == 0 else 'red')
+    result = ukraine_archive_preview(workspace)
+    assert [item['trigger'] for item in result['items']] == [
+        'observed_active', 'observed_active', 'state_change']
+    assert result['coverage']['gaps'] >= 1
+
+
+def test_legacy_ukraine_missing_polls_do_not_confirm_clear(workspace):
+    archive_ukraine_poll(workspace, -50)
+    archive_ukraine_poll(workspace, 0, 'none')
+    result = ukraine_archive_preview(workspace)
+    # A 50-second hole exceeds the recorder's 45-second coverage window,
+    # even though the live rule's maximum interval is 60 seconds.
+    assert [item['trigger'] for item in result['items']] == ['observed_active']
+    assert result['coverage']['gaps'] >= 1
+
+
+def test_stream_polls_can_fill_period_without_ukraine_archive_runs(workspace):
+    archive_ukraine_poll(workspace, -90)
+    archive_ukraine_poll(workspace, 0, 'none')
+    ref = 'ua_region:neptun:oblast:coverage'
+    with workspace.repo.lock, workspace.db:
+        workspace.db.execute('DELETE FROM workspace_observations')
+        for seconds in (-75, -60, -45, -30, -15):
+            at = NOW+timedelta(seconds=seconds)
+            workspace.repo.clock = lambda: NOW
+            append_observation(workspace.repo, 'ukraine', ref, 'ukraine_alerts', at, seconds, {'state': 'red'})
+    result = preview(workspace, {'name': 'Pełne pokrycie', 'template': 'ukraine', 'config': {'region_ref': ref}})
+    assert [item['trigger'] for item in result['items']] == ['observed_active', 'state_change']
+    assert not [item for item in result['coverage']['unknown_intervals']
+                if item['from'] >= (NOW-timedelta(seconds=90)).isoformat()]
+
+
+def test_ukraine_stream_preview_retains_live_interval_contract(workspace):
+    with workspace.repo.lock, workspace.db:
+        ref = workspace.ukraine._region('oblast', 'stream', 'Obwód')
+        workspace.db.execute('DELETE FROM workspace_observations')
+        for seconds, state in [(-50, 'red'), (0, 'none')]:
+            append_observation(workspace.repo, 'ukraine', ref, 'ukraine_alerts',
+                               NOW+timedelta(seconds=seconds), seconds, {'state': state})
+    result = preview(workspace, {'name': 'Strumień', 'template': 'ukraine', 'config': {'region_ref': ref}})
+    assert [item['trigger'] for item in result['items']] == ['observed_active', 'state_change']

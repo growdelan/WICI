@@ -9,6 +9,8 @@ import logging
 import sqlite3
 from collections import deque
 
+from wici.monitor_epochs import receipt, stamp_payload
+
 LOG = logging.getLogger(__name__)
 
 
@@ -38,7 +40,8 @@ class MovingIngestion:
             self.coalesced += 1
         if getattr(self.moving, 'repo', None) is not None:
             if len(self.observations) < 128:
-                self.observations.append((kind, copy.deepcopy(snapshot)))
+                received = receipt(self.moving.repo)
+                self.observations.append((kind, stamp_payload(self.moving.repo, copy.deepcopy(snapshot), received)))
             else:
                 self.observation_overflow += 1
                 self.observation_gap_after.add(kind)

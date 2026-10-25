@@ -1,4 +1,6 @@
 """Real SQLite checkpointing and the semantic difference between gaps and exits."""
+import asyncio
+import threading
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
@@ -328,6 +330,7 @@ async def test_background_failure_stays_visible_and_resets_condition(workspace):
     workspace.repo.clock = lambda: NOW+timedelta(seconds=10)
     workspace.monitor.bind(SimpleNamespace(hydro=Source()))
     await workspace.monitor._background()
+    await asyncio.gather(*workspace.monitor.poll_tasks.values())
     workspace.monitor.process()
     await workspace.monitor._background()  # cache interval: no second fetch.
     assert workspace.monitor.status()['error']
@@ -362,3 +365,144 @@ def test_ukraine_storage_gap_does_not_invent_clear_transition(workspace):
     observation(workspace, 'ukraine', ref, 'ukraine_alerts', 20, {'state': 'none'})
     workspace.monitor.process()
     assert len(events(workspace)) == 1
+
+
+@pytest.mark.asyncio
+async def test_slow_background_resource_does_not_block_evaluation_or_other_polls(workspace):
+    slow_rule = measurement_rule(workspace)
+    raw = {key: slow_rule[key] for key in ('name', 'template', 'enabled', 'config', 'revision')}
+    slow_rule = workspace.rules.save(dict(raw, mode='background'), slow_rule['id'])
+    transport(workspace)
+    with workspace.repo.lock, workspace.db:
+        ref = workspace.ukraine._region('oblast', 'independent', 'Obwód')
+    workspace.rules.save({'name': 'Alarm w tle', 'template': 'ukraine', 'mode': 'background',
+                          'enabled': True, 'config': {'region_ref': ref}})
+    point(workspace, 0, 20.5, 51.5)
+    entered, cancelled, polled = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    calls = []
+
+    class SlowHydro:
+        async def fetch(self):
+            calls.append('hydro')
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+    class Ukraine:
+        async def geometry(self):
+            return {'status': 'ready'}
+
+        async def fetch_alerts(self):
+            calls.append('ukraine')
+            snapshot = {'status': 'ready', 'fetched_at': NOW.isoformat(), 'items': [{
+                'scope': 'oblast', 'key': 'independent', 'name': 'Obwód', 'level': 'red'}]}
+            await asyncio.to_thread(workspace.ukraine.ingest, snapshot)
+            polled.set()
+            return snapshot
+
+    monitor = workspace.monitor.bind(SimpleNamespace(hydro=SlowHydro(), ukraine=Ukraine())).start()
+    try:
+        await asyncio.wait_for(entered.wait(), 1)
+        await asyncio.wait_for(polled.wait(), 1)
+
+        async def detected():
+            while len(events(workspace)) != 2:
+                await asyncio.sleep(.01)
+
+        await asyncio.wait_for(detected(), 2)
+        assert not cancelled.is_set()
+        await monitor._background()
+        assert calls.count('hydro') == calls.count('ukraine') == 1
+        assert len(monitor.poll_tasks) <= 2
+        raw['revision'] = slow_rule['revision']
+        workspace.rules.save(dict(raw, enabled=False, mode='background'), slow_rule['id'])
+        await monitor._background()
+        await asyncio.wait_for(cancelled.wait(), 1)
+        assert not any(key.startswith('hydro|') for key in monitor.source_errors)
+    finally:
+        await monitor.close()
+    assert not monitor.poll_tasks
+    assert monitor.worker is None
+
+
+@pytest.mark.asyncio
+async def test_stop_polling_joins_started_source_gap_write(workspace, monkeypatch):
+    rule = measurement_rule(workspace)
+    raw = {key: rule[key] for key in ('name', 'template', 'enabled', 'config', 'revision')}
+    workspace.rules.save(dict(raw, mode='background'), rule['id'])
+
+    class Source:
+        async def fetch(self):
+            return {'status': 'error'}
+
+    entered, release, completed = threading.Event(), threading.Event(), threading.Event()
+    original = workspace.monitor._source_gap
+
+    def blocked_write(*args):
+        entered.set()
+        assert release.wait(3)
+        original(*args)
+        completed.set()
+
+    monkeypatch.setattr(workspace.monitor, '_source_gap', blocked_write)
+    workspace.monitor.bind(SimpleNamespace(hydro=Source()))
+    await workspace.monitor._background()
+    assert await asyncio.to_thread(entered.wait, 1)
+    stopping = asyncio.create_task(workspace.monitor.stop_polling())
+    try:
+        await asyncio.sleep(0)
+        assert not stopping.done()
+        assert not completed.is_set()
+    finally:
+        release.set()
+        await asyncio.wait_for(stopping, 2)
+    assert completed.is_set()
+    assert not workspace.monitor.poll_tasks
+    await workspace.monitor.close()
+
+
+@pytest.mark.asyncio
+async def test_gios_poll_waits_for_refreshed_sensor_metadata_before_samples(workspace, monkeypatch):
+    from wici.gios import GiosService, normalize
+    from wici.station_history import StationHistory
+
+    history = StationHistory(workspace.repo)
+    history.write('gios:sensors:1', {'status': 'ready', 'fetched_at': NOW.isoformat(), 'items': [
+        {'id': 10, 'station_id': 1, 'parameter': 'PM10', 'name': 'PM10', 'unit': 'µg/m³'}]})
+    rule = workspace.rules.save({'name': 'PM10', 'template': 'measurement', 'enabled': True,
+        'mode': 'background', 'config': {'object_ref': 'air_quality_station:gios:1',
+        'sensor_id': '10', 'metric': 'PM10', 'unit': 'µg/m³', 'threshold': 50}})
+    entered, release = asyncio.Event(), asyncio.Event()
+    calls = []
+    service = GiosService(None, lambda: NOW, history=history)
+
+    async def download(kind, identity):
+        calls.append((kind, identity))
+        if kind == 'sensors':
+            entered.set()
+            await release.wait()
+            raw = [{'Identyfikator stanowiska': 10, 'Identyfikator stacji': 1, 'Wskaźnik - kod': 'PM2.5'}]
+        else:
+            raw = [{'Data': '2026-10-25 13:00:00', 'Wartość': 65}]
+        items, rejected = normalize(kind, raw)
+        return {'status': 'ready', 'items': items, 'rejected_count': rejected}
+
+    monkeypatch.setattr(service, 'download', download)
+    workspace.monitor.bind(SimpleNamespace(gios=service))
+    try:
+        await workspace.monitor._background()
+        await asyncio.wait_for(entered.wait(), 1)
+        assert calls == [('sensors', 1)]
+        release.set()
+        await asyncio.gather(*workspace.monitor.poll_tasks.values())
+        await history.flush()
+        workspace.monitor.process()
+        assert calls == [('sensors', 1), ('data', 10)]
+        assert workspace.db.execute('SELECT metric FROM station_measurements').fetchone()[0] == 'PM2.5'
+        assert workspace.events.list(rule_id=rule['id'])['total'] == 0
+    finally:
+        release.set()
+        await workspace.monitor.stop_polling()
+        await history.close()

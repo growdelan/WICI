@@ -141,7 +141,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             yield
         finally:
             if workspace_monitor:
-                workspace_monitor.sources = None
+                await workspace_monitor.stop_polling()
             if ukraine_collector:
                 await ukraine_collector.close()
             if tracking:

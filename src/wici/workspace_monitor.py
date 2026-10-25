@@ -19,10 +19,14 @@ LOG = logging.getLogger(__name__)
 RETENTION_DAYS = 90
 MAX_STREAM = 200000
 BATCH = 256
+MAX_POLL_TASKS = 100  # At most two distinct resources for each of 50 active rules.
 
 
-def append_observation(repo, kind, object_ref, source_id, observed_at, identity, payload, trusted=True):
+def append_observation(repo, kind, object_ref, source_id, observed_at, identity, payload, trusted=True, receipt=None):
     """Append without committing; the caller owns the lock and transaction."""
+    from wici.monitor_epochs import stamp_payload
+
+    payload = stamp_payload(repo, payload, receipt)
     observed = observed_at.astimezone(UTC) if isinstance(observed_at, datetime) and observed_at.tzinfo else timestamp(observed_at)
     now = repo.clock().astimezone(UTC)
     if observed is None:
@@ -69,9 +73,10 @@ def moving_observations(repo, kind, snapshot):
     source = 'aircraft' if kind == 'aircraft' else 'ships'
     available = snapshot.get('status') == 'ready' and not snapshot.get('stale') and not snapshot.get('demo')
     fetched = snapshot.get('fetched_at') or iso(now)
+    receipt = snapshot.get('_monitor_receipt')
     if not available:
         append_observation(repo, 'gap', '*', source, fetched, [fetched, snapshot.get('status')],
-                           {'reason': snapshot.get('status', 'unknown')}, False)
+                           {'reason': snapshot.get('status', 'unknown')}, False, receipt=receipt)
         return
     for item in snapshot.get('items', []):
         try:
@@ -84,7 +89,7 @@ def moving_observations(repo, kind, snapshot):
             payload = dict(point, object_type=kind, source_name=snapshot.get('source_name'),
                            source_url=snapshot.get('source_url'), fetched_at=fetched)
             append_observation(repo, 'transport', ref, source, point['position_at'],
-                               [point['position_at'], point['longitude'], point['latitude']], payload, fresh)
+                               [point['position_at'], point['longitude'], point['latitude']], payload, fresh, receipt=receipt)
         except (KeyError, ValueError, TypeError):
             continue
 
@@ -279,12 +284,38 @@ def historical_observations(workspace, rule, start, end):
                            'observed_at': row['created_at'], 'trusted': True, 'payload': payload,
                            'key': f'history:document:{row["id"]}'})
     elif kind == 'ukraine':
-        for row in db.execute('''SELECT * FROM workspace_ukraine_observations WHERE region_ref=?
+        from wici.ukraine_history import MAX_GAP_SECONDS
+
+        changes = db.execute('''SELECT * FROM workspace_ukraine_observations WHERE region_ref=?
             AND observed_at>=? AND observed_at<? ORDER BY observed_at,id LIMIT 10001''',
-            (config['region_ref'], iso(start), iso(end))):
+            (config['region_ref'], iso(start), iso(end))).fetchall()
+        for row in changes:
             source.append({'kind': kind, 'object_ref': row['region_ref'], 'source_id': 'ukraine_alerts',
                            'observed_at': row['observed_at'], 'trusted': True, 'payload': dict(row),
                            'key': f'history:ukraine:{row["id"]}'})
+        # The archive stores changes sparsely. Each successful full snapshot
+        # confirms the most recent region state, even when no change row was
+        # needed. Reconstruct those actual polls rather than mistaking a long
+        # unchanged alarm for an outage. Failed/stopped runs remain gaps below.
+        previous = db.execute('''SELECT * FROM workspace_ukraine_observations WHERE region_ref=?
+            AND observed_at<? ORDER BY observed_at DESC,id DESC LIMIT 1''',
+            (config['region_ref'], iso(start))).fetchone()
+        change_index = 0
+        runs = db.execute('''SELECT * FROM workspace_ukraine_runs
+            WHERE observed_at>=? AND observed_at<? AND status='ready'
+            ORDER BY observed_at,id LIMIT 10001''', (iso(start), iso(end))).fetchall()
+        limited = limited or len(changes) > 10000 or len(runs) > 10000
+        for run in runs:
+            while change_index < len(changes) and changes[change_index]['observed_at'] <= run['observed_at']:
+                previous = changes[change_index]
+                change_index += 1
+            if previous is None or previous['observed_at'] == run['observed_at']:
+                continue
+            source.append({'kind': kind, 'object_ref': config['region_ref'], 'source_id': 'ukraine_alerts',
+                           'observed_at': run['observed_at'], 'trusted': True,
+                           'payload': dict(dict(previous), confirmed_by_run_id=run['id'],
+                                           state_observed_at=previous['observed_at'], fetched_at=run['fetched_at']),
+                           'key': f'history:ukraine:run:{run["id"]}:{config["region_ref"]}'})
         for row in db.execute('''SELECT * FROM workspace_ukraine_runs
             WHERE observed_at>=? AND observed_at<? AND status!='ready'
             ORDER BY observed_at,id LIMIT 10001''', (iso(start), iso(end))):
@@ -298,6 +329,24 @@ def historical_observations(workspace, rule, start, end):
     keys = {identity(row) for row in rows}
     rows.extend(row for row in source if identity(row) not in keys)
     rows.sort(key=lambda row: (row['observed_at'], row['kind'] != 'gap', row.get('id', 0)))
+    if kind == 'ukraine':
+        # Apply archive coverage expiry only after merging with the stream: a
+        # real stream poll can fill a period when history recording was off.
+        known = [row for row in rows if row['kind'] == kind and row['trusted']]
+        coverage_until = start
+        for index, row in enumerate(known):
+            # Stream reports retain the live evaluator's 60-second interval;
+            # archive runs use the recorder's stricter coverage contract.
+            maximum = 60 if row.get('id') is not None else MAX_GAP_SECONDS
+            expires = timestamp(row['observed_at'])+timedelta(seconds=maximum)
+            coverage_until = max(coverage_until, expires)
+            following = timestamp(known[index+1]['observed_at']) if index+1 < len(known) else end
+            if coverage_until < min(following, end):
+                rows.append({'kind': 'gap', 'object_ref': '*', 'source_id': 'ukraine_alerts',
+                             'observed_at': iso(coverage_until), 'trusted': False,
+                             'payload': {'reason': 'Brak zachowanych odczytów alarmów po poprawnym odczycie'},
+                             'key': f'history:ukraine:expired:{iso(coverage_until)}'})
+        rows.sort(key=lambda row: (row['observed_at'], row['kind'] != 'gap', row.get('id', 0)))
     return rows[:10000], limited or len(source) > 10000 or len(rows) > 10000
 
 
@@ -310,6 +359,7 @@ class WorkspaceMonitor:
         self.error = None
         self.last_cycle = None
         self.last_poll = {}
+        self.poll_tasks = {}
         self.last_maintenance = None
         self.source_errors = {}
         with self.repo.lock, self.db:
@@ -348,12 +398,15 @@ class WorkspaceMonitor:
                     'notice': 'Wymaga działającego serwera. Restart i awaria źródła nie uzupełniają brakujących odczytów.'}
 
     def process(self):
+        from wici.monitor_epochs import accepts_receipt, rule_epoch
+
         processed = 0
         with self.repo.lock, self.db:
             overload = self.db.execute("SELECT value FROM workspace_monitor_meta WHERE key='overload'").fetchone()
             boundary = self.db.execute("SELECT value FROM workspace_monitor_meta WHERE key='overload_after_id'").fetchone()
             rules = [self.workspace.rules.decode(row) for row in self.db.execute('SELECT * FROM workspace_rules WHERE enabled=1')]
             for rule in rules:
+                epoch = rule_epoch(self.repo, rule['id'])
                 area = None
                 if rule['template'] == 'transport':
                     try:
@@ -365,8 +418,12 @@ class WorkspaceMonitor:
                 observations = self.db.execute('SELECT * FROM workspace_observations WHERE id>? ORDER BY id LIMIT ?',
                                                (rule['checkpoint_id'], BATCH)).fetchall()
                 for row in observations:
-                    self._apply_overload_gap(rule, row['id']-1, overload, boundary)
                     observation = decode_observation(row)
+                    if not accepts_receipt(observation, epoch):
+                        self.db.execute('UPDATE workspace_rules SET checkpoint_id=? WHERE id=?', (row['id'], rule['id']))
+                        processed += 1
+                        continue
+                    self._apply_overload_gap(rule, row['id']-1, overload, boundary)
                     ref = observation['object_ref']
                     if observation['kind'] == 'gap' and _matches(rule, observation):
                         # Source failures break all identities; a track/session
@@ -447,6 +504,7 @@ class WorkspaceMonitor:
             return
         rules = [r for r in self.workspace.rules.list()['items'] if r['enabled'] and r['mode'] == 'background']
         resources = set()
+        dependencies = {}
         for rule in rules:
             config = rule['config']
             if rule['template'] == 'transport':
@@ -454,8 +512,10 @@ class WorkspaceMonitor:
                 resources.add((kind, ''))
             elif rule['template'] == 'measurement':
                 if config['object_ref'].startswith('air_quality_station:'):
-                    resources.add(('gios_sensors', config['object_ref'].rsplit(':', 1)[-1]))
-                    resources.add(('gios_data', config['sensor_id']))
+                    station = ('gios_sensors', config['object_ref'].rsplit(':', 1)[-1])
+                    sensor = ('gios_data', config['sensor_id'])
+                    resources.update((station, sensor))
+                    dependencies[sensor] = station
                 else:
                     resources.add(('hydro', ''))
             elif rule['template'] == 'ukraine':
@@ -464,34 +524,76 @@ class WorkspaceMonitor:
         now = asyncio.get_running_loop().time()
         self.source_errors = {key: message for key, message in self.source_errors.items()
                               if tuple(key.split('|', 1)) in resources}
+        for key, task in list(self.poll_tasks.items()):
+            if task.done():
+                del self.poll_tasks[key]
+            elif key not in resources and not task.cancelling():
+                task.cancel()
+        self.last_poll = {key: at for key, at in self.last_poll.items() if key in resources}
         for resource, identity in sorted(resources, key=lambda item: (item[0] == 'gios_data', item)):
             key = resource, identity
             interval = 10 if resource in ('aircraft', 'ship') else 15 if resource == 'ukraine' else 60
-            if now-self.last_poll.get(key, -interval) < interval:
+            if (key in self.poll_tasks or len(self.poll_tasks) >= MAX_POLL_TASKS
+                    or now-self.last_poll.get(key, -interval) < interval):
                 continue
             self.last_poll[key] = now
+            self.poll_tasks[key] = asyncio.create_task(
+                self._poll_source(sources, resource, identity, self.poll_tasks.get(dependencies.get(key))),
+                name=f'wici-monitor-source-{resource}-{identity}')
+        # Give newly scheduled polls a turn without waiting for their downloads.
+        await asyncio.sleep(0)
+
+    async def _poll_source(self, sources, resource, identity, dependency=None):
+        message = None
+        try:
+            if dependency is not None:
+                # Queue refreshed sensor metadata before its samples, without
+                # serializing unrelated resources or the evaluation worker.
+                await asyncio.shield(dependency)
+            if resource in ('aircraft', 'ship'):
+                service = getattr(sources, 'aircraft' if resource == 'aircraft' else 'ships')
+                response = await service.fetch()
+            elif resource == 'hydro':
+                response = await sources.hydro.fetch()
+            elif resource.startswith('gios_'):
+                response = await sources.gios.fetch('sensors' if resource == 'gios_sensors' else 'data', int(identity))
+            else:
+                await sources.ukraine.geometry()
+                response = await sources.ukraine.fetch_alerts()
+            if response is not None and (response.get('status') not in ('ready', 'empty') or response.get('stale')):
+                message = f'Źródło {resource}: {response.get("status", "unknown")}; brak świeżych obserwacji.'
+        except (ValueError, RuntimeError, OSError, KeyError, TypeError):
+            message = f'Odczyt źródła {resource} nie powiódł się; brakujące dane pozostają luką.'
+        key = resource+'|'+identity
+        if message is None:
+            self.source_errors.pop(key, None)
+            return
+        self.source_errors[key] = message
+        # SQLite writes cannot be cancelled. Join a started write before the
+        # poll task finishes, including during shutdown or rule disablement.
+        task = asyncio.create_task(asyncio.to_thread(self._source_gap, resource, identity, message))
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
             try:
-                response = None
-                if resource in ('aircraft', 'ship'):
-                    service = getattr(sources, 'aircraft' if resource == 'aircraft' else 'ships')
-                    response = await service.fetch()
-                elif resource == 'hydro':
-                    response = await sources.hydro.fetch()
-                elif resource.startswith('gios_'):
-                    response = await sources.gios.fetch('sensors' if resource == 'gios_sensors' else 'data', int(identity))
-                else:
-                    await sources.ukraine.geometry()
-                    response = await sources.ukraine.fetch_alerts()
-                if response is not None and (response.get('status') not in ('ready', 'empty') or response.get('stale')):
-                    message = f'Źródło {resource}: {response.get("status", "unknown")}; brak świeżych obserwacji.'
-                    self.source_errors[resource+'|'+identity] = message
-                    await asyncio.to_thread(self._source_gap, resource, identity, message)
-                else:
-                    self.source_errors.pop(resource+'|'+identity, None)
-            except (ValueError, RuntimeError, OSError, KeyError):
-                message = f'Odczyt źródła {resource} nie powiódł się; brakujące dane pozostają luką.'
-                self.source_errors[resource+'|'+identity] = message
-                await asyncio.to_thread(self._source_gap, resource, identity, message)
+                await task
+            except (sqlite3.Error, ValueError, RuntimeError, OSError, KeyError, TypeError):
+                LOG.exception('Local monitoring source gap write failed during cancellation')
+            raise
+        except (sqlite3.Error, ValueError, RuntimeError, OSError, KeyError, TypeError):
+            self.source_errors[key] = message+' Nie udało się zapisać luki źródła.'
+            LOG.exception('Local monitoring source gap write failed')
+
+    async def stop_polling(self):
+        """Stop network work before shared source services and writers close."""
+        self.sources = None
+        tasks = list(self.poll_tasks.values())
+        for task in tasks:
+            if not task.done() and not task.cancelling():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self.poll_tasks.clear()
 
     def _source_gap(self, resource, identity, message):
         source = {'aircraft': 'aircraft', 'ship': 'ships', 'hydro': 'imgw',
@@ -527,6 +629,7 @@ class WorkspaceMonitor:
 
     async def close(self):
         self.closed = True
+        await self.stop_polling()
         if self.worker:
             self.worker.cancel()
             try:

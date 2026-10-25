@@ -2,6 +2,7 @@
 import json
 import uuid
 
+from wici.monitor_epochs import advance_epoch
 from wici.rule_models import RuleInput, RulePreview
 from wici.workspace_repository import encode, iso
 from wici.workspace_service import QueryChanged
@@ -71,10 +72,17 @@ class WorkspaceRules:
     def save(self, raw, rule_id=None):
         value = RuleInput.model_validate(raw)
         with self.repo.lock, self.db:
-            self._validate(value)
             previous = self.detail(rule_id) if rule_id else None
             if previous and value.revision != previous['revision']:
                 raise QueryChanged('Reguła została zmieniona w innym oknie; wczytaj aktualną wersję')
+            # Stopping an existing rule must remain possible when its source or
+            # area has become unavailable. Definition changes still need a valid
+            # selector; disabling the unchanged selector never starts collection.
+            disabling_existing = (previous is not None and not value.enabled
+                                  and value.template == previous['template']
+                                  and value.config == previous['config'])
+            if not disabling_existing:
+                self._validate(value)
             if value.enabled and (not previous or not previous['enabled']):
                 count = self.db.execute('SELECT count(*) FROM workspace_rules WHERE enabled=1').fetchone()[0]
                 if count >= 50:
@@ -82,6 +90,7 @@ class WorkspaceRules:
             now = iso(self.repo.clock())
             identity = rule_id or str(uuid.uuid4())
             revision = previous['revision']+1 if previous else 1
+            advance_epoch(self.repo, [identity])
             checkpoint = self.db.execute('SELECT COALESCE(max(id),0) FROM workspace_observations').fetchone()[0]
             # Edits start a new evaluation epoch. Existing observations remain
             # available to Preview but cannot be replayed into the live inbox.

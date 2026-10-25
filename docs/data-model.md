@@ -141,6 +141,13 @@ raportów przed łączeniem aktualizacji katalogu. Worker oceny zapisuje stan,
 zdarzenie i checkpoint w jednej transakcji. Odczyt Analizy i odtwarzanie
 nie są wejściem silnika reguł.
 
+Granice kolejnych rewizji reguł mają dodatkowy znacznik odbioru w
+`workspace_monitor_meta`. Surowe kolejki transportu i stacji przechwytują go
+przed opóźnionym zapisem. Obejmuje identyfikator uruchomienia oraz monotoniczną
+generację; nie zależy od czasu źródła. Pozwala odrzucić raport oczekujący przed
+edycją, także przy stałym zegarze, zachowując inne reguły i poprawne odbiory
+po restarcie. Zapis granicy jest atomowy z rewizją, bez dodatkowej migracji.
+
 Obsługa zdarzenia nie zmienia jego warunku ani podstawy. Zdarzenie przechowuje
 kopię reguły, obszaru i raportu bez kluczy obcych do źródłowej historii.
 Edycja obszaru rozpoczyna nową ocenę, a poprzednie zdarzenia zachowują dawny
