@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from wici.geo import units
 
-ObjectType = Literal['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert']
+ObjectType = Literal['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert', 'custom_area']
 MovingRef = Annotated[str, Field(pattern=r'^(aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8})$')]
 REGION_REF_PATTERN = r'^ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}$'
 UkraineRegionRef = Annotated[str, Field(pattern=REGION_REF_PATTERN)]
@@ -56,8 +56,8 @@ class Sort(StrictModel):
 
 
 class WorkspaceQuery(StrictModel):
-    types: list[ObjectType] = Field(default_factory=lambda: ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert'], max_length=8)
-    source_ids: list[Literal['imgw_meteo', 'rso', 'rcb', 'sg', 'imgw', 'gios', 'prg', 'aircraft', 'ships', 'ukraine_alerts']] = Field(default_factory=list, max_length=10)
+    types: list[ObjectType] = Field(default_factory=lambda: ['communication', 'hydro_station', 'air_quality_station', 'area', 'aircraft', 'ship', 'ua_region', 'civil_alert', 'custom_area'], max_length=9)
+    source_ids: list[Literal['imgw_meteo', 'rso', 'rcb', 'sg', 'imgw', 'gios', 'prg', 'aircraft', 'ships', 'ukraine_alerts', 'custom']] = Field(default_factory=list, max_length=11)
     q: str = Field(default='', max_length=200)
     province: str | None = None
     country: Literal['PL', 'UA'] | None = None
@@ -114,7 +114,7 @@ class ViewConfig(StrictModel):
     columns: list[Literal['label', 'type', 'source_id', 'updated_at', 'published_at', 'measurement', 'location', 'status']] | None = Field(default=None, max_length=8)
     camera: ViewCamera | None = None
     layout: ViewLayout | None = None
-    selectedRef: str | None = Field(default=None, max_length=300, pattern=r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|area:prg:[0-9]{2,4}|aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8}|ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}|civil_alert:neptun:[a-f0-9-]{36})$')
+    selectedRef: str | None = Field(default=None, max_length=300, pattern=r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|area:prg:[0-9]{2,4}|aircraft:icao:[a-f0-9]{6}|ship:mmsi:[1-9][0-9]{8}|ua_region:neptun:(oblast|raion):[^\x00-\x1f]{1,256}|civil_alert:neptun:[a-f0-9-]{36}|custom_area:[a-f0-9-]{36})$')
     comparedRefs: list[MovingRef] | None = Field(default=None, max_length=5)
     comparedRegionRefs: list[UkraineRegionRef] | None = Field(default=None, max_length=5)
     displayTimezone: Literal['Europe/Warsaw', 'Europe/Kyiv', 'UTC'] | None = None

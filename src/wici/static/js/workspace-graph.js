@@ -2,7 +2,7 @@
 /* Object graphs are bounded local explorations. Layout never changes source facts. */
 (function (root) {
   const categoryNames = {source: 'Źródłowa', derived: 'Wyliczona', analyst: 'Analityczna'};
-  const relationLabels = {communication_area: 'Obszar komunikatu', station_area: 'Położenie stacji', administrative_parent: 'Hierarchia PRG', region_parent: 'Hierarchia Ukrainy', alert_region: 'Region alarmu', reported_in_area: 'Raport pozycji w obszarze', analyst_related: 'Powiązanie analityczne'};
+  const relationLabels = {communication_area: 'Obszar komunikatu', station_area: 'Położenie stacji', administrative_parent: 'Hierarchia PRG', region_parent: 'Hierarchia Ukrainy', alert_region: 'Region alarmu', reported_in_area: 'Raport pozycji w obszarze', custom_area_member: 'Położenie we własnym obszarze', analyst_related: 'Powiązanie analityczne'};
   const categoryColors = {source: '#217c83', derived: '#967126', analyst: '#8060b0'};
   const clone = value => structuredClone(value);
   function limitMessage(data) {return data?.edge_limit_reached ? `Pokazano ${data.edges?.length || 0} z ${data.edge_total} relacji. Osiągnięto limit ${data.limits?.max_edges || 500}; zawęź rodzaj lub podstawę relacji.` : '';}
@@ -29,7 +29,7 @@
     const meta = node.metadata || {}, point = node.position || {};
     if (node.type === 'aircraft') return {glyph: '✈', color: meta.military === true ? '#b45309' : '#17465c', angle: Number.isFinite(point.heading) ? point.heading - 90 : -90};
     if (node.type === 'ship') {const key = root.WiciShips?.classification?.(meta).key || (meta.type_code === 35 ? 'military' : civilTypes.has(meta.type_code) ? 'civilian' : 'unclassified'), known = Number.isFinite(point.heading) && point.heading >= 0 && point.heading < 360; return {glyph: 'ship', color: {military: '#843ba7', civilian: '#126b78', unclassified: '#65717e'}[key], angle: known ? point.heading : 0, unknown: !known, old: Number.isFinite(referenceAt) && Number.isFinite(Date.parse(point.position_at)) && referenceAt - Date.parse(point.position_at) > 300000};}
-    return {glyph: ({communication: '▤', hydro_station: '≈', air_quality_station: '◉', area: '◇', ua_region: '◇', civil_alert: '!'})[node.type] || '○', color: '#217c83', angle: 0};
+    return {glyph: ({communication: '▤', hydro_station: '≈', air_quality_station: '◉', area: '◇', custom_area: '⬡', ua_region: '◇', civil_alert: '!'})[node.type] || '○', color: '#217c83', angle: 0};
   }
   function symbol(node, referenceAt = null) {
     const style = transportStyle(node, referenceAt), fill = style.old ? 'url(#old)' : style.color, content = style.glyph === 'ship'

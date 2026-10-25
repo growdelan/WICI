@@ -81,6 +81,10 @@ class UkraineHistory:
         at = moment(at) if at is not None else self._now()
         reason = str(reason)[:100]
         with self.repo.lock, self.db:
+            if reason not in ('recording_started', 'recording_stopped'):
+                from wici.workspace_monitor import append_observation
+                append_observation(self.repo, 'gap', '*', SOURCE_ID, iso(at), ['history_gap', iso(at), reason],
+                                   {'reason': reason}, False)
             previous = self.db.execute('SELECT * FROM workspace_ukraine_runs ORDER BY observed_at DESC,id DESC LIMIT 1').fetchone()
             if previous and previous['status'] == 'ready':
                 self.db.execute('''INSERT INTO workspace_ukraine_runs(observed_at,recorded_at,status,reason)
@@ -176,6 +180,10 @@ class UkraineHistory:
                     available = False
                 alerts[ref] = item
             if not available:
+                from wici.workspace_monitor import append_observation
+                append_observation(self.repo, 'gap', '*', SOURCE_ID, iso(now),
+                                   [snapshot.get('fetched_at'), iso(now), snapshot.get('status')],
+                                   {'reason': snapshot.get('status', 'unknown')}, False)
                 if recording:
                     self.mark_gap(snapshot.get('status') or 'invalid_snapshot')
                 invalid_status = str(snapshot.get('status') or 'error')
@@ -195,11 +203,21 @@ class UkraineHistory:
             self.db.execute('''UPDATE workspace_ukraine_state SET status='ready',fetched_at=?,source_updated_at=?,
                 source_version=?,last_successful_at=?,gap_reason=NULL,updated_at=? WHERE id=1''',
                 (fetched_at, updated, version, fetched_at, iso(now)))
-            for region in self.db.execute('SELECT ref FROM workspace_ukraine_regions').fetchall():
+            for region in self.db.execute('SELECT ref,label,geometry_json FROM workspace_ukraine_regions').fetchall():
                 item = alerts.get(region['ref'])
                 self.db.execute('''UPDATE workspace_ukraine_regions SET current_state=?,source_since=?,
                     source_updated_at=?,fetched_at=? WHERE ref=?''',
                     (item['level'] if item else 'none', item.get('since') if item else None, updated, fetched_at, region['ref']))
+                from wici.workspace_monitor import append_observation
+                append_observation(self.repo, 'ukraine', region['ref'], SOURCE_ID, fetched_at,
+                                   [fetched_at, region['ref']],
+                                   {'state': item['level'] if item else 'none',
+                                    'source_since': item.get('since') if item else None,
+                                    'source_updated_at': updated, 'fetched_at': fetched_at,
+                                    'reasons': item.get('reasons', []) if item else [],
+                                    'label': region['label'],
+                                    'geometry': json.loads(region['geometry_json']) if region['geometry_json'] else None,
+                                    'source_url': 'https://neptun.in.ua/'})
             if not recording or (state['recording_since'] and fetched < moment(state['recording_since'])):
                 return self.status()
             if self.db.execute("SELECT 1 FROM workspace_ukraine_runs WHERE status='ready' AND fetched_at=?", (fetched_at,)).fetchone():

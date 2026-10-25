@@ -1,6 +1,6 @@
 # Model danych WICI
 
-SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`020` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
+SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`021` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
 
 ## Aktywne tabele
 
@@ -119,3 +119,33 @@ kopiowane bez zmiany bajtów JSON i SHA-256; indeks i trigger niezmienności
 zostają odtworzone w tej samej transakcji. Kopia grafu ma schemat 2 i zawiera
 węzły, relacje, pochodzenie, kontekst czasu, pozycje oraz oznaczenie fragmentu.
 Materiały schematu 1 pozostają obsługiwane. [Obsługa grafu](analysis-relations.md).
+
+## Obszary, reguły i zdarzenia (migracja 021)
+
+| Tabele | Znaczenie |
+|---|---|
+| `workspace_areas`, `workspace_area_revisions` | Definicje geometrii i niezmienne rewizje. W katalogu odrębny typ `custom_area`, bez podszywania się pod PRG. |
+| `workspace_rules`, `workspace_rule_revisions` | Walidowane definicje czterech szablonów, jawny tryb pobierania, rewizje, diagnostyka i checkpoint. |
+| `workspace_observations` | Trwały strumień obserwacji z deduplikowanym kluczem, czasem źródła i zapisu, wiarygodnością i samodzielną podstawą. |
+| `workspace_rule_states`, `workspace_monitor_meta` | Stan dla pary rewizji reguły/obszaru i obiektu, granice przeciążenia i przerw. |
+| `workspace_events`, `workspace_event_history` | Niezmienna podstawa wykrycia oraz niezależna obsługa i komentarze z rewizjami. |
+
+Migracja rozszerza ograniczenia katalogu, odtwarzając wszystkie zależne wiersze
+przy włączonych kluczach obcych. Rozszerza także rodzaj materiału o `event`,
+bez zmiany bajtów starych kopii. Materiał zdarzenia ma schemat 3; schematy
+1 i 2 pozostają obsługiwane.
+
+Zapis źródła i wpis obserwacji stanowią wspólną transakcję dla komunikatów,
+pomiarów i alarmów. Transport ma osobną ograniczoną kolejkę wszystkich
+raportów przed łączeniem aktualizacji katalogu. Worker oceny zapisuje stan,
+zdarzenie i checkpoint w jednej transakcji. Odczyt Analizy i odtwarzanie
+nie są wejściem silnika reguł.
+
+Obsługa zdarzenia nie zmienia jego warunku ani podstawy. Zdarzenie przechowuje
+kopię reguły, obszaru i raportu bez kluczy obcych do źródłowej historii.
+Edycja obszaru rozpoczyna nową ocenę, a poprzednie zdarzenia zachowują dawny
+kształt. Restart zachowuje checkpointy i przerywa domniemaną ciągłość.
+Strumień ma limit 200 000 wpisów i pod presją usuwa przetworzoną część,
+zachowując niedawny ogon; przeciążenie nieprzetworzonej kolejki jest jawne.
+Zdarzenia mają retencję 90 dni, a materiały w teczkach pozostają trwałe.
+[Zasady działania i API](analysis-monitoring.md).

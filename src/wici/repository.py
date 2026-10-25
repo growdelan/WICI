@@ -284,6 +284,17 @@ class Repository:
             if older and not projected:
                 self.db.execute('UPDATE catalog_objects SET revision=revision+1 WHERE ref=?',
                                 (f"communication:{row['id']}",))
+            if not older and payload['fields'].get('contract_validated') is True and payload['fields'].get('access_allowed') is True:
+                from wici.workspace_monitor import append_observation
+                areas = [dict(area) for area in self.db.execute(
+                    'SELECT admin_code,role,basis FROM catalog_object_areas WHERE ref=?',
+                    (f"communication:{row['id']}",))]
+                append_observation(self, 'communication', f"communication:{row['id']}", document.source_id,
+                                   time, version_id, {'document_id': row['id'], 'version_id': version_id,
+                                    'version_number': number, 'title': document.title, 'text': document.text,
+                                    'url': document.url, 'areas': areas, 'content_hash': digest,
+                                    'source_published_at': payload['source_published_at'],
+                                    'source_updated_at': payload['source_updated_at']})
             return {'document_id':row['id'],'document_version_id':version_id,'changed':True,'out_of_order':older}
 
     @serialized_query

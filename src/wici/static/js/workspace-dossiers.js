@@ -1,7 +1,7 @@
 'use strict';
 /* Dossiers keep user drafts separate from refreshing catalog state and immutable evidence. */
 (function (root) {
-  const kinds = {object: 'Karta obiektu', timeline: 'Historia obiektu', comparison: 'Porównanie', graph: 'Graf powiązań'};
+  const kinds = {object: 'Karta obiektu', timeline: 'Historia obiektu', comparison: 'Porównanie', graph: 'Graf powiązań', event: 'Zdarzenie reguły'};
   const states = {red: 'Alarm czerwony', yellow: 'Alarm żółty', none: 'Bez alarmu', unknown: 'Brak obserwacji'};
   function capturePayload(context, kind, title = '') {
     const state = context.state, ref = state.selectedRef;
@@ -232,7 +232,8 @@
     const facts = (parent, entries) => {const dl = U.el('dl', null, 'analysis-material-facts'); for (const [key, value] of entries) dl.append(U.el('dt', key), U.el('dd', format(value))); parent.append(dl);};
     host.append(U.el('p', 'Zapisana kopia · treść nie odświeża się ze źródła. Notatki analityka są przechowywane osobno.', 'notice'));
     const about = section('Pochodzenie i kontekst zapisu'), range = context.query?.time?.filter_range;
-    facts(about, [['Rodzaj', kinds[material.kind] || material.kind], ['Zapisano', stamp(material.captured_at || snapshot.captured_at)], ['Strefa wyświetlania', zone], ['Zestaw na', stamp(context.as_of)], ['Przedział [od, do)', range ? `${stamp(range.from || range.start)} — ${stamp(range.to || range.end)}` : 'Tryb bieżący'], ['Kursor', context.cursor_at ? stamp(context.cursor_at) : 'Nie wybrano'], ['Stanowisko / parametr', [context.sensor_id, context.metric].filter(Boolean).join(' · ') || 'Według wyboru karty'], ['Wersja dokumentu', context.version_id || 'Aktualna przy zapisie']]);
+    if (snapshot.event) facts(about, [['Rodzaj', 'Zdarzenie reguły'], ['Zapisano', stamp(material.captured_at || snapshot.captured_at)], ['Strefa wyświetlania', zone], ['Czas obserwacji', stamp(snapshot.event.observed_at)], ['Wykrycie przez WICI', stamp(snapshot.event.detected_at)], ['Reguła i rewizja', `${snapshot.event.rule_name || snapshot.event.rule_id} · ${snapshot.event.rule_revision}`]]);
+    else facts(about, [['Rodzaj', kinds[material.kind] || material.kind], ['Zapisano', stamp(material.captured_at || snapshot.captured_at)], ['Strefa wyświetlania', zone], ['Zestaw na', stamp(context.as_of)], ['Przedział [od, do)', range ? `${stamp(range.from || range.start)} — ${stamp(range.to || range.end)}` : 'Tryb bieżący'], ['Kursor', context.cursor_at ? stamp(context.cursor_at) : 'Nie wybrano'], ['Stanowisko / parametr', [context.sensor_id, context.metric].filter(Boolean).join(' · ') || 'Według wyboru karty'], ['Wersja dokumentu', context.version_id || 'Aktualna przy zapisie']]);
     function table(parent, rows, columns, caption) {
       parent.append(U.el('p', `${caption} · ${rows.length} rekordów`, 'muted')); if (!rows.length) {parent.append(U.el('p', 'Brak zapisanych rekordów w tym zakresie. Brak obserwacji nie oznacza braku zdarzeń.', 'muted')); return;}
       const wrap = U.el('div', null, 'analysis-material-table-scroll'), grid = U.el('table'), head = U.el('thead'), tr = U.el('tr'), body = U.el('tbody');
@@ -247,6 +248,16 @@
     const segmentColumns = [['Od', row => stamp(row.from || row.observed_at || row.at)], ['Do', row => stamp(row.to)], ['Stan', row => states[row.state] || row.state || row.level], ['Początek wg źródła', row => stamp(row.source_since)], ['Powód / epizod', row => [row.reason, row.episode_ref].filter(Boolean).join(' · ')]];
     const ukraineStats = (parent, stats) => {if (stats) facts(parent, [['Epizody', stats.episode_count], ['Zaobserwowany alarm (s)', stats.alarm_seconds], ['Pokrycie', Number.isFinite(stats.coverage_ratio) ? `${(stats.coverage_ratio * 100).toFixed(1)}%` : 'Brak danych'], ['Nieznany stan (s)', stats.unknown_seconds]]);};
     let graphView = null;
+    if (snapshot.event) {
+      const event = snapshot.event, eventSection = section('Zachowane zdarzenie reguły'), evidence = event.evidence || {};
+      eventSection.append(U.el('p', event.description || 'Zdarzenie reguły'));
+      facts(eventSection, [['Reguła i rewizja', `${event.rule_name || event.rule_id} · ${event.rule_revision}`], ['Obiekt', event.object_ref], ['Obserwacja', stamp(event.observed_at)], ['Wykrycie przez WICI', stamp(event.detected_at)], ['Stan obsługi przy zapisie', ({new:'Nowe',accepted:'Przyjęte',closed:'Zamknięte'})[event.status] || event.status], ['Stan warunku przy zapisie', ({met:'Spełniony',unmet:'Niespełniony',unknown:'Nieznany'})[event.condition_state] || event.condition_state]]);
+      if (evidence.area) facts(eventSection, [['Własny obszar', evidence.area.name || evidence.area.id], ['Rewizja geometrii', evidence.area.revision]]);
+      eventSection.append(U.el('p', evidence.notice || snapshot.notice || 'Podstawa z chwili wykrycia; kopia nie odpytuje źródeł.', 'muted'));
+      const basis = U.el('details'); basis.append(U.el('summary', 'Reguła, obszar i dane stanowiące podstawę'), U.el('pre', JSON.stringify(evidence, null, 2))); eventSection.append(basis);
+      const comments = section('Komentarze i obsługa zachowane w kopii'); for (const entry of event.comments || []) comments.append(U.el('p', entry.body, 'analysis-note-text'), U.el('small', stamp(entry.at || entry.created_at)));
+      table(comments, event.history || [], [['Czas', row => stamp(row.at || row.created_at)], ['Działanie', row => row.action], ['Stan', row => row.status]], 'Historia obsługi');
+    }
     if (snapshot.graph) {
       const graphSection = section('Zapisany graf powiązań');
       graphSection.append(U.el('p', snapshot.graph.partial ? 'Zapisany fragment grafu. Niewczytane powiązania nie są częścią tej kopii.' : 'Kopia widocznego grafu z chwili zapisu; pochodzenie relacji zachowano.', 'muted'));

@@ -64,6 +64,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         station_history = None
         moving_ingestion = None
         ukraine_collector = None
+        workspace_monitor = None
         try:
             repo = Repository(directory/'app.sqlite3',clock=(lambda:DEMO_NOW) if demo else (lambda:datetime.now(UTC)))
             station_history = StationHistory(repo)
@@ -134,8 +135,13 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 from wici.workspace_demo import seed_workspace
                 seed_workspace(repo, station_history)
             scheduler.start()
+            workspace_monitor = app.state.workspace.monitor
+            workspace_monitor.bind(app.state)
+            workspace_monitor.start()
             yield
         finally:
+            if workspace_monitor:
+                workspace_monitor.sources = None
             if ukraine_collector:
                 await ukraine_collector.close()
             if tracking:
@@ -158,6 +164,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 await station_history.close()
             if moving_ingestion:
                 await moving_ingestion.close()
+            if workspace_monitor:
+                await workspace_monitor.close()
             if repo:
                 repo.close()
             handler.close()

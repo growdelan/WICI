@@ -1,5 +1,22 @@
 # Stan WICI — 13.10.2026
 
+## v0.35.0 — własne obszary, reguły i skrzynka zdarzeń — 25.10.2026
+
+Analiza otrzymała własne wielokąty, prostokąty i koła z rewizjami,
+archiwizacją, katalogiem oraz relacjami przestrzennymi w grafie. Cztery
+szablony reguł obejmują transport, progi pomiarów, publikacje i alarmy Ukrainy.
+Podgląd historii pozostaje odczytem; jawny tryb monitorowania w tle korzysta
+ze wspólnych źródeł. Osobny worker ocenia trwałe obserwacje i zapisuje
+zdarzenia z checkpointem atomowo, zachowując luki i nieznany stan.
+
+Skrzynka ma niezależne stany obsługi, komentarze i audyt. Niezmienna podstawa
+zachowuje regułę, geometrię i raport; materiał w teczce pozostaje dostępny
+po retencji. Migracja 021 zachowuje stare historie i bajty materiałów.
+Limity to 100 obszarów, 50 aktywnych reguł i 90 dni zdarzeń.
+[Instrukcja](analysis-monitoring.md), [weryfikacja i ograniczenia](analysis-monitoring-verification.md).
+
+Poniżej zachowano historyczne raporty wcześniejszych etapów.
+
 Aktualny tryb: automatyczne komunikaty czterech oficjalnych źródeł, bez modeli i bez zatwierdzania. Zapisane komunikaty trafiają do widoku dnia, na listę i — jeśli mają rozpoznany obszar — na lokalną mapę PRG z karteczkami województw. Pełna oczyszczona treść, oryginały i wersje są dostępne w szczegółach. Dawny tryb interpretacji, jego API i formularze zostały usunięte; historyczne tabele SQLite są zachowane.
 
 Próba live po porządkowaniu 13.10: wszystkie cztery źródła `success`, 22 publikacje/aktualizacje dnia, 19 z obszarem. IMGW zwróciło poprawny pusty zestaw. Wynik nie gwarantuje ciągłej dostępności ani kompletnego pokrycia sytuacji. Szczegóły i pominięte próby: [automatyczne komunikaty](automatic-communications.md).

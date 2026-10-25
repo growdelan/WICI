@@ -43,7 +43,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
         if (!Number.isFinite(alarm) && !Number.isFinite(warning)) return '#7e8990';
       }
     }
-    return colors[item.type] || '#587a8a';
+    return item.type === 'custom_area' ? item.metadata?.color || item.color || '#217c83' : colors[item.type] || '#587a8a';
   }
   function render(data, state, selectedSample, selectedIndex, motion, alerts, graph) {
     if (!active || !map || !window.L) return;

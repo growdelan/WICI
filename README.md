@@ -8,6 +8,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Graf powiązań** pokazuje relacje obiektów z obszarami, hierarchie regionów, alarmy i raporty pozycji. Rozwijaj sąsiadów, sprawdzaj pochodzenie połączeń i dodawaj uzasadnione relacje analityczne w teczce. Możesz zachować roboczy układ lub niezmienną kopię grafu. [Obsługa grafu i relacji](docs/analysis-relations.md).
 
+**Własne obszary, reguły i zdarzenia (v0.35.0):** narysuj wielokąt, prostokąt lub koło, wybierz jeden z czterech szablonów i sprawdź historyczny podgląd. Skrzynka zachowuje podstawę wykrycia i osobną historię obsługi, z możliwością zapisania w teczce. Monitoring w tle wymaga jawnego wyboru i działającego serwera. [Obsługa i zasady wyzwalania](docs/analysis-monitoring.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.

@@ -9,9 +9,9 @@ from wici.dossier_models import ObjectRef
 from wici.workspace_models import ObjectType, StrictModel, TimeContext
 
 RELATION_TYPES = ('communication_area', 'station_area', 'administrative_parent',
-                  'region_parent', 'alert_region', 'reported_in_area', 'analyst_related')
+                  'region_parent', 'alert_region', 'reported_in_area', 'custom_area_member', 'analyst_related')
 RelationType = Literal['communication_area', 'station_area', 'administrative_parent',
-                       'region_parent', 'alert_region', 'reported_in_area', 'analyst_related']
+                       'region_parent', 'alert_region', 'reported_in_area', 'custom_area_member', 'analyst_related']
 Category = Literal['source', 'derived', 'analyst']
 
 
@@ -19,7 +19,7 @@ class GraphQuery(StrictModel):
     seed_refs: list[ObjectRef] = Field(min_length=1, max_length=20)
     node_refs: list[ObjectRef] = Field(default_factory=list, max_length=200)
     expanded_refs: list[ObjectRef] = Field(default_factory=list, max_length=200)
-    relation_types: list[RelationType] = Field(default_factory=list, max_length=7)
+    relation_types: list[RelationType] = Field(default_factory=list, max_length=8)
     categories: list[Category] = Field(default_factory=list, max_length=3)
     time: TimeContext = Field(default_factory=TimeContext)
     cursor_at: datetime | None = None

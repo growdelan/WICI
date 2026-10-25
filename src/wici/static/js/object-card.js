@@ -54,6 +54,8 @@ window.WiciObjectCard = function (host, actions) {
         const pin = U.button('Przypnij do teczki', actions.pin), capture = U.button('Zapisz kartę w teczce', actions.capture);
         pin.id = 'analysis-pin-object'; capture.id = 'analysis-save-object'; dossierActions.append(pin, capture); body.append(dossierActions);
       }
+      if (actions.rule && ['aircraft', 'ship', 'hydro_station', 'air_quality_station', 'area', 'custom_area', 'ua_region'].includes(object.type)) {const rule = U.button('Utwórz regułę', () => actions.rule(object)); rule.id = 'analysis-card-create-rule'; body.append(rule);}
+      if (object.type === 'custom_area' && actions.editArea) body.append(U.button('Edytuj własny obszar', () => actions.editArea(object.native_id || object.ref.split(':').at(-1))));
       if (error) body.append(U.el('p', `${error} Zachowano ostatni zapisany odczyt.`, 'notice'));
       const data = section(body, 'Dane');
       dl(data, [['Identyfikator', object.ref], ['Dostępność', U.statusNames[object.availability] || object.availability || 'Dostępne'], ['Aktualność', U.statusNames[object.freshness] || object.freshness || 'Według czasu źródła']]);
@@ -67,6 +69,10 @@ window.WiciObjectCard = function (host, actions) {
         for (const version of versions) history.append(U.button(`Wersja ${version.version_number || version.id} · ${U.date(version.created_at || version.source_updated_at)}`, () => actions.version(version.id || version.version_id || version.version_number)));
         if (!versions.length) history.append(U.el('p', 'Brak dodatkowych zapisanych wersji.', 'muted'));
         for (const event of timeline?.items || []) {if (event.kind === 'version') continue; history.append(U.el('p', `${({publication: 'Publikacja', update: 'Aktualizacja', validity: 'Okres ważności', display: 'Okres udostępniania'})[event.kind] || event.kind} · ${U.date(event.date_precision === 'day' ? event.source_date : event.at || event.observed_at)}`, 'muted'));}
+      } else if (object.type === 'custom_area') {
+        const area = detail.custom_area || object.metadata || {};
+        dl(data, [['Charakter', 'Własny obszar analityczny'], ['Rewizja geometrii', area.revision || object.revision], ['Kształt', ({polygon:'Wielokąt',rectangle:'Prostokąt',circle:'Koło'})[area.shape] || area.shape], ['Stan', area.archived ? 'Archiwalny' : 'Aktywny'], ['Opis', area.description || 'Brak opisu']]);
+        data.append(U.el('p', 'Punkty na granicy należą do obszaru. Granice i rewizja w dawnych zdarzeniach pozostają niezmienne.', 'muted'));
       } else if (object.type === 'area') {
         dl(data, [['Kod PRG', object.native_id || object.source_object_id || object.ref.split(':').at(-1)], ['Charakter', 'Bezczasowy obszar referencyjny']]);
         const code = String(object.native_id || object.source_object_id || object.ref.split(':').at(-1));
