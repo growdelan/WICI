@@ -5,6 +5,8 @@ Teczka gromadzi materiał dotyczący jednego pytania lub tematu. W zakładce
 uzupełnić opis, przypinać obiekty, zapisywać notatki i zachowywać wybrane dane.
 Teczki są lokalne, wspólne dla okien korzystających z tej samej bazy WICI.
 
+Wersja 0.34.0 rozszerza teczki o [relacje analityczne, roboczy graf i niezmienną kopię grafu](analysis-relations.md).
+
 ## Obiekty, notatki i materiał
 
 | Element | Co zachowuje | Co dzieje się po odświeżeniu źródła |

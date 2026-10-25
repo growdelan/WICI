@@ -84,3 +84,18 @@ test('non-transport station markers retain their existing measurement rendering'
   assert.equal(h.added.filter(entry => entry.kind === 'circle').length, 1);
   assert.equal(h.added.some(entry => entry.kind === 'icon'), false);
 });
+
+test('graph stations at a shared cursor override every catalogue marker while preserving the selected sensor context', () => {
+  const h = setup(), observed = '2020-01-01T10:00:00Z', cursorAt = '2020-01-01T10:15:00Z';
+  h.window.WiciWorkspaceUI.value = sample => sample?.value == null ? 'Brak pomiaru' : `${sample.value} µg/m³`;
+  const nodes = ['1','2'].map(id => ({ref:`air_quality_station:gios:${id}`,type:'air_quality_station',label:`GIOŚ ${id}`,latitude:52+Number(id)/100,longitude:21,
+    measurement:{value:10,observed_at:observed}, official_index:{value:0,observed_at:observed}}));
+  const catalog = nodes.map(node => ({...node,measurement:{value:90,observed_at:'2020-01-01T11:00:00Z'},official_index:{value:5,observed_at:'2020-01-01T11:00:00Z'}}));
+  h.map.render({map:{points:catalog}}, state({detailOpen:true,selectedRef:nodes[0].ref,cursorAt,query:{time:{mode:'range',filter_range:{from:observed,to:at}}}}),
+    {value:12,observed_at:observed}, {value:1,observed_at:observed}, null, null, {nodes});
+  const markers=h.added.filter(layer=>layer.kind==='circle');
+  assert.equal(markers.length,2,'catalogue period markers are replaced by graph cursor markers');
+  const first=markers.find(layer=>layer.tooltip.textContent.includes('GIOŚ 1')),second=markers.find(layer=>layer.tooltip.textContent.includes('GIOŚ 2'));
+  assert.match(first.tooltip.textContent,/12 µg\/m³/);assert.equal(first.options.color,'#80a24c','selected card index remains independent');
+  assert.match(second.tooltip.textContent,/10 µg\/m³/);assert.doesNotMatch(second.tooltip.textContent,/90 µg/);assert.equal(second.options.color,'#459a77');
+});

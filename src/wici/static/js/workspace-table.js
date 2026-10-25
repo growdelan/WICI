@@ -33,6 +33,7 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
   nextButton.id = 'analysis-next-page'; pagination.append(firstButton, nextButton); host.append(heading, scroll, pagination);
   let previousItems = null, previousSort = '', rows = new Map();
   function render(data, state, selectedSample, motion, alerts) {
+    host.dataset.tableScope = data?._graphScope ? 'graph' : 'catalog'; title.textContent = data?._graphScope ? 'Węzły grafu' : 'Katalog obiektów'; caption.textContent = data?._graphScope ? 'Obiekty widocznego grafu; mogą wychodzić poza filtry katalogu' : 'Obiekty wspólnego zakresu mapy i osi czasu';
     const items = data?.items || [], sortKey = JSON.stringify(state.query.sort);
     if (items !== previousItems || previousSort !== sortKey) {
       previousItems = items; previousSort = sortKey; body.replaceChildren(); rows = new Map();
@@ -49,6 +50,7 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
     }
     for (const [field, th] of headers) th.setAttribute('aria-sort', state.query.sort.field === field ? state.query.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none');
     for (const [ref, {row, time, reading, item, compareControl, watchControl}] of rows) {
+      const graphScope = Boolean(data?._graphScope);
       const selected = state.detailOpen && ref === state.selectedRef, cursor = selected && state.cursorAt && item.type.endsWith('_station'), sample = cursor ? selectedSample : selected && selectedSample ? selectedSample : U.measurement(item);
       row.classList.toggle('selected', selected); if (selected) row.setAttribute('aria-selected', 'true'); else row.removeAttribute('aria-selected');
       if (item.type === 'ua_region' || item.type === 'civil_alert') {
@@ -56,22 +58,22 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
         if (compareControl) {compareControl.checked = compared; compareControl.disabled = !compared && (state.comparedRegionRefs?.length || 0) >= 5;}
         if (watchControl) {watchControl.textContent = watched ? 'Obserwowany ★' : 'Obserwuj ☆'; watchControl.setAttribute('aria-pressed', String(Boolean(watched))); watchControl.disabled = Boolean(alerts?.busy?.has(ref));}
         const historical = state.query.time.mode === 'range', frame = historical ? alerts?.frames?.get(region ? ref : item.region_ref || item.metadata?.region_ref) : null;
-        const status = historical ? !frame || frame.state === 'unknown' ? 'unknown' : region || frame.segment?.episode_ref === ref ? frame.state : 'none' : A?.objectState(item) || 'unknown';
+        const status = historical && !graphScope ? !frame || frame.state === 'unknown' ? 'unknown' : region || frame.segment?.episode_ref === ref ? frame.state : 'none' : A?.objectState(item) || 'unknown';
         row.dataset.alertState = status; time.textContent = U.date(historical ? state.cursorAt || new Date(Date.parse(state.query.time.filter_range?.to) - 1).toISOString() : item.updated_at || item.fetched_at);
         reading.replaceChildren(U.el('span', A?.stateNames[status] || status));
-        reading.append(U.el('small', historical ? frame ? 'Według wspólnego kursora' : 'Dodaj region do porównania, aby odtworzyć stan' : 'Stan według źródła NEPTUN'));
+        reading.append(U.el('small', historical && !graphScope ? frame ? 'Według wspólnego kursora' : 'Dodaj region do porównania, aby odtworzyć stan' : 'Stan według źródła NEPTUN'));
         continue;
       }
       if (M?.isMoving(item)) {
         const compared = state.comparedRefs?.includes(ref), watched = motion?.watched ? motion.watched.has(ref) : item.watched;
         if (compareControl) {compareControl.checked = compared; compareControl.disabled = !compared && (state.comparedRefs?.length || 0) >= 5;}
         if (watchControl) {watchControl.textContent = watched ? 'Obserwowany ★' : 'Obserwuj ☆'; watchControl.setAttribute('aria-pressed', String(Boolean(watched))); watchControl.disabled = Boolean(motion?.busy?.has(ref));}
-        const historical = state.query.time.mode === 'range', frame = motion?.frames?.get(ref), position = historical ? frame?.point : item.position;
-        row.dataset.motionStatus = historical ? frame?.status || 'not_compared' : item.freshness || 'unknown_time';
+        const historical = state.query.time.mode === 'range', frame = motion?.frames?.get(ref), position = historical && !graphScope ? frame?.point : item.position;
+        row.dataset.motionStatus = historical && !graphScope ? frame?.status || 'not_compared' : item.freshness || 'unknown_time';
         time.textContent = U.date(position?.position_at || position?.at);
         reading.replaceChildren(U.el('span', M.number(position?.speed_kmh, 'km/h')));
         if (item.type === 'aircraft') reading.append(U.el('small', `Wysokość ${M.number(position?.altitude_m, 'm')}`));
-        reading.append(U.el('small', historical ? M.describe(frame, U) : U.statusNames[item.freshness] || item.freshness || 'Czas nieznany'));
+        reading.append(U.el('small', historical && !graphScope ? M.describe(frame, U) : U.statusNames[item.freshness] || item.freshness || 'Czas nieznany'));
         continue;
       }
       time.textContent = U.date(cursor ? sample?.observed_at : sample?.observed_at || item.updated_at || item.published_at || item.fetched_at);
@@ -81,7 +83,7 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
     }
     const columns = ['label', 'type', 'updated_at', 'measurement'];
     for (const row of [header, ...Array.from(body.children)]) for (const [index, cell] of Array.from(row.children).entries()) if (row === header || rows.size) cell.hidden = !(state.columns || columns).includes(columns[index]);
-    count.textContent = `${data?.total || 0} obiektów · ${items.length} na stronie${state.loading ? ' · odświeżanie…' : ''}`;
+    count.textContent = data?._graphScope ? `${items.length} obiektów widocznego grafu` : `${data?.total || 0} obiektów · ${items.length} na stronie${state.loading ? ' · odświeżanie…' : ''}`;
     nextButton.disabled = !data?.next_cursor || state.loading; firstButton.disabled = !data?._pageCursor || state.loading;
   }
   return {render, focusHeading: () => title.focus()};

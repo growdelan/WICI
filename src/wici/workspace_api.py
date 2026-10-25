@@ -4,6 +4,7 @@ import inspect
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from wici.dossier_models import DossierInput, DossierNote, DossierPin, MaterialCapture
+from wici.relation_models import AnalystRelation, GraphNeighbors, GraphQuery, WorkingGraph
 from wici.workspace_models import MovingReplay, SavedView, UkraineRecording, UkraineReplay, WorkspaceQuery
 from wici.workspace_service import QueryChanged
 
@@ -117,6 +118,42 @@ def create_workspace_router():
     @router.get('/dossiers')
     def dossiers(request: Request):
         return request.app.state.workspace.dossiers.list()
+
+    @router.post('/graph/query')
+    def graph_query(request: Request, body: GraphQuery):
+        return _call(request.app.state.workspace.relations.query, body)
+
+    @router.post('/graph/neighbors')
+    def graph_neighbors(request: Request, body: GraphNeighbors):
+        return _call(request.app.state.workspace.relations.neighbors, body)
+
+    @router.get('/dossiers/{dossier_id}/relations')
+    def relations(request: Request, dossier_id: str, include_deleted: bool = False):
+        return _call(request.app.state.workspace.relations.relations, dossier_id, include_deleted)
+
+    @router.post('/dossiers/{dossier_id}/relations', status_code=201)
+    def create_relation(request: Request, dossier_id: str, body: AnalystRelation):
+        return _call(request.app.state.workspace.relations.save_relation, dossier_id, body)
+
+    @router.put('/dossiers/{dossier_id}/relations/{relation_id}')
+    def update_relation(request: Request, dossier_id: str, relation_id: str, body: AnalystRelation):
+        return _call(request.app.state.workspace.relations.save_relation, dossier_id, body, relation_id)
+
+    @router.delete('/dossiers/{dossier_id}/relations/{relation_id}')
+    def delete_relation(request: Request, dossier_id: str, relation_id: str, revision: int = Query(..., ge=1)):
+        return _call(request.app.state.workspace.relations.delete_relation, dossier_id, relation_id, revision)
+
+    @router.get('/dossiers/{dossier_id}/relations/{relation_id}/history')
+    def relation_history(request: Request, dossier_id: str, relation_id: str):
+        return _call(request.app.state.workspace.relations.relation_history, dossier_id, relation_id)
+
+    @router.get('/dossiers/{dossier_id}/graph')
+    def working_graph(request: Request, dossier_id: str):
+        return _call(request.app.state.workspace.relations.working_graph, dossier_id)
+
+    @router.put('/dossiers/{dossier_id}/graph')
+    def save_graph(request: Request, dossier_id: str, body: WorkingGraph):
+        return _call(request.app.state.workspace.relations.save_graph, dossier_id, body)
 
     @router.post('/dossiers', status_code=201)
     def create_dossier(request: Request, body: DossierInput):

@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from wici.workspace_models import MovingRef, StrictModel, UkraineRegionRef, WorkspaceQuery
+from wici.workspace_models import MovingRef, ObjectType, StrictModel, UkraineRegionRef, WorkspaceQuery
 
 ObjectRef = Annotated[str, Field(max_length=300, pattern=(
     r'^(communication:[0-9]+|hydro_station:imgw:[A-Za-z0-9_-]+|air_quality_station:gios:[0-9]+|'
@@ -42,10 +42,15 @@ class DossierPin(StrictModel):
 
 
 class MaterialCapture(StrictModel):
-    kind: Literal['object', 'timeline', 'comparison']
+    kind: Literal['object', 'timeline', 'comparison', 'graph']
     title: str | None = Field(default=None, max_length=160)
     ref: ObjectRef | None = None
-    query: WorkspaceQuery
+    query: WorkspaceQuery | None = None
+    graph: dict | None = None
+    positions: dict = Field(default_factory=dict, max_length=200)
+    hidden_refs: list[ObjectRef] = Field(default_factory=list, max_length=200)
+    layout: Literal['breadthfirst', 'concentric'] = 'breadthfirst'
+    node_type: ObjectType | None = None
     cursor_at: datetime | None = None
     sensor_id: str | None = Field(default=None, max_length=100)
     metric: str | None = Field(default=None, max_length=100)
@@ -72,6 +77,24 @@ class MaterialCapture(StrictModel):
 
     @model_validator(mode='after')
     def coherent_selection(self):
+        if self.kind == 'graph':
+            from wici.relation_models import GraphPosition, GraphQuery
+            if self.graph is None or self.query is not None or self.ref is not None or self.sensor_id or self.metric or self.version_id or self.moving_refs or self.region_refs:
+                raise ValueError('Zapis grafu wymaga wyłącznie selektora grafu')
+            graph = GraphQuery.model_validate(self.graph)
+            if not graph.expected_revision or graph.as_of is None:
+                raise ValueError('Przed zapisem wczytaj aktualną rewizję grafu')
+            if not set(self.positions).issubset(graph.node_refs) or not set(self.hidden_refs).issubset(graph.node_refs):
+                raise ValueError('Układ musi dotyczyć węzłów grafu')
+            if len(set(self.hidden_refs)) != len(self.hidden_refs):
+                raise ValueError('Ukryte węzły nie mogą się powtarzać')
+            self.positions = {key: GraphPosition.model_validate(value).model_dump() for key, value in self.positions.items()}
+            self.graph = graph.model_dump(mode='json', by_alias=True)
+            return self
+        if self.query is None:
+            raise ValueError('Materiał wymaga zapytania katalogu')
+        if self.graph is not None or self.positions or self.hidden_refs or self.node_type:
+            raise ValueError('Układ grafu dotyczy wyłącznie materiału grafowego')
         if self.query.cursor:
             raise ValueError('Materiał wymaga zapytania bez kursora stronicowania')
         if bool(self.as_of) != bool(self.data_revision):

@@ -201,9 +201,12 @@ class WorkspaceDossiers:
         with self.repo.lock, self.db:
             self._row(dossier_id)
             self._limit('workspace_dossier_materials', MAX_MATERIALS, dossier_id)
+            if value.kind == 'graph':
+                return self._capture_graph(dossier_id, value)
             as_of, revision = self._context(value)
             captured = iso(self.repo.clock())
-            context = value.model_dump(mode='json', by_alias=True, exclude={'title', 'kind'})
+            context = value.model_dump(mode='json', by_alias=True,
+                exclude={'title', 'kind', 'graph', 'positions', 'hidden_refs', 'layout', 'node_type'})
             context.update(as_of=as_of, data_revision=revision)
             snapshot = {'schema_version': 1, 'captured_at': captured, 'context': context, 'objects': [],
                         'notice': 'Niezmienna kopia lokalnych danych odczytanych w chwili zapisu. '
@@ -255,6 +258,31 @@ class WorkspaceDossiers:
                              captured, hashlib.sha256(payload.encode('utf-8')).hexdigest(), size, payload))
             self._touch(dossier_id)
             return self.material(dossier_id, material_id)
+
+    def _capture_graph(self, dossier_id, value):
+        """Server rebuilds the selected fragment; client supplies layout only."""
+        if value.graph.get('dossier_id') not in (None, dossier_id):
+            raise ValueError('Graf musi należeć do tej teczki')
+        graph = self.workspace.relations.query(value.graph)
+        graph.update(positions=value.positions, hidden_refs=value.hidden_refs, layout=value.layout, node_type=value.node_type)
+        captured = iso(self.repo.clock())
+        snapshot = {'schema_version': 2, 'captured_at': captured, 'graph': graph,
+            'context': {'query': {'time': graph['selector']['time']},
+                'as_of': graph['as_of'], 'data_revision': graph['revision'],
+                'cursor_at': graph['selector'].get('cursor_at'), 'display_timezone': value.display_timezone},
+            'objects': [{'object': node} for node in graph['nodes']],
+            'notice': 'Niezmienna kopia wybranego fragmentu grafu. Relacje źródłowe, wyliczone i analityczne '
+                      'zachowują własne pochodzenie. Aktualne metadane nie odtwarzają dawnego katalogu.'}
+        payload = encode(snapshot)
+        size = len(payload.encode('utf-8'))
+        if size > MAX_MATERIAL_BYTES:
+            raise ValueError('Materiał przekracza 5 MiB. Ogranicz graf; dane nie są pomijane.')
+        material_id = str(uuid.uuid4())
+        self.db.execute('INSERT INTO workspace_dossier_materials VALUES(?,?,?,?,?,?,?,?,?)',
+            (material_id, dossier_id, value.title or 'Graf powiązań', 'graph', None, captured,
+             hashlib.sha256(payload.encode('utf-8')).hexdigest(), size, payload))
+        self._touch(dossier_id)
+        return self.material(dossier_id, material_id)
 
     def material(self, dossier_id, material_id):
         with self.repo.lock:

@@ -1,7 +1,7 @@
 'use strict';
 /* Dossiers keep user drafts separate from refreshing catalog state and immutable evidence. */
 (function (root) {
-  const kinds = {object: 'Karta obiektu', timeline: 'Historia obiektu', comparison: 'Porównanie'};
+  const kinds = {object: 'Karta obiektu', timeline: 'Historia obiektu', comparison: 'Porównanie', graph: 'Graf powiązań'};
   const states = {red: 'Alarm czerwony', yellow: 'Alarm żółty', none: 'Bez alarmu', unknown: 'Brak obserwacji'};
   function capturePayload(context, kind, title = '') {
     const state = context.state, ref = state.selectedRef;
@@ -70,7 +70,8 @@
     const captureHint = make('p', 'analysis-dossier-capture-hint', '', 'muted'), materials = make('div', 'analysis-dossier-materials');
     materialsSection.append(U.el('p', 'Kopia obejmuje lokalnie zapisane dane, źródła i kontekst czasu. Pozostaje dostępna po wygaśnięciu historii. Nie pobiera nowych danych. Do historii i porównania wybierz przedział na osi czasu.', 'muted'), U.field('Tytuł materiału (opcjonalnie)', materialTitle), captureActions, captureHint, materials);
     let items = [], selectedId = null, selected = null, busy = false, loading = false, listLoading = false, listRun = 0, detailRun = 0, materialRun = 0, returnFocus = null;
-    const drafts = new Map();
+    const drafts = new Map(); let relationsView = null, materialGraph = null;
+    function clearMaterialGraph() {materialGraph?.destroy?.(); materialGraph = null;}
     function getDraft() {
       const key = selectedId || '_new';
       if (!drafts.has(key)) drafts.set(key, {name: selected?.name || '', description: selected?.description || '', baseName: selected?.name || '', baseDescription: selected?.description || '', revision: selected?.revision || null, dirty: false, note: {body: '', id: null, revision: null}, materialTitle: ''});
@@ -83,7 +84,7 @@
       returnFocus = document.activeElement; if (!dialog.open) dialog.showModal(); title.focus(); render();
       if (selectedId && !selected && !loading) loadSelected();
     }
-    dialog.addEventListener('close', () => {++materialRun; confirm.hidden = true; if (returnFocus?.isConnected) returnFocus.focus();});
+    dialog.addEventListener('close', () => {++materialRun; clearMaterialGraph(); confirm.hidden = true; if (returnFocus?.isConnected) returnFocus.focus();});
     dialog.addEventListener('keydown', event => {if (event.key === 'Escape') event.stopPropagation();});
     function ask(text, action) {
       ++materialRun;
@@ -93,7 +94,7 @@
       confirm.append(yes, no); no.focus();
     }
     function choose(id, openDialog = false) {
-      if (busy) return; ++detailRun; ++materialRun; selectedId = id || null; selected = null; loading = false; confirm.hidden = true; manager.hidden = false; viewer.hidden = true;
+      if (busy) return; ++detailRun; ++materialRun; clearMaterialGraph(); selectedId = id || null; selected = null; loading = false; confirm.hidden = true; manager.hidden = false; viewer.hidden = true;
       select.value = selectedId || ''; render(); if (openDialog) show(); if (selectedId) loadSelected();
     }
     select.addEventListener('change', () => choose(select.value));
@@ -173,6 +174,7 @@
       const cardPin = document.getElementById('analysis-pin-object'), cardSave = document.getElementById('analysis-save-object');
       if (cardPin) cardPin.disabled = blocked || !context?.detailReady;
       if (cardSave) cardSave.disabled = blocked || !canCapture(context, 'object');
+      relationsView?.update();
     }
     function rowButton(text, fn) {const control = button(null, text, fn); control.dataset.mutation = 'true'; return control;}
     function render() {
@@ -211,10 +213,14 @@
       catch (error) {if (dialog.open && run === materialRun) notify(`Nie udało się otworzyć materiału: ${error.message}`, true);}
     }
     function showMaterial(material) {
-      manager.hidden = true; viewer.hidden = false; confirm.hidden = true; viewer.replaceChildren(); title.textContent = material.title;
-      viewer.append(button('analysis-material-back', '← Wróć do teczki', () => {++materialRun; viewer.hidden = true; manager.hidden = false; title.textContent = selected?.name || 'Teczka analizy'; title.focus();}));
-      renderMaterial(viewer, material, U); title.focus(); dialog.scrollTop = 0;
+      clearMaterialGraph(); manager.hidden = true; viewer.hidden = false; confirm.hidden = true; viewer.replaceChildren(); title.textContent = material.title;
+      viewer.append(button('analysis-material-back', '← Wróć do teczki', () => {++materialRun; clearMaterialGraph(); viewer.hidden = true; manager.hidden = false; title.textContent = selected?.name || 'Teczka analizy'; title.focus();}));
+      materialGraph = renderMaterial(viewer, material, U); title.focus(); dialog.scrollTop = 0;
     }
+    relationsView = root.WiciDossierRelations?.(content, {request, mutate, notify, ask, materialTitle, showMaterial,
+      getContext: () => ({...getContext(), selectedId, dossier:selected, busy:busy || loading}), close: () => dialog.close(),
+      getNavigationToken: () => materialRun, isNavigationCurrent: token => dialog.open && token === materialRun,
+      clearMaterialTitle: () => {getDraft().materialTitle = ''; materialTitle.value = '';}});
     render();
     return {load, update: updateControls, open: show, pin: pinSelected, capture, close: () => {if (dialog.open) dialog.close();}};
   };
@@ -240,6 +246,13 @@
     const pointColumns = [['Czas raportu', row => stamp(row.position_at)], ['Szer. / dł. geogr.', row => `${format(row.latitude)}, ${format(row.longitude)}`], ['Prędkość km/h', row => row.speed_kmh], ['Wysokość m', row => row.altitude_m], ['Kierunek °', row => row.heading], ['Przerwa przed punktem', row => row.break_before]];
     const segmentColumns = [['Od', row => stamp(row.from || row.observed_at || row.at)], ['Do', row => stamp(row.to)], ['Stan', row => states[row.state] || row.state || row.level], ['Początek wg źródła', row => stamp(row.source_since)], ['Powód / epizod', row => [row.reason, row.episode_ref].filter(Boolean).join(' · ')]];
     const ukraineStats = (parent, stats) => {if (stats) facts(parent, [['Epizody', stats.episode_count], ['Zaobserwowany alarm (s)', stats.alarm_seconds], ['Pokrycie', Number.isFinite(stats.coverage_ratio) ? `${(stats.coverage_ratio * 100).toFixed(1)}%` : 'Brak danych'], ['Nieznany stan (s)', stats.unknown_seconds]]);};
+    let graphView = null;
+    if (snapshot.graph) {
+      const graphSection = section('Zapisany graf powiązań');
+      graphSection.append(U.el('p', snapshot.graph.partial ? 'Zapisany fragment grafu. Niewczytane powiązania nie są częścią tej kopii.' : 'Kopia widocznego grafu z chwili zapisu; pochodzenie relacji zachowano.', 'muted'));
+      graphView = root.WiciWorkspaceGraph?.createReadOnly?.(graphSection, snapshot.graph);
+      if (!graphView) graphSection.append(U.el('p', 'Graf można odczytać w pełnym zapisie JSON poniżej.'));
+    }
     for (const detail of snapshot.objects || []) {
       const object = detail.object || detail, card = section(object.label || object.ref || 'Obiekt');
       facts(card, [['Identyfikator', object.ref], ['Typ / źródło', `${U.typeNames[object.type] || object.type} · ${object.source_id || ''}`], ['Aktualność przy zapisie', U.statusNames[object.freshness] || object.freshness || object.availability], ['Metadane / geometria', detail.geometry_context || 'Według katalogu w chwili zapisu']]);
@@ -271,6 +284,7 @@
     for (const url of urls) {const link = U.safeLink(url, url); if (link) {const line = U.el('p'); line.append(link); sources.append(line); count++;}}
     if (!count) sources.append(U.el('p', 'Źródło jest oznaczone w karcie; zapis nie zawiera osobnego adresu materiału.', 'muted'));
     const raw = U.el('details'), summary = U.el('summary', 'Pełny zapis danych i metadanych (JSON)'), pre = U.el('pre', JSON.stringify(snapshot, null, 2)); raw.append(summary, U.el('p', `SHA-256 zapisanego materiału: ${material.sha256 || 'Nie podano'}`), pre); host.append(raw);
+    return graphView;
   }
   root.WiciDossierHelpers = {capturePayload, canCapture, renderMaterial};
   if (typeof module !== 'undefined' && module.exports) module.exports = root.WiciDossierHelpers;

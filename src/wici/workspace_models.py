@@ -104,7 +104,7 @@ class ViewCamera(StrictModel):
 
 class ViewLayout(StrictModel):
     tablePercent: float = Field(default=42, ge=20, le=80)
-    mobilePanel: Literal['map', 'table'] = 'table'
+    mobilePanel: Literal['map', 'table', 'graph'] = 'table'
 
 
 class ViewConfig(StrictModel):

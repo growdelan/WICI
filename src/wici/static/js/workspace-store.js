@@ -11,7 +11,7 @@
     return {query: {types: ['communication'], source_ids: [], q: '', province: null, country: null, region_ref: null,
       time: {mode: 'live', overview_range: null, filter_range: null}, include_periods: true,
       include_unlocated: true, include_without_samples: true, watched_only: false, sort: {field: 'label', direction: 'asc'}, page_size: 100},
-    selectedRef: null, selectedVersion: null, selectedSensor: null, selectedMetric: null,
+    selectedRef: null, selectedVersion: null, selectedSensor: null, selectedMetric: null, graphMode: 'map', tableScope: 'catalog',
     cursorAt: null, comparedRefs: [], comparedRegionRefs: [], displayTimezone: 'Europe/Warsaw', detailOpen: false, layout: {tablePercent: 42, mobilePanel: 'table'},
     columns: ['label', 'type', 'updated_at', 'measurement'], savedViewId: null, queryRevision: 0, detailRevision: 0, dataRevision: null, asOf: null, loading: false, error: null};
   }
@@ -39,6 +39,8 @@
         return {...state, cursorAt: new Date(value).toISOString()};
       }
       case 'SET_COLUMNS': return {...state, columns: action.columns.includes('label') ? action.columns : ['label', ...action.columns]};
+      case 'SET_GRAPH_MODE': return ['map', 'graph', 'both'].includes(action.mode) ? {...state, graphMode: action.mode} : state;
+      case 'SET_TABLE_SCOPE': return ['catalog', 'graph'].includes(action.scope) ? {...state, tableScope: action.scope} : state;
       case 'SET_LAYOUT': return {...state, layout: {...state.layout, ...action.patch}};
       case 'TOGGLE_COMPARE': {
         if (!movingRef(action.ref)) return state;
@@ -58,7 +60,7 @@
         const config = action.config || {}, query = {...initialState().query, ...config.query};
         if (query.time?.mode === 'range') {const normalize = range => range ? {from: range.from || range.start, to: range.to || range.end} : null; query.time = {...query.time, overview_range: normalize(query.time.overview_range), filter_range: normalize(query.time.filter_range)};}
         const next = changed(state, query);
-        return {...next, layout: {...state.layout, ...config.layout}, savedViewId: action.id || null,
+        return {...next, graphMode: config.layout?.mobilePanel === 'graph' ? 'graph' : 'map', tableScope: 'catalog', layout: {...state.layout, ...config.layout}, savedViewId: action.id || null,
           columns: config.columns || state.columns, selectedRef: config.selectedRef || null, detailOpen: Boolean(config.selectedRef), selectedVersion: null,
           selectedSensor: null, selectedMetric: null, comparedRefs: compared(config.comparedRefs), comparedRegionRefs: comparedRegions(config.comparedRegionRefs), displayTimezone: timezones.includes(config.displayTimezone) ? config.displayTimezone : 'Europe/Warsaw', detailRevision: state.detailRevision + 1};
       }

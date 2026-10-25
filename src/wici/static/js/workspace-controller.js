@@ -1,8 +1,8 @@
 'use strict';
 window.WiciWorkspace = (() => {
   const U = window.WiciWorkspaceUI, S = window.WiciWorkspaceStore, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts;
-  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView, dossiers;
-  let host, shell, toolbar, catalog, timelineHost, cardHost, search, province, message, status, split, sourceSelect, sourceCoverage, persistenceNotice, country, oblast, raion, provinceField, oblastField, raionField, recordingControl, recordingStatus, regionHint;
+  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView, dossiers, graphView;
+  let host, shell, toolbar, catalog, timelineHost, cardHost, graphHost, graphTableScope, search, province, message, status, split, sourceSelect, sourceCoverage, persistenceNotice, country, oblast, raion, provinceField, oblastField, raionField, recordingControl, recordingStatus, regionHint;
   const columnControls = new Map();
   let data = null, detail = null, timeline = null, detailError = null, detailLoading = false;
   let queryAbort, detailAbort, queryRun = 0, detailRun = 0, pageCursor = null, searchTimer, refreshTimer, sourceRefreshTimer;
@@ -13,8 +13,11 @@ window.WiciWorkspace = (() => {
   let regions = [], regionOptionsKey = '', recording = null, recordingBusy = false, recordingRun = 0, regionsRun = 0, transportLegend;
   let alertReplay = null, alertLoading = false, alertError = null, alertAbort, alertRun = 0, alertKey = '';
   const movingBusy = new Set();
+  const graphModeControls = new Map();
   const controls = new Map(), checkboxOptions = new Map(), localKey = 'wici.analysis.layout.v1';
-  let messageKind = 'general';
+  let messageKind = 'general', graphTableItems = null, graphTableSort = '', graphTableResult = null;
+  function sortedGraphTable(items, sort) {const key = JSON.stringify(sort); if (items === graphTableItems && key === graphTableSort) return graphTableResult; graphTableItems = items; graphTableSort = key; const direction = sort.direction === 'desc' ? -1 : 1;
+    const ordered = [...items].sort((a, b) => {const av = a[sort.field], bv = b[sort.field], compared = av == null ? bv == null ? 0 : -1 : bv == null ? 1 : String(av).localeCompare(String(bv), 'pl', {sensitivity: 'base'}); return direction * compared || a.ref.localeCompare(b.ref);}); graphTableResult = {items: ordered, total: ordered.length, next_cursor: null, _graphScope: true}; return graphTableResult;}
   const health = () => typeof options.health === 'function' ? options.health() : options.health || {};
   const now = () => health().now || new Date().toISOString();
   const request = (...args) => options.api(...args);
@@ -30,6 +33,16 @@ window.WiciWorkspace = (() => {
     }
     return {data: replayData, loading: replayLoading, error: replayError, frames, labels, watched: watchedRefs, busy: movingBusy};
   }
+  function graphPositionAtCursor(ref) {
+    const state = store.getState(), graph = graphView?.getData?.(), selector = graph?.selector;
+    const current = state.query.time.filter_range, saved = selector?.time?.filter_range;
+    const sameInstant = (a, b) => a == null || b == null ? a == null && b == null : Date.parse(a) === Date.parse(b);
+    if (selector?.time?.mode !== 'range' || !current || !saved
+      || !sameInstant(saved.from || saved.start, current.from)
+      || !sameInstant(saved.to || saved.end, current.to)
+      || !sameInstant(selector.cursor_at, state.cursorAt)) return null;
+    return graph.nodes.find(node => node.ref === ref)?.position || null;
+  }
   function alertContext() {
     const state = store.getState(), labels = new Map([...regions, ...watchedItems, ...(data?.items || [])].map(item => [item.ref, item.label])), frames = new Map();
     if (detail?.object) labels.set(detail.object.ref, detail.object.label);
@@ -40,7 +53,7 @@ window.WiciWorkspace = (() => {
     return {refs: state.comparedRegionRefs || [], data: alertReplay, loading: alertLoading, error: alertError, frames, labels, regions, watched: watchedRefs, busy: movingBusy};
   }
   function syncMapScope() {
-    const state = store.getState(), outside = active && (state.query.country === 'UA' || state.query.types.some(type => ['ua_region', 'civil_alert'].includes(type)) || state.comparedRegionRefs?.length);
+    const state = store.getState(), outside = active && (state.query.country === 'UA' || state.query.types.some(type => ['ua_region', 'civil_alert'].includes(type)) || state.comparedRegionRefs?.length || graphView?.getVisibleData?.().nodes.some(node => ['ua_region', 'civil_alert'].includes(node.type)));
     window.WiciRegion?.setAnalysisOutsidePoland?.(Boolean(outside));
   }
   function renderRegions() {
@@ -157,6 +170,7 @@ window.WiciWorkspace = (() => {
       ready: Boolean(data && !state.loading && !state.error && state.dataRevision === data.data_revision),
       detailReady: Boolean(detail?.object?.ref === state.selectedRef && detail._selectionKey === selectionKey && detail._queryRevision === state.queryRevision && !detailLoading && !detailError),
       inScope: detail?.in_scope !== false,
+      graph: graphView?.getCapture?.(),
       comparisonReady: !replayLoading && !replayError && !alertLoading && !alertError &&
         (!state.comparedRefs.length || Boolean(replayData)) && (!(state.comparedRegionRefs || []).length || Boolean(alertReplay))};
   }
@@ -170,7 +184,10 @@ window.WiciWorkspace = (() => {
     U.setTimezone?.(state.displayTimezone); renderRegions(); syncMapScope();
     transportLegend.hidden = !state.query.types.some(type => ['aircraft', 'ship'].includes(type)) && !state.comparedRefs.length;
     shell.classList.toggle('analysis-card-open', active && state.detailOpen);
-    shell.dataset.analysisPanel = state.layout.mobilePanel;
+    shell.dataset.analysisPanel = state.layout.mobilePanel; shell.dataset.analysisView = state.graphMode;
+    if (graphHost) graphHost.hidden = state.graphMode === 'map' && state.layout.mobilePanel !== 'graph';
+    if (graphTableScope) graphTableScope.value = state.tableScope;
+    for (const [mode, control] of graphModeControls) control.setAttribute('aria-pressed', String(state.graphMode === mode));
     shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
     if (lastControlsQuery !== state.query) {
       lastControlsQuery = state.query;
@@ -185,11 +202,12 @@ window.WiciWorkspace = (() => {
       options.map?.invalidateSize?.();
     }
     for (const [column, control] of columnControls) control.checked = state.columns.includes(column);
-    tableView.render(data, state, sample, motion, alerts); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion, alerts}); mapView.render(data, state, sample, currentIndex(), motion, alerts); motionView?.render(state, motion); alertsView?.render(state, alerts); renderWatchlist();
+    const graphNodes = graphView?.getVisibleData?.()?.nodes || [], graphRows = state.tableScope === 'graph' ? sortedGraphTable(graphNodes, state.query.sort) : data;
+    tableView.render(graphRows, state, sample, motion, alerts); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion, alerts, graph: {temporal: graphView?.hasTemporalNodes?.()}}); mapView.render(data, state, sample, currentIndex(), motion, alerts, graphView?.getVisibleData?.()); motionView?.render(state, motion); alertsView?.render(state, alerts); renderWatchlist();
     const mapItems = data?.map?.items || [...(data?.map?.points || []), ...(data?.map?.areas || [])];
     const inScope = detail?.in_scope ?? (!data || data.items.some(item => item.ref === state.selectedRef) || mapItems.some(item => item.ref === state.selectedRef));
     cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: currentIndex(), motion, alerts});
-    dossiers?.update();
+    graphView?.sync?.(state); dossiers?.update();
     sourceCoverage.replaceChildren();
     for (const source of data?.coverage?.sources || []) sourceCoverage.append(U.el('p', `${source.resource}: ${U.statusNames[source.status] || source.status} · ${source.item_count || 0} rekordów · odczyt ${U.date(source.fetched_at)}${source.complete === false || source.complete === 0 ? ' · zakres niepełny' : ''}`, 'muted'));
     if (persistence) sourceCoverage.append(U.el('p', `Zapis historii: ${persistence.pending || 0} w kolejce · ${Object.keys(persistence.errors || {}).length} błędów · ${persistence.rejected_submissions || 0} pominiętych odczytów`, 'muted'));
@@ -321,7 +339,10 @@ window.WiciWorkspace = (() => {
     const top = U.el('div', null, 'analysis-toolbar-heading'); top.append(U.el('strong', 'Stanowisko analityczne'), U.el('span', 'Katalog · mapa · czas', 'muted'));
     const refresh = U.button('Odśwież zestaw', () => dispatch({type: 'REFRESH'})); refresh.id = 'analysis-refresh'; top.append(refresh);
     const panels = U.el('div', null, 'analysis-mobile-switch');
-    for (const [id, name] of [['table', 'Tabela'], ['map', 'Mapa']]) {const button = U.button(name, () => dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: id}})); button.dataset.panel = id; panels.append(button);} top.append(panels);
+    for (const [id, name] of [['table', 'Tabela'], ['map', 'Mapa'], ['graph', 'Graf']]) {const button = U.button(name, () => {if (id !== 'table') dispatch({type: 'SET_GRAPH_MODE', mode: id === 'graph' ? 'graph' : 'map'}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: id}});}); button.dataset.panel = id; panels.append(button);} top.append(panels);
+    const visualModes = U.el('div', null, 'analysis-view-switch'); visualModes.setAttribute('role', 'group'); visualModes.setAttribute('aria-label', 'Widok Analizy');
+    for (const [mode, label] of [['map', 'Mapa'], ['graph', 'Graf'], ['both', 'Mapa + graf']]) {const control = U.button(label, () => {dispatch({type: 'SET_GRAPH_MODE', mode}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: mode === 'graph' ? 'graph' : 'map'}}); graphView?.setActive?.(active && mode !== 'map'); graphView?.resize?.(); options.map?.invalidateSize?.();}); control.id = `analysis-view-${mode}`; graphModeControls.set(mode, control); visualModes.append(control);}
+    top.append(visualModes);
     const fields = U.el('div', null, 'analysis-query-fields'); search = U.el('input'); search.type = 'search'; search.maxLength = 200; search.id = 'analysis-search'; search.placeholder = 'Nazwa, tytuł lub identyfikator…';
     search.addEventListener('input', () => {
       clearTimeout(searchTimer); const value = search.value;
@@ -395,24 +416,28 @@ window.WiciWorkspace = (() => {
   function init(settings) {
     if (initialized) return; options = settings; host = document.getElementById('analysis-workspace'); if (!host) return;
     shell = host.closest('.workspace'); store = S.createStore(); sourceManager = settings.sources || window.WiciWorkspaceSources;
-    try {const saved = JSON.parse(localStorage.getItem(localKey)); if (saved && typeof saved === 'object') store.dispatch({type: 'SET_LAYOUT', patch: {tablePercent: Math.max(25, Math.min(65, Number(saved.tablePercent) || 42)), mobilePanel: saved.mobilePanel === 'map' ? 'map' : 'table'}});} catch { /* Default layout is sufficient. */ }
-    toolbar = U.el('section', null, 'analysis-toolbar'); catalog = U.el('section', null, 'analysis-catalog'); timelineHost = U.el('section', null, 'analysis-timeline'); cardHost = U.el('aside', null, 'analysis-card');
-    cardHost.id = 'analysis-card'; cardHost.hidden = true; host.append(toolbar, catalog, timelineHost, cardHost); createToolbar();
-    tableView = window.WiciWorkspaceTable(catalog, {select: selectObject, compare: toggleCompare, watch: toggleWatch, sort(field) {const current = store.getState().query.sort; dispatch({type: 'SET_QUERY', patch: {sort: {field, direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc'}}});}, next: () => loadQuery(data?.next_cursor), first: () => loadQuery(null)});
+    try {const saved = JSON.parse(localStorage.getItem(localKey)); if (saved && typeof saved === 'object') {store.dispatch({type: 'SET_LAYOUT', patch: {tablePercent: Math.max(25, Math.min(65, Number(saved.tablePercent) || 42)), mobilePanel: ['map', 'graph'].includes(saved.mobilePanel) ? saved.mobilePanel : 'table'}}); if (saved.mobilePanel === 'graph') store.dispatch({type: 'SET_GRAPH_MODE', mode: 'graph'});}} catch { /* Default layout is sufficient. */ }
+    toolbar = U.el('section', null, 'analysis-toolbar'); catalog = U.el('section', null, 'analysis-catalog'); timelineHost = U.el('section', null, 'analysis-timeline'); cardHost = U.el('aside', null, 'analysis-card'); graphHost = U.el('section', null, 'analysis-graph'); graphHost.id = 'analysis-graph-panel'; graphHost.hidden = true;
+    cardHost.id = 'analysis-card'; cardHost.hidden = true; host.append(toolbar, catalog, timelineHost, cardHost, graphHost); createToolbar();
+    graphTableScope = U.el('select'); graphTableScope.id = 'analysis-table-scope'; graphTableScope.setAttribute('aria-label', 'Zawartość tabeli'); for (const [value, label] of [['catalog', 'Wynik katalogu'], ['graph', 'Węzły grafu']]) {const option = U.el('option', label); option.value = value; graphTableScope.append(option);} graphTableScope.addEventListener('change', () => dispatch({type: 'SET_TABLE_SCOPE', scope: graphTableScope.value})); catalog.append(U.field('Tabela', graphTableScope));
+    graphView = window.WiciWorkspaceGraph?.(graphHost, {request, getContext: dossierContext, select: (ref, version) => selectObject(ref, undefined, version, {fetchSensors: false}), changed: () => {if (initialized) render();}, notify});
+    tableView = window.WiciWorkspaceTable(catalog, {select: (ref, origin) => selectObject(ref, origin, store.getState().tableScope === 'graph' ? graphView?.getVersion?.(ref) : null, {fetchSensors: store.getState().tableScope !== 'graph'}), compare: toggleCompare, watch: toggleWatch, sort(field) {const current = store.getState().query.sort; dispatch({type: 'SET_QUERY', patch: {sort: {field, direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc'}}});}, next: () => loadQuery(data?.next_cursor), first: () => loadQuery(null)});
     timelineView = window.WiciWorkspaceTimeline.create(timelineHost, {dispatch, getState: store.getState, now});
     motionView = M?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_COMPARE'}), select: selectObject, range: compareDay, fit: () => mapView.fitTracks?.(replayData)});
     alertsView = A?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_REGION_COMPARE'}), select: selectObject, range: compareDay, cursor: at => dispatch({type: 'SET_CURSOR', at}), fit: () => mapView.fitRegions?.(alertContext())});
-    mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: selectObject, narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
-    cardView = window.WiciObjectCard(cardHost, {pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
+    mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: ref => selectObject(ref, undefined, graphView?.getVersion?.(ref), {fetchSensors: !graphView?.getVisibleData?.().nodes.some(node => node.ref === ref)}), narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
+    cardView = window.WiciObjectCard(cardHost, {graph: object => openGraph({seed_refs: [object.ref]}), pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
       const lower = Date.parse(session.first_position_at || session.started_at), upper = Date.parse(session.last_position_at || session.stopped_at || now());
       if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
       if (!store.getState().comparedRefs.includes(ref)) toggleCompare(ref);
       if (!store.getState().comparedRefs.includes(ref)) return;
       dispatch({type: 'SET_TIME_RANGE', range: {from: new Date(Math.floor(lower / 60000) * 60000).toISOString(), to: new Date(Math.max(lower + 60000, Math.ceil((upper + 1) / 60000) * 60000)).toISOString()}});
-    }, show(object) {dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}});
-      if (M?.isMoving(object) && store.getState().query.time.mode === 'range') {const point = motionContext().frames.get(object.ref)?.point; if (!point) {notify('Brak zapisanej pozycji przy kursorze. Dodaj obiekt do porównania i wybierz czas raportu.'); return;} object = {...object, latitude: point.latitude, longitude: point.longitude};}
-      if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => selectObject(store.getState().selectedRef, document.activeElement, version), region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
+    }, show(object) {dispatch({type: 'SET_GRAPH_MODE', mode: 'map'}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}}); options.map?.invalidateSize?.();
+      if (M?.isMoving(object) && store.getState().query.time.mode === 'range') {const frames = motionContext().frames, point = frames.has(object.ref) ? frames.get(object.ref)?.point : graphPositionAtCursor(object.ref); if (!point) {notify('Brak zapisanej pozycji przy kursorze. Dodaj obiekt do porównania i wybierz czas raportu.'); return;} object = {...object, latitude: point.latitude, longitude: point.longitude};}
+      if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => {graphView?.setVersion?.(store.getState().selectedRef, version); selectObject(store.getState().selectedRef, document.activeElement, version);}, region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
     store.subscribe((state, previous, action) => {
+      if (action.type === 'SET_LAYOUT' || action.type === 'SET_GRAPH_MODE') graphView?.setActive?.(active && (state.graphMode !== 'map' || state.layout.mobilePanel === 'graph'));
+      if (action.type === 'REFRESH') graphView?.refresh?.();
       if (action.type === 'APPLY_VIEW') {clearTimeout(searchTimer); searchTimer = null;}
       if (state.queryRevision !== previous.queryRevision) {pageCursor = null; detailAbort?.abort(); ++detailRun; if (action.type !== 'REFRESH') syncSources(); loadQuery(); loadReplay(action.type === 'REFRESH'); loadAlertReplay(action.type === 'REFRESH');}
       else if (state.detailRevision !== previous.detailRevision) {syncSensor(); detailAbort?.abort(); ++detailRun; if (state.detailOpen) loadDetail();}
@@ -422,7 +447,7 @@ window.WiciWorkspace = (() => {
       render();
     });
     sourceManager?.subscribe?.(sourceChanged);
-    window.addEventListener?.('resize', positionCard);
+    window.addEventListener?.('resize', () => {positionCard(); graphView?.resize?.();});
     document.addEventListener('keydown', event => {if (active && event.key === 'Escape' && store.getState().detailOpen) {event.preventDefault(); closeCard();}});
     document.addEventListener('visibilitychange', () => {syncSources(); if (document.hidden) timelineView.pause?.(); if (!document.hidden && active && visible) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}});
     for (const disclosure of toolbar.querySelectorAll?.('details') || []) disclosure.addEventListener('toggle', positionCard);
@@ -431,11 +456,21 @@ window.WiciWorkspace = (() => {
   function setActive(value) {
     if (!initialized || active === Boolean(value)) return; active = Boolean(value); host.hidden = !active; shell.classList.toggle('analysis-active', active); mapView.setActive(active); syncSources();
     clearInterval(refreshTimer); refreshTimer = null;
+    graphView?.setActive?.(active && (store.getState().graphMode !== 'map' || store.getState().layout.mobilePanel === 'graph'));
     if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); dossiers?.load(); refreshSourceStatus(); loadWatchlist(); loadReplay(true); loadRegions(); loadRecording(); loadAlertReplay(true); refreshTimer = setInterval(() => {if (visible && !document.hidden) {if (store.getState().query.time.mode === 'live') loadQuery(pageCursor); loadRecording();}}, 60000);}
     else {dossiers?.close(); queryAbort?.abort(); detailAbort?.abort(); replayAbort?.abort(); alertAbort?.abort(); ++alertRun; ++queryRun; ++detailRun; ++replayRun; timelineView.pause?.(); shell.classList.remove('analysis-card-open');}
     syncMapScope(); options.map?.invalidateSize?.(); options.onModeChange?.(active);
   }
   function setVisible(value) {if (visible === Boolean(value)) return; visible = Boolean(value); syncSources(); if (!visible) timelineView.pause?.(); if (visible && active) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}}
+  async function openGraph({seed_refs, dossier_id, config} = {}) {if (!graphView) return; const state = store.getState(); const refs = seed_refs || config?.graph?.seed_refs || (state.selectedRef ? [state.selectedRef] : []);
+    if (['Europe/Warsaw', 'Europe/Kyiv', 'UTC'].includes(config?.graph?.display_timezone)) dispatch({type: 'SET_TIMEZONE', timezone: config.graph.display_timezone});
+    if (config?.graph?.time?.mode === 'range' && config.graph.time.filter_range) {
+      const normalize = raw => raw ? {from: raw.from || raw.start, to: raw.to || raw.end} : null;
+      const range = normalize(config.graph.time.filter_range), overview = normalize(config.graph.time.overview_range);
+      dispatch({type: 'SET_TIME_RANGE', range, overview}); if (config.graph.cursor_at) dispatch({type: 'SET_CURSOR', at: config.graph.cursor_at});}
+    if (config?.graph?.time?.mode === 'live' && state.query.time.mode !== 'live') dispatch({type: 'RETURN_TO_LIVE'});
+    dispatch({type: 'CLOSE_CARD'}); dispatch({type: 'SET_GRAPH_MODE', mode: 'graph'}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'graph'}}); return graphView.open({seed_refs: refs, dossier_id, config});}
   return {init, setActive, setVisible, setRegion, refresh: () => initialized && dispatch({type: 'REFRESH'}), selectObject,
+    openGraph, getGraphConfig: () => graphView?.getConfig?.(), getGraphCapture: () => graphView?.getCapture?.(), getGraphData: () => graphView?.getData?.(), refreshGraph: () => graphView?.refresh?.(), setGraphDossier: id => graphView?.setDossier?.(id),
     isActive: () => active, getState: () => store?.getState(), getData: () => data};
 })();
