@@ -63,7 +63,7 @@ window.WiciWorkspaceTimeline = (() => {
     cursorBox.append(U.el('span', 'Wspólny kursor czasu'), play, speed, cursor, cursorDate, cursorOutput);
     host.append(heading, form, message, histogram, note, cursorBox);
     let lastSummary = null, lastTimezone = null;
-    return {pause, render(data, state, {historyIncomplete = false, detailLoading = false, motion = null, alerts = null} = {}) {
+    return {pause, render(data, state, {historyIncomplete = false, detailLoading = false, motion = null, alerts = null, graph = null} = {}) {
       const range = state.query.time.filter_range, summary = data?.timeline_summary, timezone = state.displayTimezone || 'Europe/Warsaw';
       zone.value = timezone; from.title = to.title = `Czas ${timezone}. Dla powtórzonej jesiennej godziny wybieramy wcześniejsze wystąpienie.`; cursorDate.setAttribute('aria-label', `Dokładny czas kursora · ${timezone}`);
       mode.textContent = state.query.time.mode === 'live' ? 'Bieżące' : 'Przegląd okresu'; live.setAttribute('aria-pressed', String(state.query.time.mode === 'live'));
@@ -82,13 +82,14 @@ window.WiciWorkspaceTimeline = (() => {
       const stationCursor = state.selectedRef?.includes('_station:') && !historyIncomplete && !detailLoading;
       const movingCursor = state.comparedRefs?.length && motion?.data && !motion.loading && !motion.error;
       const regionCursor = state.comparedRegionRefs?.length && alerts?.data && !alerts.loading && !alerts.error;
-      cursorBox.hidden = !range; cursor.disabled = !(stationCursor || movingCursor || regionCursor); cursorDate.disabled = cursor.disabled;
-      play.disabled = speed.disabled = cursor.disabled; play.hidden = speed.hidden = !(state.comparedRefs?.length || state.comparedRegionRefs?.length);
+      const graphCursor = Boolean(range && graph?.temporal);
+      cursorBox.hidden = !range; cursor.disabled = !(stationCursor || movingCursor || regionCursor || graphCursor); cursorDate.disabled = cursor.disabled;
+      play.disabled = speed.disabled = cursor.disabled; play.hidden = speed.hidden = !(state.comparedRefs?.length || state.comparedRegionRefs?.length || graphCursor);
       if (!range || cursor.disabled) pause();
       if (range) {const current = Date.parse(state.cursorAt || range.to) - (state.cursorAt ? 0 : 1), lower = Date.parse(range.from), upper = Date.parse(range.to);
         cursor.value = String(Math.max(0, Math.min(1000, 1000 * (current - lower) / (upper - lower))));
         if (document.activeElement !== cursorDate) cursorDate.value = localValue(new Date(current).toISOString(), timezone);
-        cursorOutput.textContent = historyIncomplete && !movingCursor && !regionCursor ? 'Historia częściowa — wczytaj kolejne próbki w karcie, aby użyć kursora' : state.cursorAt ? `Według kursora: ${U.date(state.cursorAt)}` : movingCursor || regionCursor ? 'Przesuń kursor lub uruchom odtwarzanie zapisanej historii' : 'Przesuń kursor, aby sprawdzić zaznaczoną stację';
+        cursorOutput.textContent = historyIncomplete && !movingCursor && !regionCursor && !graphCursor ? 'Historia częściowa — wczytaj kolejne próbki w karcie, aby użyć kursora' : state.cursorAt ? `Według kursora: ${U.date(state.cursorAt)}` : movingCursor || regionCursor || graphCursor ? 'Przesuń kursor lub uruchom odtwarzanie zapisanej historii' : 'Przesuń kursor, aby sprawdzić zaznaczoną stację';
         cursor.setAttribute('aria-valuetext', U.date(new Date(current).toISOString()));
       }
     }};

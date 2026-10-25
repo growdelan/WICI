@@ -62,6 +62,8 @@ class WorkspaceService:
         self.moving.backfill_tracks()
         from wici.workspace_dossiers import WorkspaceDossiers
         self.dossiers = WorkspaceDossiers(self)
+        from wici.workspace_relations import WorkspaceRelations
+        self.relations = WorkspaceRelations(self)
 
     def _encode_cursor(self, value):
         payload = base64.urlsafe_b64encode(encode(value).encode()).decode().rstrip('=')

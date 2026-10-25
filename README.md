@@ -6,6 +6,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Teczki analiz** gromadzą przypięte obiekty, notatki i zapisane kopie kart, historii oraz porównań. Materiał zachowuje źródło i kontekst czasu, pozostając dostępny po wygaśnięciu historii źródłowej. [Obsługa teczek](docs/analysis-dossiers.md).
 
+**Graf powiązań** pokazuje relacje obiektów z obszarami, hierarchie regionów, alarmy i raporty pozycji. Rozwijaj sąsiadów, sprawdzaj pochodzenie połączeń i dodawaj uzasadnione relacje analityczne w teczce. Możesz zachować roboczy układ lub niezmienną kopię grafu. [Obsługa grafu i relacji](docs/analysis-relations.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.

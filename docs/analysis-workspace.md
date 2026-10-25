@@ -8,6 +8,8 @@ Wersja 0.32.0 dodaje [historię alarmów Ukrainy i porównanie regionów](ukrain
 
 Wersja 0.33.0 dodaje [teczki analiz](analysis-dossiers.md): notatki, przypięte obiekty i niezmienne kopie wybranego materiału, które pozostają dostępne po upływie retencji historii źródłowej.
 
+Wersja 0.34.0 dodaje [relacje i graf powiązań](analysis-relations.md): eksplorację sąsiadów, jawne pochodzenie połączeń, ręczne relacje w teczkach oraz robocze i niezmienne grafy.
+
 ## Praca z katalogiem
 
 1. Wybierz typy: komunikaty czterech oficjalnych źródeł, wodowskazy IMGW, stacje jakości powietrza GIOŚ lub obszary PRG. Możesz połączyć kilka typów.

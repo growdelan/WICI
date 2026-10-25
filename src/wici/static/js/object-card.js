@@ -48,6 +48,7 @@ window.WiciObjectCard = function (host, actions) {
       title.textContent = object.label; body.replaceChildren(); reading = readingTime = readingNote = readingClocks = officialIndexNode = movingNodes = alertNodes = null;
       const meta = U.el('p', `${U.typeNames[object.type]} · ${object.source_id}`, 'analysis-card-type'); body.append(meta);
       body.append(U.button('Pokaż na mapie', () => actions.show(object)));
+      if (actions.graph) {const graph = U.button('Pokaż powiązania', () => actions.graph(object)); graph.id = 'analysis-show-relations'; body.append(graph);}
       if (actions.pin && actions.capture) {
         const dossierActions = U.el('div', null, 'analysis-dossier-card-actions');
         const pin = U.button('Przypnij do teczki', actions.pin), capture = U.button('Zapisz kartę w teczce', actions.capture);

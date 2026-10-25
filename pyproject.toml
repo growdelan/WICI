@@ -1,6 +1,6 @@
 [project]
 name = "wici"
-version = "0.33.0"
+version = "0.34.0"
 description = "Lokalne publikacje i ostrzeżenia dotyczące Polski"
 # Distribution SPDX expression awaits resolution of bundled assets; see docs/license-audit.md.
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]

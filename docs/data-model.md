@@ -1,6 +1,6 @@
 # Model danych WICI
 
-SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`019` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
+SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`020` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
 
 ## Aktywne tabele
 
@@ -92,3 +92,30 @@ sprawdza zgodność zapytania i rewizji, doczytuje strony historii oraz zapisuje
 JSON atomowo. Kopia nie zależy od działającego kontekstu zapytania po restarcie.
 Dotychczasowe schematy dokumentów, obserwowanych, rejestracji i zapisanych
 stanowisk pozostają bez zmian. [Zakres i obsługa](analysis-dossiers.md).
+
+## Relacje i graf (migracja 020)
+
+| Tabela | Znaczenie |
+|---|---|
+| `workspace_relations` | Symetryczne powiązanie dwóch obiektów w teczce, zachowane etykiety i typy, uzasadnienie, odnośniki do dowodów, rewizja i znacznik usunięcia. |
+| `workspace_relation_revisions` | Kolejne utworzenia, edycje i usunięcie relacji, ze stanem uzasadnienia i kopią podstawy dowodowej z chwili zmiany. |
+| `workspace_graphs` | Robocza konfiguracja grafu teczki z własną rewizją, selekcją, układem, pozycjami, ukrytymi węzłami i filtrem typu. |
+
+Klucze obce wiążą te rekordy z teczką; retencja katalogu nie usuwa ręcznych
+powiązań ani ich etykiet. Aktywna para obiektów jest unikalna niezależnie od
+kolejności końców. Usunięcie relacji zachowuje wpis i historię; domyślnie nie
+zwraca się jej do grafu. Historia zachowuje treść i rewizję wskazanej notatki
+oraz metadane i SHA-256 wskazanego materiału. Późniejsza edycja lub usunięcie
+dowodu nie przepisuje wcześniejszej rewizji relacji.
+
+Relacje źródłowe i wyliczone są odczytywane z istniejących przypisań katalogu,
+wersji komunikatów, hierarchii Ukrainy, epizodów oraz dostępnych raportów
+pozycji. Nie powstaje drugie niezależne archiwum faktów. Odczyty grafu mają
+własną rewizję uwzględniającą również obiekty poza filtrami katalogu.
+
+Migracja przebudowuje ograniczenie rodzaju materiału w
+`workspace_dossier_materials`, dopuszczając `graph`. Istniejące wiersze są
+kopiowane bez zmiany bajtów JSON i SHA-256; indeks i trigger niezmienności
+zostają odtworzone w tej samej transakcji. Kopia grafu ma schemat 2 i zawiera
+węzły, relacje, pochodzenie, kontekst czasu, pozycje oraz oznaczenie fragmentu.
+Materiały schematu 1 pozostają obsługiwane. [Obsługa grafu](analysis-relations.md).

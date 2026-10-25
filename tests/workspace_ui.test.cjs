@@ -32,7 +32,7 @@ test('saved view restores scope and layout without keeping stale selected sensor
 });
 
 test('Warsaw local inputs account for 23h/25h days and reject nonexistent DST hour', () => {
-  const window = {WiciWorkspaceUI: {}}; vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-timeline.js', 'utf8'), {window, Intl, Date});
+  const window = {WiciWorkspaceGraph: (host, actions) => {graphActions = actions; return {getCapture: () => null, getVisibleData: () => ({nodes: graphNodes, edges: []}), getVersion: ref => ref === 'communication:1' ? 7 : null, setActive() {}, sync() {}, resize() {}, open() {}};}, WiciWorkspaceUI: {}}; vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-timeline.js', 'utf8'), {window, Intl, Date});
   const time = window.WiciWorkspaceTimeline;
   assert.equal(Date.parse(time.toUTC('2026-03-30T00:00')) - Date.parse(time.toUTC('2026-03-29T00:00')), 23 * 3600000);
   assert.equal(Date.parse(time.toUTC('2026-10-26T00:00')) - Date.parse(time.toUTC('2026-10-25T00:00')), 25 * 3600000);
@@ -41,7 +41,7 @@ test('Warsaw local inputs account for 23h/25h days and reject nonexistent DST ho
 });
 
 function harness() {
-  const requests = [], cardRenders = [], sourceCalls = [], sourceEffects = []; let viewActions, timelineActions, dossierActions, sourceListener; const timers = new Map(); let timerId = 0;
+  const requests = [], cardRenders = [], sourceCalls = [], sourceEffects = [], graphNodes = [], tableRenders = []; let tableActions, viewActions, timelineActions, dossierActions, graphActions, sourceListener; const timers = new Map(); let timerId = 0;
   function node(tag = 'div') {
     const classes = new Set();
     return {tagName: tag.toUpperCase(), children: [], dataset: {}, value: '', hidden: false, isConnected: true,
@@ -56,9 +56,9 @@ function harness() {
     button(text, click, cls) {const item = this.el('button', text, cls); item.click = click; return item;},
     field(label, control) {const item = this.el('label', label); item.append(control); return item;}, date: value => value || 'brak', typeNames: {}, statusNames: {}};
   const sources = {setVisible(value) {sourceCalls.push(['visible', value]);}, setTypes(types) {sourceCalls.push(['types', [...types]]);}, subscribe(listener) {sourceListener = listener;}, demandIndexes() {}, deactivate() {sourceEffects.push(['deactivate']);}, demandSensor(id) {sourceEffects.push(['sensor', id]);}, loadSensors(id) {sourceEffects.push(['loadSensors', id]); return Promise.resolve({items: []});}};
-  const window = {WiciWorkspaceUI: U, WiciWorkspaceStore: Store, WiciWorkspaceSources: sources,
+  const window = {WiciWorkspaceGraph: (host, actions) => {graphActions = actions; return {getCapture: () => null, getVisibleData: () => ({nodes: graphNodes, edges: []}), getVersion: ref => ref === 'communication:1' ? 7 : null, setActive() {}, sync() {}, resize() {}, open() {}};}, WiciWorkspaceUI: U, WiciWorkspaceStore: Store, WiciWorkspaceSources: sources,
     WiciWorkspaceDossiers: (host, actions) => {dossierActions = actions; return {load() {}, update() {}, close() {}};},
-    WiciWorkspaceViews: (host, actions) => {viewActions = actions; return {load() {}};}, WiciWorkspaceTable: () => ({render() {}, focusHeading() {}}),
+    WiciWorkspaceViews: (host, actions) => {viewActions = actions; return {load() {}};}, WiciWorkspaceTable: (host, actions) => {tableActions = actions; return {render(data) {tableRenders.push(data);}, focusHeading() {}};},
     WiciWorkspaceTimeline: {create: (host, actions) => {timelineActions = actions; return {render() {}};}}, WiciWorkspaceMap: () => ({render() {}, setActive() {}, show() {}}),
     WiciObjectCard: () => ({render(detail, timeline, state, sample) {cardRenders.push({detail, timeline, state, sample});}, focus() {}})};
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-controller.js', 'utf8'), {
@@ -68,7 +68,7 @@ function harness() {
   });
   window.WiciWorkspace.init({map: {invalidateSize() {}}, health: {now: '2026-10-22T12:00:00Z'}, geometries: new Map(), api: (path, body, options) => new Promise((resolve, reject) => requests.push({path, body, options, resolve, reject}))});
   const queryResponse = {items: [], total: 0, next_cursor: null, map: {items: []}, timeline_summary: {buckets: []}, coverage: {sources: []}, data_revision: 'data1', as_of: '2026-10-22T12:00:00Z'};
-  return {ui: window.WiciWorkspace, document, host, requests, cardRenders, queryResponse, sourceCalls, sourceEffects, viewActions, timelineActions, dossierActions, sourceEvent: event => sourceListener(event)};
+  return {ui: window.WiciWorkspace, document, host, requests, cardRenders, queryResponse, sourceCalls, sourceEffects, viewActions, timelineActions, dossierActions, graphActions, graphNodes, tableRenders, tableActions, sourceEvent: event => sourceListener(event)};
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function ready(h) {h.ui.setActive(true); h.requests.find(request => request.path === '/workspace/query').resolve(h.queryResponse); h.requests.find(request => request.path === '/workspace/status').resolve({}); await flush();}
@@ -190,7 +190,7 @@ function mapHarness() {
     const marker = {style, bindTooltip() {return this;}, on() {}, addTo() {return this;}, setStyle(style) {this.style = style;}, setRadius() {}, setTooltipContent() {}};
     markers.push(marker); return marker;
   }};
-  const window = {WiciWorkspaceUI: U, L};
+  const window = {WiciWorkspaceGraph: (host, actions) => {graphActions = actions; return {getCapture: () => null, getVisibleData: () => ({nodes: graphNodes, edges: []}), getVersion: ref => ref === 'communication:1' ? 7 : null, setActive() {}, sync() {}, resize() {}, open() {}};}, WiciWorkspaceUI: U, L};
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-map.js', 'utf8'), {window, L, Date});
   const map = window.WiciWorkspaceMap({map: {removeLayer() {}}, geometries: new Map(), select() {}, narrow() {}}); map.setActive(true);
   const clock = '2026-10-22T12:00:00Z';
@@ -221,4 +221,46 @@ test('historical map colors use period end or selected cursor without borrowing 
   assert.equal(h.render(water, {state: {query: {time: range}}}), '#b78a28');
   assert.equal(h.render(water), '#7e8990');
   assert.equal(h.render({...water, measurement: {...water.measurement, thresholds: {}}}, {state: {query: {time: range}}}), '#7e8990');
+});
+
+
+test('graph selection preserves an explicitly selected historical document version without changing filters', async () => {
+  const h = harness(); await ready(h); const query = h.ui.getState().query;
+  h.graphActions.select('communication:1', 7);
+  assert.equal(h.ui.getState().selectedRef, 'communication:1');
+  assert.equal(h.ui.getState().selectedVersion, 7);
+  assert.equal(h.ui.getState().query, query);
+  assert.ok(h.requests.slice(-2).every(request => request.path.includes('version_id=7')));
+});
+
+
+test('graph table headers sort the visible nodes locally in both directions', async () => {
+  const h = harness(); await ready(h);
+  h.graphNodes.push({ref: 'area:prg:14', type: 'area', label: 'Zeta', updated_at: '2026-10-20T00:00:00Z'}, {ref: 'area:prg:12', type: 'area', label: 'Alfa', updated_at: '2026-10-21T00:00:00Z'});
+  h.timelineActions.dispatch({type: 'SET_QUERY', patch: {sort: {field: 'updated_at', direction: 'asc'}}});
+  h.timelineActions.dispatch({type: 'SET_TABLE_SCOPE', scope: 'graph'});
+  assert.deepEqual(Array.from(h.tableRenders.at(-1).items, node => node.label), ['Zeta', 'Alfa']);
+  h.tableActions.sort('label');
+  assert.deepEqual(Array.from(h.tableRenders.at(-1).items, node => node.label), ['Alfa', 'Zeta']);
+  h.tableActions.sort('label');
+  assert.deepEqual(Array.from(h.tableRenders.at(-1).items, node => node.label), ['Zeta', 'Alfa']);
+});
+
+
+test('opening a saved working graph restores its own timezone with the same UTC range', async () => {
+  const h=harness();await ready(h);const range={from:'2026-06-20T00:00:00Z',to:'2026-06-21T00:00:00Z'};
+  await h.ui.openGraph({dossier_id:'case',config:{graph:{seed_refs:['area:prg:14'],node_refs:['area:prg:14'],display_timezone:'Europe/Kyiv',time:{mode:'range',filter_range:range},cursor_at:'2026-06-20T12:00:00Z'}}});
+  assert.equal(h.ui.getState().displayTimezone,'Europe/Kyiv');assert.deepEqual({...h.ui.getState().query.time.filter_range},range);assert.deepEqual({...h.ui.getState().query.time.overview_range},range);assert.equal(h.ui.getState().cursorAt,'2026-06-20T12:00:00.000Z');
+});
+
+test('opening a saved graph preserves distinct overview and filter ranges including serialized aliases', async () => {
+  const overview={from:'2026-10-20T10:00:00Z',to:'2026-10-20T11:00:00Z'},range={from:'2026-10-20T10:10:00Z',to:'2026-10-20T10:20:00Z'};
+  for(const aliases of [false,true]) {
+    const h=harness();await ready(h);
+    const encode=value=>aliases ? {start:value.from,end:value.to} : value;
+    await h.ui.openGraph({config:{graph:{seed_refs:['area:prg:14'],node_refs:['area:prg:14'],time:{mode:'range',overview_range:encode(overview),filter_range:encode(range)},cursor_at:'2026-10-20T10:15:00Z'}}});
+    assert.deepEqual({...h.ui.getState().query.time.overview_range},overview);
+    assert.deepEqual({...h.ui.getState().query.time.filter_range},range);
+    assert.equal(h.ui.getState().cursorAt,'2026-10-20T10:15:00.000Z');
+  }
 });
