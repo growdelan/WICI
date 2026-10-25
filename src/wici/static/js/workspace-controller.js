@@ -1,7 +1,7 @@
 'use strict';
 window.WiciWorkspace = (() => {
   const U = window.WiciWorkspaceUI, S = window.WiciWorkspaceStore, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts;
-  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView;
+  let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView, dossiers;
   let host, shell, toolbar, catalog, timelineHost, cardHost, search, province, message, status, split, sourceSelect, sourceCoverage, persistenceNotice, country, oblast, raion, provinceField, oblastField, raionField, recordingControl, recordingStatus, regionHint;
   const columnControls = new Map();
   let data = null, detail = null, timeline = null, detailError = null, detailLoading = false;
@@ -151,6 +151,15 @@ window.WiciWorkspace = (() => {
     if (!state.cursorAt) return object.official_index || null;
     return S.sampleAt(timeline?.official_indices || (timeline?.items || []).filter(item => item.kind === 'official_index'), state.cursorAt, state.query.time.filter_range);
   }
+  function dossierContext() {
+    const state = store.getState(), selectionKey = JSON.stringify([state.selectedRef, state.selectedVersion, state.selectedSensor, state.selectedMetric]);
+    return {state, object: detail?.object?.ref === state.selectedRef ? detail.object : null,
+      ready: Boolean(data && !state.loading && !state.error && state.dataRevision === data.data_revision),
+      detailReady: Boolean(detail?.object?.ref === state.selectedRef && detail._selectionKey === selectionKey && detail._queryRevision === state.queryRevision && !detailLoading && !detailError),
+      inScope: detail?.in_scope !== false,
+      comparisonReady: !replayLoading && !replayError && !alertLoading && !alertError &&
+        (!state.comparedRefs.length || Boolean(replayData)) && (!(state.comparedRegionRefs || []).length || Boolean(alertReplay))};
+  }
   function positionCard() {
     const mapPanel = shell?.querySelector?.('.map-panel');
     if (mapPanel) {shell.style.setProperty('--analysis-card-top', `${mapPanel.offsetTop + 10}px`); shell.style.setProperty('--analysis-card-height', `${Math.max(260, mapPanel.offsetHeight - 20)}px`);}
@@ -180,6 +189,7 @@ window.WiciWorkspace = (() => {
     const mapItems = data?.map?.items || [...(data?.map?.points || []), ...(data?.map?.areas || [])];
     const inScope = detail?.in_scope ?? (!data || data.items.some(item => item.ref === state.selectedRef) || mapItems.some(item => item.ref === state.selectedRef));
     cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: currentIndex(), motion, alerts});
+    dossiers?.update();
     sourceCoverage.replaceChildren();
     for (const source of data?.coverage?.sources || []) sourceCoverage.append(U.el('p', `${source.resource}: ${U.statusNames[source.status] || source.status} · ${source.item_count || 0} rekordów · odczyt ${U.date(source.fetched_at)}${source.complete === false || source.complete === 0 ? ' · zakres niepełny' : ''}`, 'muted'));
     if (persistence) sourceCoverage.append(U.el('p', `Zapis historii: ${persistence.pending || 0} w kolejce · ${Object.keys(persistence.errors || {}).length} błędów · ${persistence.rejected_submissions || 0} pominiętych odczytów`, 'muted'));
@@ -232,7 +242,7 @@ window.WiciWorkspace = (() => {
     try {
       const path = `/workspace/objects/${encodeURIComponent(selectedRef)}`;
       const results = await Promise.all([request(`${path}?${params}`, null, {signal}), request(`${path}/timeline?${params}`, null, {signal})]);
-      if (!stillCurrent()) return; detail = {...results[0], _detailRevision: generation, _queryRevision: state.queryRevision}; timeline = more && timeline ? {...results[1], items: timeline.next_cursor ? [...timeline.items, ...results[1].items] : timeline.items,
+      if (!stillCurrent()) return; detail = {...results[0], _detailRevision: generation, _queryRevision: state.queryRevision, _selectionKey: JSON.stringify([state.selectedRef, state.selectedVersion, state.selectedSensor, state.selectedMetric])}; timeline = more && timeline ? {...results[1], items: timeline.next_cursor ? [...timeline.items, ...results[1].items] : timeline.items,
         official_indices: timeline.official_indices_next_cursor ? [...timeline.official_indices, ...results[1].official_indices] : timeline.official_indices,
         next_cursor: timeline.next_cursor ? results[1].next_cursor : null, official_indices_next_cursor: timeline.official_indices_next_cursor ? results[1].official_indices_next_cursor : null} : results[1]; detailLoading = false; render();
       if (wantsFocus) {wantsFocus = false; cardView.focus();}
@@ -241,10 +251,10 @@ window.WiciWorkspace = (() => {
       detailError = error.status === 409 ? 'Zestaw danych zmienił się. Odśwież zestaw, aby ponownie otworzyć spójne szczegóły.' : error.message; render();
     }
   }
-  function selectObject(ref, origin, version = null) {
+  function selectObject(ref, origin, version = null, {fetchSensors = true} = {}) {
     trigger = origin || document.activeElement; wantsFocus = true;
     dispatch({type: 'SELECT_OBJECT', ref, version});
-    if (sourceEnabled && store.getState().query.time.mode === 'live' && ref.startsWith('air_quality_station:')) sourceManager?.loadSensors?.(ref.split(':').at(-1)).catch(error => notify(error.message));
+    if (fetchSensors && sourceEnabled && store.getState().query.time.mode === 'live' && ref.startsWith('air_quality_station:')) sourceManager?.loadSensors?.(ref.split(':').at(-1)).catch(error => notify(error.message));
   }
   function closeCard() {
     wantsFocus = false; detailAbort?.abort(); ++detailRun; dispatch({type: 'CLOSE_CARD'});
@@ -379,6 +389,8 @@ window.WiciWorkspace = (() => {
       wantsFocus = false; dispatch({type: 'APPLY_VIEW', config, id}); if (config.query?.country !== 'UA') window.WiciRegion?.select?.(config.query?.province || '', {fit: false});
       if (config.camera && options.map) options.map.setView([config.camera.lat, config.camera.lng], config.camera.zoom, {animate: false});
     }, saved: id => dispatch({type: 'VIEW_SAVED', id})});
+    dossiers = window.WiciWorkspaceDossiers?.(toolbar, {request, getContext: dossierContext, status: notify,
+      openObject(ref) {selectObject(ref, undefined, null, {fetchSensors: false});}});
   }
   function init(settings) {
     if (initialized) return; options = settings; host = document.getElementById('analysis-workspace'); if (!host) return;
@@ -391,7 +403,7 @@ window.WiciWorkspace = (() => {
     motionView = M?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_COMPARE'}), select: selectObject, range: compareDay, fit: () => mapView.fitTracks?.(replayData)});
     alertsView = A?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_REGION_COMPARE'}), select: selectObject, range: compareDay, cursor: at => dispatch({type: 'SET_CURSOR', at}), fit: () => mapView.fitRegions?.(alertContext())});
     mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: selectObject, narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
-    cardView = window.WiciObjectCard(cardHost, {close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
+    cardView = window.WiciObjectCard(cardHost, {pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
       const lower = Date.parse(session.first_position_at || session.started_at), upper = Date.parse(session.last_position_at || session.stopped_at || now());
       if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
       if (!store.getState().comparedRefs.includes(ref)) toggleCompare(ref);
@@ -419,8 +431,8 @@ window.WiciWorkspace = (() => {
   function setActive(value) {
     if (!initialized || active === Boolean(value)) return; active = Boolean(value); host.hidden = !active; shell.classList.toggle('analysis-active', active); mapView.setActive(active); syncSources();
     clearInterval(refreshTimer); refreshTimer = null;
-    if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); refreshSourceStatus(); loadWatchlist(); loadReplay(true); loadRegions(); loadRecording(); loadAlertReplay(true); refreshTimer = setInterval(() => {if (visible && !document.hidden) {if (store.getState().query.time.mode === 'live') loadQuery(pageCursor); loadRecording();}}, 60000);}
-    else {queryAbort?.abort(); detailAbort?.abort(); replayAbort?.abort(); alertAbort?.abort(); ++alertRun; ++queryRun; ++detailRun; ++replayRun; timelineView.pause?.(); shell.classList.remove('analysis-card-open');}
+    if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); dossiers?.load(); refreshSourceStatus(); loadWatchlist(); loadReplay(true); loadRegions(); loadRecording(); loadAlertReplay(true); refreshTimer = setInterval(() => {if (visible && !document.hidden) {if (store.getState().query.time.mode === 'live') loadQuery(pageCursor); loadRecording();}}, 60000);}
+    else {dossiers?.close(); queryAbort?.abort(); detailAbort?.abort(); replayAbort?.abort(); alertAbort?.abort(); ++alertRun; ++queryRun; ++detailRun; ++replayRun; timelineView.pause?.(); shell.classList.remove('analysis-card-open');}
     syncMapScope(); options.map?.invalidateSize?.(); options.onModeChange?.(active);
   }
   function setVisible(value) {if (visible === Boolean(value)) return; visible = Boolean(value); syncSources(); if (!visible) timelineView.pause?.(); if (visible && active) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}}

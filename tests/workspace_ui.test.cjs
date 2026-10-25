@@ -41,7 +41,7 @@ test('Warsaw local inputs account for 23h/25h days and reject nonexistent DST ho
 });
 
 function harness() {
-  const requests = [], cardRenders = [], sourceCalls = []; let viewActions, timelineActions, sourceListener; const timers = new Map(); let timerId = 0;
+  const requests = [], cardRenders = [], sourceCalls = [], sourceEffects = []; let viewActions, timelineActions, dossierActions, sourceListener; const timers = new Map(); let timerId = 0;
   function node(tag = 'div') {
     const classes = new Set();
     return {tagName: tag.toUpperCase(), children: [], dataset: {}, value: '', hidden: false, isConnected: true,
@@ -55,8 +55,9 @@ function harness() {
   const U = {el(tag, text, cls) {const item = node(tag); item.textContent = text; item.className = cls; return item;},
     button(text, click, cls) {const item = this.el('button', text, cls); item.click = click; return item;},
     field(label, control) {const item = this.el('label', label); item.append(control); return item;}, date: value => value || 'brak', typeNames: {}, statusNames: {}};
-  const sources = {setVisible(value) {sourceCalls.push(['visible', value]);}, setTypes(types) {sourceCalls.push(['types', [...types]]);}, subscribe(listener) {sourceListener = listener;}, demandIndexes() {}, deactivate() {}, loadSensors() {return Promise.resolve({items: []});}};
+  const sources = {setVisible(value) {sourceCalls.push(['visible', value]);}, setTypes(types) {sourceCalls.push(['types', [...types]]);}, subscribe(listener) {sourceListener = listener;}, demandIndexes() {}, deactivate() {sourceEffects.push(['deactivate']);}, demandSensor(id) {sourceEffects.push(['sensor', id]);}, loadSensors(id) {sourceEffects.push(['loadSensors', id]); return Promise.resolve({items: []});}};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceStore: Store, WiciWorkspaceSources: sources,
+    WiciWorkspaceDossiers: (host, actions) => {dossierActions = actions; return {load() {}, update() {}, close() {}};},
     WiciWorkspaceViews: (host, actions) => {viewActions = actions; return {load() {}};}, WiciWorkspaceTable: () => ({render() {}, focusHeading() {}}),
     WiciWorkspaceTimeline: {create: (host, actions) => {timelineActions = actions; return {render() {}};}}, WiciWorkspaceMap: () => ({render() {}, setActive() {}, show() {}}),
     WiciObjectCard: () => ({render(detail, timeline, state, sample) {cardRenders.push({detail, timeline, state, sample});}, focus() {}})};
@@ -67,7 +68,7 @@ function harness() {
   });
   window.WiciWorkspace.init({map: {invalidateSize() {}}, health: {now: '2026-10-22T12:00:00Z'}, geometries: new Map(), api: (path, body, options) => new Promise((resolve, reject) => requests.push({path, body, options, resolve, reject}))});
   const queryResponse = {items: [], total: 0, next_cursor: null, map: {items: []}, timeline_summary: {buckets: []}, coverage: {sources: []}, data_revision: 'data1', as_of: '2026-10-22T12:00:00Z'};
-  return {ui: window.WiciWorkspace, document, host, requests, cardRenders, queryResponse, sourceCalls, viewActions, timelineActions, sourceEvent: event => sourceListener(event)};
+  return {ui: window.WiciWorkspace, document, host, requests, cardRenders, queryResponse, sourceCalls, sourceEffects, viewActions, timelineActions, dossierActions, sourceEvent: event => sourceListener(event)};
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function ready(h) {h.ui.setActive(true); h.requests.find(request => request.path === '/workspace/query').resolve(h.queryResponse); h.requests.find(request => request.path === '/workspace/status').resolve({}); await flush();}
@@ -131,6 +132,30 @@ test('restoring a saved view clears old source demands before visibility is resu
   assert.deepEqual(h.sourceCalls.slice(0, 2), [['types', []], ['visible', true]]);
   assert.equal(h.ui.getState().savedViewId, 'saved');
   h.ui.setActive(true); assert.equal(h.sourceCalls.length, 2);
+});
+
+
+test('opening a dossier pin preserves active live feeds while suppressing only automatic GIOS sensor discovery', async () => {
+  const h = harness(); await ready(h);
+  h.timelineActions.dispatch({type: 'SET_QUERY', patch: {types: ['aircraft', 'air_quality_station']}});
+  h.requests.filter(request => request.path === '/workspace/query').at(-1).resolve(h.queryResponse); await flush();
+  assert.deepEqual(h.sourceCalls.filter(call => call[0] === 'types').at(-1), ['types', ['aircraft', 'air_quality_station']]);
+  h.sourceCalls.length = h.sourceEffects.length = 0;
+  h.dossierActions.openObject('air_quality_station:gios:1');
+  assert.equal(h.ui.getState().selectedRef, 'air_quality_station:gios:1');
+  assert.equal(h.sourceEffects.some(call => ['deactivate', 'loadSensors'].includes(call[0])), false);
+  assert.equal(h.sourceEffects.some(call => call[0] === 'sensor' && call[1] != null), false);
+  assert.equal(h.sourceCalls.some(call => call[0] === 'types'), false);
+  h.ui.setVisible(false); h.ui.setVisible(true);
+  assert.deepEqual(h.sourceCalls.filter(call => call[0] === 'types').at(-1), ['types', ['aircraft', 'air_quality_station']]);
+  assert.equal(h.sourceEffects.some(call => call[0] === 'deactivate'), false);
+  h.timelineActions.dispatch({type: 'SELECT_SENSOR', sensor: '42', metric: 'PM10'});
+  h.sourceEffects.length = 0;
+  h.dossierActions.openObject('air_quality_station:gios:1');
+  assert.deepEqual(h.sourceEffects, [['sensor', '42']]);
+  h.sourceEffects.length = 0;
+  h.ui.selectObject('air_quality_station:gios:2');
+  assert.deepEqual(h.sourceEffects, [['sensor', null], ['loadSensors', '2']]);
 });
 
 

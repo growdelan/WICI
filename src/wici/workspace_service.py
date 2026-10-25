@@ -60,6 +60,8 @@ class WorkspaceService:
         self.source_enabled = {}
         self.catalog.backfill()
         self.moving.backfill_tracks()
+        from wici.workspace_dossiers import WorkspaceDossiers
+        self.dossiers = WorkspaceDossiers(self)
 
     def _encode_cursor(self, value):
         payload = base64.urlsafe_b64encode(encode(value).encode()).decode().rstrip('=')

@@ -4,6 +4,8 @@ WICI to lokalna aplikacja do przeglądania oficjalnych komunikatów dotyczących
 
 Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GIOŚ i obszarów PRG ze zsynchronizowaną mapą, tabelą, osią czasu i kartami obiektów. Obsługuje lokalną historię stacji oraz zapisane stanowiska. [Instrukcja stanowiska analitycznego](docs/analysis-workspace.md).
 
+**Teczki analiz** gromadzą przypięte obiekty, notatki i zapisane kopie kart, historii oraz porównań. Materiał zachowuje źródło i kontekst czasu, pozostając dostępny po wygaśnięciu historii źródłowej. [Obsługa teczek](docs/analysis-dossiers.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.

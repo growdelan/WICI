@@ -48,6 +48,11 @@ window.WiciObjectCard = function (host, actions) {
       title.textContent = object.label; body.replaceChildren(); reading = readingTime = readingNote = readingClocks = officialIndexNode = movingNodes = alertNodes = null;
       const meta = U.el('p', `${U.typeNames[object.type]} · ${object.source_id}`, 'analysis-card-type'); body.append(meta);
       body.append(U.button('Pokaż na mapie', () => actions.show(object)));
+      if (actions.pin && actions.capture) {
+        const dossierActions = U.el('div', null, 'analysis-dossier-card-actions');
+        const pin = U.button('Przypnij do teczki', actions.pin), capture = U.button('Zapisz kartę w teczce', actions.capture);
+        pin.id = 'analysis-pin-object'; capture.id = 'analysis-save-object'; dossierActions.append(pin, capture); body.append(dossierActions);
+      }
       if (error) body.append(U.el('p', `${error} Zachowano ostatni zapisany odczyt.`, 'notice'));
       const data = section(body, 'Dane');
       dl(data, [['Identyfikator', object.ref], ['Dostępność', U.statusNames[object.availability] || object.availability || 'Dostępne'], ['Aktualność', U.statusNames[object.freshness] || object.freshness || 'Według czasu źródła']]);

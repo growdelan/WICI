@@ -1,6 +1,6 @@
 # Model danych WICI
 
-SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`018` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
+SQLite w trybach live i demo zachowuje dokumenty źródłowe oraz ich kolejne wersje. Migracje `001`–`019` są transakcyjnym łańcuchem schematu; błędna lub nowsza nieobsługiwana wersja przerywa start bez resetu danych. Klucze obce, WAL i wspólna blokada repozytorium chronią zapis kolektora oraz kolejki historii stacji. Pobieranie HTTP odbywa się poza transakcją.
 
 ## Aktywne tabele
 
@@ -70,3 +70,25 @@ Migracja rozszerza typy katalogu o `ua_region` i `civil_alert`. Przebudowa ogran
 | `workspace_ukraine_observations` | Niezmienne zmiany stanu, powodów i czasu źródłowego z przypisaniem do odczytu i epizodu. |
 
 `ukraine_history.py` projektuje dane i oblicza przedziały wraz z pokryciem; nie wykonuje HTTP. Baza przechowuje czas UTC. Domyślna rejestracja jest wyłączona; lista obserwowanych i konfiguracje widoków nie zmieniają tej opcji. Granice regionów pozostają cache danych pobranych podczas działania aplikacji i nie są dystrybuowane z pakietem. [Semantyka i użycie](ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320).
+
+## Teczki analiz (migracja 019)
+
+| Tabela | Znaczenie |
+|---|---|
+| `workspace_dossiers` | Nazwa, opis, rewizja i czasy utworzenia/zmiany teczki. |
+| `workspace_dossier_pins` | Unikalny w teczce identyfikator obiektu, etykieta i źródło z chwili przypięcia. |
+| `workspace_dossier_notes` | Tekst użytkownika z własną rewizją oraz czasami utworzenia i edycji. |
+| `workspace_dossier_materials` | Niezmienna kopia danych z kontekstem wyboru, czasem zapisu, rozmiarem i SHA-256. |
+
+Klucze obce wiążą zawartość wyłącznie z teczką. Brak kaskady od katalogu
+i tabel historii pozwala zachować przypięcia oraz materiały po retencji
+pomiarów, tras i alarmów. Trigger zabrania aktualizacji zapisanej kopii;
+użytkownik może ją usunąć lub utworzyć nowy materiał. Notatki pozostają
+oddzielone od informacji źródłowych. Zmiany zawartości podnoszą rewizję teczki,
+chroniąc jej edycję i usunięcie przed nadpisaniem równoległej pracy.
+
+Serwer zbiera materiał pod blokadą repozytorium z istniejących metod odczytu,
+sprawdza zgodność zapytania i rewizji, doczytuje strony historii oraz zapisuje
+JSON atomowo. Kopia nie zależy od działającego kontekstu zapytania po restarcie.
+Dotychczasowe schematy dokumentów, obserwowanych, rejestracji i zapisanych
+stanowisk pozostają bez zmian. [Zakres i obsługa](analysis-dossiers.md).
