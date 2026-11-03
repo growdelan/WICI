@@ -92,7 +92,7 @@ def test_missing_geometry_retains_searchable_region_and_alarm(workspace):
     snapshot(workspace, ref=missing)
     result = workspace.query({'types': ['ua_region', 'civil_alert'], 'q': 'без геометрії'})
     assert result['total'] == result['map']['unlocated_total'] == 2
-    assert result['map']['items'] == []
+    assert not any(result['map'][key] for key in ('points', 'areas', 'aggregates'))
     assert workspace.query({'types': ['ua_region'], 'q': 'без геометрії', 'include_unlocated': False})['total'] == 0
 
 

@@ -286,6 +286,7 @@ Dodatkowe narzędzia:
 - `uv run --locked python scripts/check_sources.py` — jawny test dostępu do źródeł przez internet, bez zapisu do bazy; raport w ignorowanym `tmp/live-checks/`.
 - `uv run --locked python scripts/verify_system.py` — test CLI i restartu z własnymi procesami demo; wymaga portu 8765 i zgodnej konfiguracji, raport w `tmp/live-checks/`.
 - `uv run --locked python scripts/benchmark.py` — pomiar dla 10 000 rekordów.
+- `node scripts/benchmark_map.cjs` — pomiar aktualizacji autobusów i mapy Analizy na danych syntetycznych (Playwright/Chromium); [zakres zmian i wyniki](docs/map-performance.md).
 - `uv run --locked python scripts/prepare_synthetic_fixtures.py` oraz `scripts/prepare_imgw_pdf_fixtures.py` — odtworzenie syntetycznych próbek offline.
 
 Opcjonalna grupa GIS (`geo`) służy odtwarzaniu geometrii. Granice mapy i biblioteka Leaflet są dołączone do projektu. Generator PDF korzysta z podstawowej zależności pypdf; grupa `pdf-check` została usunięta.

@@ -113,12 +113,12 @@ def test_snapshot_idempotence_and_stale_missing_disabled_never_form_ghost_map_po
         assert result['items'][0]['last_known_position']['latitude'] == 52.2
         assert result['map']['located_total'] == 0
         assert result['map']['unlocated_total'] == 1
-        assert result['map']['items'] == []
+        assert not any(result['map'][key] for key in ('points', 'areas', 'aggregates'))
         assert workspace.query({'types': ['aircraft'], 'include_unlocated': False})['total'] == 0
         workspace.moving.ingest('aircraft', initial)
         assert workspace.query({'types': ['aircraft']})['map']['located_total'] == 1
     workspace.repo.clock = lambda: NOW+timedelta(seconds=121)
-    assert workspace.query({'types': ['aircraft']})['map']['items'] == []
+    assert not workspace.query({'types': ['aircraft']})['map']['points']
 
 
 def test_durable_watchlist_retains_identity_across_restart_but_feed_must_reconnect(tmp_path):

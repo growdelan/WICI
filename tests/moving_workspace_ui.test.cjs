@@ -52,7 +52,7 @@ test('five stable moving identities can be compared independently of the open ca
 
 test('historical map suppresses live moving coordinates and removes markers when cursor enters a gap', () => {
   const added = [], removed = [], U = {el: (tag, text) => ({textContent: text}), measurement: item => item.measurement, value: () => 'x', date: value => value, statusNames: {}};
-  const layer = (kind, coords, style) => ({kind, coords, style, addTo(group) {this.group = group; added.push(this); return this;}, bindTooltip() {return this;}, on() {return this;}, setStyle() {}, setRadius() {}, setTooltipContent() {}});
+  const layer = (kind, coords, style) => ({kind, coords, style, addTo(group) {this.group = group; added.push(this); return this;}, removeLayer(value) {removed.push(value);}, bindTooltip() {return this;}, on() {return this;}, setStyle() {}, setRadius() {}, setTooltipContent() {}});
   const L = {layerGroup: () => layer('group'), marker: (coords, style) => layer('marker', coords, style), circleMarker: (coords, style) => layer('marker', coords, style), polyline: (coords, style) => layer('path', coords, style)};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceMotion: Motion, WiciAircraft: {icon: () => ({})}, L};
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-map.js', 'utf8'), {window, L, Date});
@@ -64,7 +64,7 @@ test('historical map suppresses live moving coordinates and removes markers when
   const markers = added.filter(item => item.kind === 'marker'); assert.equal(markers.length, 1); assert.deepEqual(Array.from(markers[0].coords), [52, 21]);
   const group = markers[0].group;
   map.render(data, {...state, cursorAt: '2026-10-23T10:30:00Z'}, null, null, {data: replay, frames: new Map([[ref, Motion.frameAt(replay.series[0], '2026-10-23T10:30:00Z', range)]])});
-  assert.equal(added.filter(item => item.kind === 'marker').length, 1); assert.ok(removed.includes(group));
+  assert.equal(added.filter(item => item.kind === 'marker').length, 1); assert.ok(removed.includes(markers[0])); assert.ok(!removed.includes(group));
 });
 
 test('live moving card renders positions without comparison, distinguishes pending refresh and labels active recording', () => {

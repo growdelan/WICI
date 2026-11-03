@@ -77,6 +77,16 @@ def test_table_map_and_time_share_scope_but_map_ignores_paging(workspace):
     assert workspace.query({'types': ['communication'], 'q': 'zolc'})['total'] == 0
 
 
+def test_map_serializes_each_object_in_one_collection(workspace):
+    communication_ref, _ = communication(workspace)
+    station_ref = station(workspace)
+    result = workspace.query({'types': ['communication', 'hydro_station']})
+    assert 'items' not in result['map']
+    assert [item['ref'] for item in result['map']['points']] == [station_ref]
+    assert [item['ref'] for item in result['map']['areas']] == [communication_ref]
+    assert result['map']['aggregates'] == []
+
+
 def test_search_polish_identifiers_unlocated_and_no_fictitious_region(workspace):
     communication(workspace, areas=())
     assert workspace.query({'types': ['communication'], 'q': 'zolc'})['total'] == 1

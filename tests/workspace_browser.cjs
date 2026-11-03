@@ -50,6 +50,34 @@ async function settle(page) {
   await page.waitForFunction(() => !window.WiciWorkspace.getState().loading && !window.WiciWorkspace.getState().error);
 }
 
+test('Analiza: cursor updates only the selected station row and preserves unrelated source coverage', {timeout:60000}, async () => {
+  const env=await setup(), {page}=env;
+  try {
+    await page.locator('[data-object-type="hydro_station"]').click();
+    await page.locator('[data-object-type="air_quality_station"]').click();await settle(page);
+    const refs=await page.evaluate(()=>WiciWorkspace.getData().items.filter(item=>item.type.endsWith('_station')).map(item=>item.ref));
+    assert.ok(refs.length>=2);
+    assert.equal(await page.evaluate(()=>Object.hasOwn(WiciWorkspace.getData().map,'items')),false);
+    const selected=refs.find(ref=>ref.startsWith('hydro_station:')), other=refs.find(ref=>ref!==selected);
+    await page.evaluate(ref=>WiciWorkspace.selectObject(ref),selected);
+    await page.getByRole('button',{name:'Ostatnie 24 godziny',exact:true}).click();await settle(page);
+    await page.waitForFunction(()=>!document.getElementById('analysis-cursor').disabled);
+    await page.evaluate(({selected,other})=>{
+      const row=ref=>[...document.querySelectorAll('#analysis-table tr[data-ref]')].find(item=>item.dataset.ref===ref);
+      window.__rowBefore=row(other);window.__rowChanges=0;window.__selectedChanges=0;window.__coverageChanges=0;
+      new MutationObserver(records=>window.__rowChanges+=records.length).observe(__rowBefore,{subtree:true,childList:true,attributes:true,characterData:true});
+      new MutationObserver(records=>window.__selectedChanges+=records.length).observe(row(selected),{subtree:true,childList:true,attributes:true,characterData:true});
+      new MutationObserver(records=>window.__coverageChanges+=records.length).observe(document.querySelector('.analysis-source-coverage'),{subtree:true,childList:true,characterData:true});
+      const cursor=document.getElementById('analysis-cursor');cursor.value='500';cursor.dispatchEvent(new Event('input',{bubbles:true}));
+    },{selected,other});
+    await page.waitForFunction(()=>WiciWorkspace.getState().cursorAt!==null);
+    await page.evaluate(()=>new Promise(requestAnimationFrame));
+    const result=await page.evaluate(other=>({sameRow:[...document.querySelectorAll('#analysis-table tr[data-ref]')].find(item=>item.dataset.ref===other)===__rowBefore,otherChanges:__rowChanges,selectedChanges:__selectedChanges,coverageChanges:__coverageChanges}),other);
+    assert.equal(result.sameRow,true);assert.equal(result.otherChanges,0);assert.equal(result.coverageChanges,0);assert.ok(result.selectedChanges>0);
+    assert.deepEqual(env.errors,[]);assert.deepEqual(env.upstream,[]);
+  } finally {await env.close();}
+});
+
 test('Analiza: a filter click preserves a pending search and restoring a view cancels it', {timeout:60000}, async () => {
   const env = await setup(), {page} = env;
   try {

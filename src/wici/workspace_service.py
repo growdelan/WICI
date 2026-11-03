@@ -425,7 +425,6 @@ class WorkspaceService:
                 FROM catalog_objects o LEFT JOIN catalog_object_areas a ON a.ref=o.ref WHERE {where}
                 AND {located} GROUP BY o.type,substr(a.admin_code,1,2) ORDER BY o.type,province''', map_params)
             result['aggregates'] = [dict(row, ref=f"aggregate:{row['type']}:{row['province'] or 'unknown'}") for row in groups]
-        result['items'] = result['points']+result['areas']+result['aggregates']
         return result
 
     def _histogram(self, where, params, overview, interval, include_ukraine=False, ukraine_cutoff=None):
