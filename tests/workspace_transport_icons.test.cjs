@@ -3,12 +3,13 @@ const test = require('node:test'), assert = require('node:assert/strict'), fs = 
 const Motion = require('../src/wici/static/js/workspace-motion.js');
 const at = '2020-01-01T12:00:00Z', range = {from: at, to: '2020-01-01T12:20:00Z'};
 function setup() {
-  const added = [], selected = [], mutations = {positions: 0, icons: 0, styles: 0, radii: 0, tooltips: 0, removed: 0};
+  const added = [], selected = [], svgOrder = [], mutations = {positions: 0, icons: 0, styles: 0, radii: 0, tooltips: 0, removed: 0, fronts: 0};
   const node = (tag, text) => ({tagName: tag, textContent: text, children: [], style: {}, append(...items) {this.children.push(...items);}});
-  const layer = (kind, coords, options) => ({kind, coords, options, radius:options?.radius, handlers: {}, addTo(group) {this.group = group; added.push(this); return this;},
+  const layer = (kind, coords, options) => ({kind, coords, options, radius:options?.radius, handlers: {}, addTo(group) {this.group = group; added.push(this);if(['circle','area','path'].includes(kind))svgOrder.push(this);return this;},
     bindTooltip(content) {this.tooltip = content; return this;}, setTooltipContent(content) {mutations.tooltips++;this.tooltip = content; return this;},
     on(event, action) {this.handlers[event] = action; return this;}, setIcon(icon) {mutations.icons++;this.options.icon = icon; return this;},
-    setLatLng(value) {mutations.positions++;this.coords=value;return this;}, removeLayer(value) {mutations.removed++;value.removed=true;return this;},
+    setLatLng(value) {mutations.positions++;this.coords=value;return this;}, removeLayer(value) {mutations.removed++;value.removed=true;const index=svgOrder.indexOf(value);if(index>=0)svgOrder.splice(index,1);return this;},
+    bringToFront(){mutations.fronts++;const index=svgOrder.indexOf(this);if(index>=0)svgOrder.splice(index,1);svgOrder.push(this);return this;},
     setStyle(value) {mutations.styles++;this.style=value;this.options={...this.options,...value};return this;}, setRadius(value) {mutations.radii++;this.radius=value;return this;}, bindPopup(content) {this.popup=content;return this;}, setPopupContent(content) {this.popup=content;return this;}});
   const L = {divIcon: options => options, layerGroup: () => layer('group'), marker: (coords, options) => layer('icon', coords, options),
     circleMarker: (coords, options) => layer('circle', coords, options), polyline: (coords, options) => layer('path', coords, options), geoJSON: (feature, options) => Object.assign(layer('area', null, options), {feature})};
@@ -17,7 +18,7 @@ function setup() {
   for (const file of ['aircraft', 'ships', 'workspace-map']) vm.runInNewContext(fs.readFileSync(`src/wici/static/js/${file}.js`, 'utf8'), context);
   const geometries=new Map(), map = window.WiciWorkspaceMap({map: {removeLayer() {}}, geometries, select: ref => selected.push(ref)});
   map.setActive(true);
-  return {map, added, selected, window, mutations, geometries};
+  return {map, added, selected, window, mutations, geometries, svgOrder};
 }
 function item(type, metadata = {}, heading = 90) {
   const ref = type === 'aircraft' ? 'aircraft:icao:abc123' : 'ship:mmsi:261000001';
@@ -30,6 +31,20 @@ function province(h, code='14') {
   h.geometries.set(code,feature);return feature;
 }
 const shownColor = area => (area.style || area.options.style).color;
+
+test('retained graph SVG points stay above added and replaced polygons without reordering unchanged frames', () => {
+  const h=setup(),station={ref:'hydro_station:imgw:outside',type:'hydro_station',label:'Stacja grafu',latitude:52,longitude:21},graph={nodes:[station]},empty={as_of:at,map:{areas:[]}};
+  h.map.render(empty,state(),null,null,null,null,graph);const marker=h.added.find(entry=>entry.kind==='circle');
+  const object={ref:'custom_area:1',type:'custom_area',label:'Obszar',geometry:{type:'Polygon',coordinates:[[[20,51],[22,51],[22,53],[20,53],[20,51]]]}},data={as_of:at,map:{areas:[object]}};
+  h.map.render(data,state(),null,null,null,null,graph);assert.equal(h.svgOrder.at(-1),marker,'A new catalogue polygon must not take hits away from a retained graph point');
+  const replacement={...data,map:{areas:[{...object,geometry:{...object.geometry,coordinates:[[[19,50],[23,50],[23,54],[19,54],[19,50]]]}}]}};
+  h.map.render(replacement,state(),null,null,null,null,graph);assert.equal(h.svgOrder.at(-1),marker,'A changed geometry must also remain below the graph');
+  const graphArea={...object,ref:'custom_area:graph'};h.map.render(replacement,state(),null,null,null,null,{nodes:[station,graphArea]});
+  assert.equal(h.svgOrder.at(-1),marker,'Graph points must remain above newly added graph polygons');
+  const before={...h.mutations};
+  h.map.render(replacement,state(),null,null,null,null,{nodes:[station,graphArea]});assert.deepEqual(h.mutations,before,'An unchanged render must not reorder SVG or touch existing markers');
+  assert.equal(h.added.filter(entry=>entry.kind==='circle').length,1);
+});
 
 test('stations represented by administrative areas retain measurements, thresholds and cursor freshness', () => {
   const h=setup();province(h);

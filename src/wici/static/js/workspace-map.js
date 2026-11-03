@@ -4,7 +4,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
   const groups = new Map(), points = new Map(), areas = new Map(), aggregates = new Map(), alertLayers = new Map(), replayMarkers = new Map(), graphPoints = new Map(), graphAreas = new Map();
   const featureCache = new WeakMap();
   const emptyAreas = [];
-  let active = false, routeGroup = null, lastReplay = null, lastRouteKey = '', areaGroups = null;
+  let active = false, routeGroup = null, lastReplay = null, lastRouteKey = '', areaGroups = null, graphOrderDirty = false;
   const colors = {communication: '#c38235', hydro_station: '#16819c', air_quality_station: '#787e91', area: '#587a8a', aircraft: '#237a99', ship: '#93682f'};
   function group(name) {if (!groups.has(name)) groups.set(name, L.layerGroup().addTo(map)); return groups.get(name);}
   function prune(records, wanted) {for (const [key, entry] of records) if (!wanted.has(key)) {entry.group.removeLayer(entry.layer); records.delete(key);}}
@@ -12,7 +12,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     for (const layer of groups.values()) map?.removeLayer(layer);
     if (routeGroup) map?.removeLayer(routeGroup);
     groups.clear(); for (const records of [points, areas, aggregates, alertLayers, replayMarkers, graphPoints, graphAreas]) records.clear();
-    routeGroup = lastReplay = areaGroups = null; lastRouteKey = '';
+    routeGroup = lastReplay = areaGroups = null; lastRouteKey = ''; graphOrderDirty = false;
   }
   function areaFeatures(item) {
     if (item.geometry?.type && item.geometry.type !== 'Point') {
@@ -114,6 +114,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
         : L.circleMarker(coords, {...presentation, radius, ...(className ? {className} : {})});
       layer.bindTooltip(U.el('span', text), moving || graph ? {className: 'analysis-transport-tooltip'} : {});
       layer.on('click', () => select(item.ref)); const owner = group(name); layer.addTo(owner);
+      if (!moving) graphOrderDirty = true;
       entry = {layer, group: owner, kind, coords, iconKey, style: JSON.stringify(presentation), radius, tooltip: text, title: item.label}; records.set(item.ref, entry);
     } else {
       if (entry.coords[0] !== coords[0] || entry.coords[1] !== coords[1]) {entry.layer.setLatLng(coords); entry.coords = coords;}
@@ -136,7 +137,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
       if (text !== null) {layer.bindTooltip(U.el('span', text)); entry.tooltip = text;}
       else layer.bindPopup(popup(items));
       layer.on('click', () => {if (entry.click) entry.click(); else if (entry.items.length === 1) select(entry.items[0].ref);});
-      layer.addTo(owner); records.set(key, entry);
+      layer.addTo(owner); records.set(key, entry); graphOrderDirty = true;
     } else {
       entry.feature = feature; style(entry, presentation);
       if (text !== null) tooltip(entry, text);
@@ -186,7 +187,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     if (lastReplay !== replay || lastRouteKey !== routeKey) {
       if (routeGroup) map.removeLayer(routeGroup); routeGroup = null; lastReplay = replay; lastRouteKey = routeKey;
       if (replay && M) {
-        routeGroup = L.layerGroup().addTo(map);
+        routeGroup = L.layerGroup().addTo(map); graphOrderDirty = true;
         for (const series of replay.series || []) {const color = M.colors[Math.max(0, (state.comparedRefs || []).indexOf(series.ref))];
           for (const segment of M.segments(series, state.query.time.filter_range)) if (segment.length > 1) L.polyline(segment.map(point => [point.latitude, point.longitude]), {color, weight: 2, opacity: .6, className: 'analysis-recorded-track'}).bindTooltip(U.el('span', `${series.label} · zapisane raporty w całym przedziale`)).addTo(routeGroup);
         }
@@ -210,6 +211,13 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
       });
     }
     prune(graphPoints, wanted); prune(graphAreas, wantedGraphAreas);
+    if (graphOrderDirty) {
+      // LayerGroup does not own an SVG stacking context. Restore graph priority
+      // after new paths, while leaving unchanged cursor frames untouched.
+      for (const entry of graphAreas.values()) entry.layer.bringToFront();
+      for (const entry of graphPoints.values()) if (entry.kind === 'circle') entry.layer.bringToFront();
+      graphOrderDirty = false;
+    }
   }
   function show(item) {if (!map || !item) return false; const coords = coordinates(item); if (coords) {map.setView(coords, Math.max(map.getZoom(), 10)); return true;}
     const features = areaFeatures(item); if (features.length) {const bounds = L.geoJSON({type: 'FeatureCollection', features}).getBounds(); if (bounds.isValid()) {map.fitBounds(bounds, {padding: [30, 40], maxZoom: 10}); return true;}} return false;

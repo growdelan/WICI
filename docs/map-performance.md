@@ -73,3 +73,19 @@ node --test --test-name-pattern='coordinate-free|real cursor inputs' tests/works
 ```
 
 Nowe regresje odtworzyły oba zgłoszenia przed poprawką i przeszły po niej. Pełny Node: 384 zaliczone; celowane testy API katalogu, transportu i Ukrainy: 92 zaliczone; końcowa regresja Analizy: 51/51 scenariuszy Chromium. Ruff, składnia zmienionego JS i kontrola diffu są poprawne. Ponowny niezależny przegląd zwrócił `No findings.`; reviewer osobno potwierdził czerwony alarm i koszt kursora 0,1 ms / p95 0,2 ms w Chromium.
+
+## Kolejny przegląd całego brancha — kolejność SVG i obrys regionu
+
+Kolejny niezależny przegląd wskazał P2 dotyczące przechwytywania kliknięć stacji grafu przez nowe poligony oraz P3 dotyczące widocznego obrysu polskiego województwa po odtworzeniu widoku z aktywnym porównaniem regionu Ukrainy.
+
+- Po dodaniu lub wymianie ścieżek mapa przywraca kolejność SVG: obszary grafu, a nad nimi jego punkty. Samo zachowanie `LayerGroup` nie zapewnia osobnego kontekstu kolejności SVG w Leaflet. Znacznik stacji pozostaje tym samym elementem i odbiera kliknięcia również po zmianie filtrów lub geometrii obszaru katalogowego. Niezmieniony render, w tym ruch kursora bez nowych ścieżek, nie wywołuje `bringToFront` ani nie przestawia DOM.
+- Tworzenie obrysu województwa od razu uwzględnia aktywną analizę poza Polską. Odtworzenie lub ponowny wybór regionu pozostawia obrys odłączony od mapy; zakończenie porównania zagranicznego przywraca obrys ostatnio wybranego województwa i przycinanie warstw. Wybranie całej Polski usuwa obrys.
+
+Obie nowe regresje jednostkowe odtworzyły błędy przed poprawką. Dwa nowe scenariusze Chromium sprawdzają rzeczywisty klik i zachowanie elementu SVG po dodaniu oraz zastąpieniu obszaru, a także zapis, odtworzenie i zakończenie zagranicznego porównania przy wybranym polskim województwie.
+
+```sh
+node --test tests/ui_region.test.cjs tests/workspace_transport_icons.test.cjs
+node --test --test-concurrency=1 --test-name-pattern='retained SVG station|restoring a Polish workspace' tests/graph_workspace_browser.cjs tests/ukraine_workspace_browser.cjs
+```
+
+Niezależny przegląd obu poprawek zwrócił `No findings.`; reviewer osobno uruchomił 24/24 testy obu zmienionych modułów i 2/2 nowe scenariusze Chromium. Pełny Node po poprawkach: 386 zaliczonych. Regresja Analizy i regionów: 55/55 scenariuszy Chromium. Test 40 przesunięć kursora dla 999 komunikatów zachował zerową liczbę odczytów przynależności i identyfikatorów oraz medianę renderowania mapy 0,1 ms, p95 0,2 ms. Ruff, składnia zmienionych modułów JS i kontrola diffu są poprawne.

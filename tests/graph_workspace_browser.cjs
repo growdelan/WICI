@@ -98,6 +98,31 @@ async function openDossier(page,id) {
 }
 
 // API-backed scenarios deliberately exercise server-built graph semantics with the same real app as the UI.
+test('Graph regression: retained SVG station stays clickable after catalogue filters add and replace overlapping areas', {timeout:90000}, async () => {
+  const env=await setup(),{page}=env;
+  try {
+    await types(page,['communication']);await openGraph(page,{seed_refs:[station]});
+    await page.locator('#analysis-view-both').click();
+    const position=await page.evaluate(ref=>{const node=WiciWorkspace.getGraphData().nodes.find(item=>item.ref===ref);state.map.setView([node.latitude,node.longitude],12,{animate:false});return [node.longitude,node.latitude];},station);
+    const geometry=size=>({type:'Polygon',coordinates:[[[position[0]-size,position[1]-size],[position[0]+size,position[1]-size],[position[0]+size,position[1]+size],[position[0]-size,position[1]+size],[position[0]-size,position[1]-size]]]}),body={name:'Warstwa testowa wokół stacji',shape:'polygon',geometry:geometry(.02)};
+    const area=await env.api('POST','/areas',body);
+    const marker=page.locator('.analysis-graph-map-marker');await marker.waitFor();
+    await marker.evaluate(element=>window.__retainedStationPath=element);
+    await types(page,['custom_area']);
+    await page.waitForFunction(ref=>WiciWorkspace.getData().map.areas.some(item=>item.ref===ref),area.ref);
+    assert.equal(await marker.evaluate(element=>element===window.__retainedStationPath),true,'Changing catalogue scope must retain the graph marker');
+    await marker.click({timeout:5000});await page.waitForFunction(ref=>WiciWorkspace.getState().selectedRef===ref,station);
+    if(await page.locator('#analysis-card').isVisible())await page.locator('#analysis-close-card').click();
+    await env.api('PUT',`/areas/${area.id}`,{...body,geometry:geometry(.04),revision:area.revision});
+    await page.locator('#analysis-search').fill('Warstwa');
+    await page.waitForFunction(()=>WiciWorkspace.getState().query.q==='Warstwa'&&!WiciWorkspace.getState().loading);
+    assert.equal(await marker.evaluate(element=>element===window.__retainedStationPath),true,'Replacing only the catalogue geometry must preserve the graph node');
+    await marker.click({timeout:5000});await page.waitForFunction(ref=>WiciWorkspace.getState().selectedRef===ref,station);
+    assert.equal(await page.evaluate(()=>{const el=window.__retainedStationPath,box=el.getBoundingClientRect();return document.elementFromPoint(box.x+box.width/2,box.y+box.height/2)===el;}),true,'Native hit testing must resolve the graph station, not the polygon');
+    assert.deepEqual(env.errors,[]);assert.deepEqual(env.external,[]);
+  } finally {await env.close();}
+});
+
 test('Graph API: every visible endpoint has provenance, independent graph revisions and bounded neighbor pages', {timeout:60000}, async () => {
   const env=await setup();
   try {

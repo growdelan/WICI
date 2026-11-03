@@ -46,6 +46,32 @@ async function settle(page) {
   await page.waitForFunction(() => !WiciWorkspace.getState().loading && !WiciWorkspace.getState().error);
 }
 
+test('Ukraine Analysis: restoring a Polish workspace preserves a hidden region outline until foreign comparison is cleared', {timeout:90000}, async () => {
+  const env=await setup(),{page}=env;
+  try {
+    await page.locator(`[data-ref="${A}"] .analysis-compare-toggle`).check();
+    await page.locator('#analysis-country').selectOption('PL');await settle(page);
+    await page.locator('#analysis-province').selectOption('14');await settle(page);
+    await page.locator('.analysis-saved-views summary').click();
+    await page.locator('#analysis-view-name').fill('Polska z porównaniem Ukrainy');
+    await page.getByRole('button',{name:'Zapisz nowe',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('analysis-saved-view').options.length===2);
+    await page.locator('#analysis-country').selectOption('UA');await settle(page);
+    await page.locator('.analysis-saved-views').getByRole('button',{name:'Otwórz',exact:true}).click();
+    await page.waitForFunction(()=>{const value=WiciWorkspace.getState();return value.query.country==='PL'&&value.query.province==='14'&&value.comparedRegionRefs.length===1&&!value.loading;});
+    assert.equal(await page.evaluate(()=>WiciRegion.code()),'14');
+    assert.deepEqual(await page.evaluate(()=>WiciWorkspace.getState().comparedRegionRefs),[A]);
+    assert.equal(await page.evaluate(()=>state.map.getPane('regionBoundary').querySelectorAll('path').length),0,'Restored outlines must obey the existing foreign analysis scope');
+    assert.equal(await page.evaluate(()=>state.map.getPane('overlayPane').style.clipPath),'');
+    await page.getByRole('button',{name:'Wyczyść regiony',exact:true}).click();
+    await page.waitForFunction(()=>state.map.getPane('regionBoundary').querySelectorAll('path').length>0);
+    assert.match(await page.evaluate(()=>state.map.getPane('overlayPane').style.clipPath),/path\(/,'Clearing the foreign comparison restores the selected Polish region and clipping');
+    await page.locator('#analysis-province').selectOption('');await settle(page);
+    assert.equal(await page.evaluate(()=>state.map.getPane('regionBoundary').querySelectorAll('path').length),0);
+    assert.deepEqual(env.errors,[]);assert.deepEqual(env.external,[]);
+  } finally {await env.close();}
+});
+
 test('Ukraine Analysis: synchronized comparison, gaps, timezone and saved view without provider reads', {timeout:90000}, async () => {
   const env = await setup(), {page} = env;
   try {
