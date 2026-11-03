@@ -12,6 +12,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Teren i zabudowa 3D (v0.36.0):** oglądaj mapę ogólną oraz śledź samoloty i autobusy na podkładzie OpenStreetMap z terenem NMT / LiDAR GUGiK i uproszczonymi budynkami OSM. W Warszawie dostępne są też drzewa z miejskiej bazy. Kafle podążają za kadrem i zoomem, a poprzednie budynki pozostają widoczne podczas doładowywania. [Obsługa, źródła i ograniczenia widoku 3D](docs/scene3d.md).
 
+**Płynniejsza mapa i Analiza (v0.36.1):** odświeżanie autobusów i przesuwanie czasu aktualizuje istniejące elementy mapy i tabeli. Odpowiedź API Analizy nie powiela obiektów mapy. Poprawiono też kolory stacji pokazywanych przez obszary, klikanie znaczników grafu i odtwarzanie obrysu regionu. [Pomiary wydajności i weryfikacja](docs/map-performance.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
