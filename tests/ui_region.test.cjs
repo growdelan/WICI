@@ -7,8 +7,8 @@ function harness(saved='',blocked=false){
  const element=()=>({children:[],style:{},dataset:{},textContent:'',checked:false,hidden:false,value:'',append(...els){this.children.push(...els);},setAttribute(){},addEventListener(k,fn){this[k]=fn;}});
  const document={hidden:false,getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},createElement:element,addEventListener(k,fn){(events[k]??=[]).push(fn);},dispatchEvent(e){events[e.type]?.forEach(fn=>fn(e));}};
  const panes={mapPane:element(),tilePane:element(),popupPane:element(),osmBase:element(),data:element()};
- const map={events:{},fits:[],createPane(name){return panes[name]=element();},getPanes:()=>panes,latLngToLayerPoint:([lat,lon])=>({x:lon*10,y:lat*10}),on(names,fn){for(const n of names.split(' '))this.events[n]=fn;},fitBounds(b){this.fits.push(b);},closePopup(){this.closed=true;}};
- const L={geoJSON(f){const points=f?.geometry?.coordinates.flat(Infinity)||[14,49,24,55],xs=points.filter((_,i)=>i%2===0),ys=points.filter((_,i)=>i%2===1);return {getBounds:()=>({getWest:()=>Math.min(...xs),getSouth:()=>Math.min(...ys),getEast:()=>Math.max(...xs),getNorth:()=>Math.max(...ys),isValid:()=>true}),addTo(){return this;},remove(){}};}};
+ const map={events:{},fits:[],layers:new Set(),removeLayer(layer){this.layers.delete(layer);},hasLayer(layer){return this.layers.has(layer);},createPane(name){return panes[name]=element();},getPanes:()=>panes,latLngToLayerPoint:([lat,lon])=>({x:lon*10,y:lat*10}),on(names,fn){for(const n of names.split(' '))this.events[n]=fn;},fitBounds(b){this.fits.push(b);},closePopup(){this.closed=true;}};
+ const L={geoJSON(f,options){const points=f?.geometry?.coordinates.flat(Infinity)||[14,49,24,55],xs=points.filter((_,i)=>i%2===0),ys=points.filter((_,i)=>i%2===1);return {feature:f,options,getBounds:()=>({getWest:()=>Math.min(...xs),getSouth:()=>Math.min(...ys),getEast:()=>Math.max(...xs),getNorth:()=>Math.max(...ys),isValid:()=>true}),addTo(owner){this.owner=owner;owner.layers.add(this);return this;},remove(){this.owner?.removeLayer(this);}};}};
  const window={};vm.runInNewContext(fs.readFileSync('src/wici/static/js/region.js','utf8'),{window,document,L,Event,localStorage:{getItem(k){if(blocked)throw Error();return storage.get(k);},setItem(k,v){if(blocked)throw Error();storage.set(k,v);}},requestAnimationFrame(fn){frames.push(fn);return frames.length;},fetch:(url)=>new Promise((resolve,reject)=>requests.push({url,resolve,reject}))});
  window.WiciRegion.init({map,provinces,select:document.getElementById('province'),country:{}});
  return {ui:window.WiciRegion,document,map,panes,storage,frames,requests,control:id=>document.getElementById(id)};
@@ -24,6 +24,16 @@ test('saved scope, holes, boundary, multipolygon, country and blocked storage',(
 test('pane clipping preserves base map and popups and batches newly added layers',()=>{
  const h=harness('02');assert.match(h.panes.data.style.clipPath,/path\(evenodd/);assert.equal(h.panes.osmBase.style.clipPath,undefined);assert.equal(h.panes.popupPane.style.clipPath,undefined);
  h.panes.newData={style:{}};for(let i=0;i<100;i++)h.map.events.layeradd();assert.equal(h.frames.length,1);h.frames.shift()();assert.match(h.panes.newData.style.clipPath,/path/);
+});
+test('restoring or reselecting a Polish region keeps its outline hidden during foreign analysis and restores the latest one on return',()=>{
+ const h=harness('02');assert.equal(h.map.layers.size,1);
+ h.ui.setAnalysisOutsidePoland(true);assert.equal(h.map.layers.size,0);assert.equal(h.panes.data.style.clipPath,'');
+ h.ui.select('14',{fit:false});assert.equal(h.map.layers.size,0,'A newly selected outline must respect the current analysis visibility');
+ h.ui.select('14',{fit:false});assert.equal(h.map.layers.size,0,'Restoring the same region must also keep its recreated outline hidden');
+ h.ui.setAnalysisOutsidePoland(false);assert.equal(h.map.layers.size,1);
+ assert.equal([...h.map.layers][0].feature.properties.admin_code,'14','Return to Poland must show the most recently selected region');
+ assert.match(h.panes.data.style.clipPath,/path\(evenodd/);
+ h.ui.select('');h.ui.setAnalysisOutsidePoland(true);h.ui.setAnalysisOutsidePoland(false);assert.equal(h.map.layers.size,0);
 });
 test('viewport intersection remains small, skips outside and touching views, country keeps viewport',()=>{
  const h=harness('02');assert.deepEqual([...h.ui.viewBox(box(16,51,16.2,51.2))],[16,51,16.2,51.2]);assert.deepEqual([...h.ui.viewBox(box(14,49,16,51))],[15,50,16,51]);

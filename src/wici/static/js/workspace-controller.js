@@ -16,6 +16,9 @@ window.WiciWorkspace = (() => {
   const graphModeControls = new Map();
   const controls = new Map(), checkboxOptions = new Map(), localKey = 'wici.analysis.layout.v1';
   let messageKind = 'general', graphTableItems = null, graphTableSort = '', graphTableResult = null;
+  let lastOutside = null, lastCardLayout = '', lastCardPosition = '', cardFrame = null, lastColumns = null;
+  const renderInputs = new Map();
+  function changed(name, values) {const previous = renderInputs.get(name); if (previous && values.every((value, index) => value === previous[index])) return false; renderInputs.set(name, values); return true;}
   function sortedGraphTable(items, sort) {const key = JSON.stringify(sort); if (items === graphTableItems && key === graphTableSort) return graphTableResult; graphTableItems = items; graphTableSort = key; const direction = sort.direction === 'desc' ? -1 : 1;
     const ordered = [...items].sort((a, b) => {const av = a[sort.field], bv = b[sort.field], compared = av == null ? bv == null ? 0 : -1 : bv == null ? 1 : String(av).localeCompare(String(bv), 'pl', {sensitivity: 'base'}); return direction * compared || a.ref.localeCompare(b.ref);}); graphTableResult = {items: ordered, total: ordered.length, next_cursor: null, _graphScope: true}; return graphTableResult;}
   const health = () => typeof options.health === 'function' ? options.health() : options.health || {};
@@ -54,10 +57,11 @@ window.WiciWorkspace = (() => {
   }
   function syncMapScope() {
     const state = store.getState(), outside = active && (state.query.country === 'UA' || state.query.types.some(type => ['ua_region', 'civil_alert'].includes(type)) || state.comparedRegionRefs?.length || graphView?.getVisibleData?.().nodes.some(node => ['ua_region', 'civil_alert'].includes(node.type)));
-    window.WiciRegion?.setAnalysisOutsidePoland?.(Boolean(outside));
+    if (lastOutside !== Boolean(outside)) {lastOutside = Boolean(outside); window.WiciRegion?.setAnalysisOutsidePoland?.(lastOutside);}
   }
   function renderRegions() {
     if (!country) return;
+    if (!changed('regions', [regions, store.getState().query, recording, recordingBusy, store.getState().displayTimezone])) return;
     const state = store.getState(), query = state.query, selected = regions.find(item => item.ref === query.region_ref), isUA = query.country === 'UA' || query.types.some(type => ['ua_region', 'civil_alert'].includes(type));
     country.value = query.country || ''; provinceField.hidden = isUA; oblastField.hidden = raionField.hidden = regionHint.hidden = !isUA;
     const oblastKey = selected?.scope === 'oblast' ? selected.native_key : selected?.oblast;
@@ -175,12 +179,27 @@ window.WiciWorkspace = (() => {
         (!state.comparedRefs.length || Boolean(replayData)) && (!(state.comparedRegionRefs || []).length || Boolean(alertReplay))};
   }
   function positionCard() {
+    cardFrame = null;
     const mapPanel = shell?.querySelector?.('.map-panel');
-    if (mapPanel) {shell.style.setProperty('--analysis-card-top', `${mapPanel.offsetTop + 10}px`); shell.style.setProperty('--analysis-card-height', `${Math.max(260, mapPanel.offsetHeight - 20)}px`);}
+    if (mapPanel) {const top = mapPanel.offsetTop + 10, height = Math.max(260, mapPanel.offsetHeight - 20), key = `${top}:${height}`;
+      if (key !== lastCardPosition) {lastCardPosition = key; shell.style.setProperty('--analysis-card-top', `${top}px`); shell.style.setProperty('--analysis-card-height', `${height}px`);}}
+  }
+  function scheduleCardPosition() {
+    if (cardFrame !== null) return;
+    if (window.requestAnimationFrame) cardFrame = window.requestAnimationFrame(positionCard); else positionCard();
+  }
+  function renderSourceCoverage(timezone) {
+    if (!changed('coverage', [data?.coverage, persistence, movingPersistence, timezone])) return;
+    sourceCoverage.replaceChildren();
+    for (const source of data?.coverage?.sources || []) sourceCoverage.append(U.el('p', `${source.resource}: ${U.statusNames[source.status] || source.status} · ${source.item_count || 0} rekordów · odczyt ${U.date(source.fetched_at)}${source.complete === false || source.complete === 0 ? ' · zakres niepełny' : ''}`, 'muted'));
+    if (persistence) sourceCoverage.append(U.el('p', `Zapis historii: ${persistence.pending || 0} w kolejce · ${Object.keys(persistence.errors || {}).length} błędów · ${persistence.rejected_submissions || 0} pominiętych odczytów`, 'muted'));
+    if (movingPersistence) sourceCoverage.append(U.el('p', `Katalog samolotów i statków: ${movingPersistence.pending || 0} oczekujących zapisów · ${Object.keys(movingPersistence.errors || {}).length} błędów · ${movingPersistence.coalesced_snapshots || 0} odczytów zastąpionych nowszymi w kolejce. Zapis tras działa osobno.`, Object.keys(movingPersistence.errors || {}).length ? 'notice' : 'muted'));
+    persistenceNotice.textContent = Object.keys(movingPersistence?.errors || {}).length ? 'Nie udało się zapisać odczytu samolotów lub statków w katalogu Analizy. Katalog może być nieaktualny. Ponów odczyt źródła w karcie; szczegóły są w „Pokrycie i aktualność źródeł”.' : movingPersistence?.pending ? 'Odczyt transportu oczekuje na zapis w katalogu Analizy. Po zakończeniu odśwież zestaw; źródło i katalog mogą chwilowo różnić się aktualnością.' : '';
+    sourceCoverage.append(U.el('small', 'Historia pomiarów powstaje z odczytów na żądanie, przez 14 dni. Daty pierwszego i ostatniego pomiaru nie gwarantują ciągłego pokrycia.'));
   }
   function render() {
     if (!initialized) return;
-    const state = store.getState(), sample = currentSample(), motion = motionContext(), alerts = alertContext();
+    const state = store.getState(), sample = currentSample(), index = currentIndex(), motion = motionContext(), alerts = alertContext();
     U.setTimezone?.(state.displayTimezone); renderRegions(); syncMapScope();
     transportLegend.hidden = !state.query.types.some(type => ['aircraft', 'ship'].includes(type)) && !state.comparedRefs.length;
     shell.classList.toggle('analysis-card-open', active && state.detailOpen);
@@ -188,7 +207,6 @@ window.WiciWorkspace = (() => {
     if (graphHost) graphHost.hidden = state.graphMode === 'map' && state.layout.mobilePanel !== 'graph';
     if (graphTableScope) graphTableScope.value = state.tableScope;
     for (const [mode, control] of graphModeControls) control.setAttribute('aria-pressed', String(state.graphMode === mode));
-    shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
     if (lastControlsQuery !== state.query) {
       lastControlsQuery = state.query;
       if (document.activeElement !== search && searchTimer == null) search.value = state.query.q;
@@ -198,26 +216,22 @@ window.WiciWorkspace = (() => {
     }
     if (lastLayout !== state.layout) {
       lastLayout = state.layout; split.value = state.layout.tablePercent;
+      shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
       try {localStorage.setItem(localKey, JSON.stringify(state.layout));} catch { /* The workspace remains usable when browser storage is blocked. */ }
       options.map?.invalidateSize?.();
     }
-    for (const [column, control] of columnControls) control.checked = state.columns.includes(column);
+    if (lastColumns !== state.columns) {lastColumns = state.columns; for (const [column, control] of columnControls) control.checked = state.columns.includes(column);}
     const graphNodes = graphView?.getVisibleData?.()?.nodes || [], graphRows = state.tableScope === 'graph' ? sortedGraphTable(graphNodes, state.query.sort) : data;
-    tableView.render(graphRows, state, sample, motion, alerts); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion, alerts, graph: {temporal: graphView?.hasTemporalNodes?.()}}); mapView.render(data, state, sample, currentIndex(), motion, alerts, graphView?.getVisibleData?.()); motionView?.render(state, motion); alertsView?.render(state, alerts); renderWatchlist();
-    const mapItems = data?.map?.items || [...(data?.map?.points || []), ...(data?.map?.areas || [])];
-    const inScope = detail?.in_scope ?? (!data || data.items.some(item => item.ref === state.selectedRef) || mapItems.some(item => item.ref === state.selectedRef));
-    cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: currentIndex(), motion, alerts});
+    tableView.render(graphRows, state, sample, motion, alerts); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion, alerts, graph: {temporal: graphView?.hasTemporalNodes?.()}}); mapView.render(data, state, sample, index, motion, alerts, graphView?.getVisibleData?.()); motionView?.render(state, motion); alertsView?.render(state, alerts); renderWatchlist();
+    const inScope = detail?.in_scope ?? (!data || [data.items, data.map?.points, data.map?.areas].some(items => items?.some(item => item.ref === state.selectedRef)));
+    cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: index, motion, alerts});
     graphView?.sync?.(state); dossiers?.update();
-    sourceCoverage.replaceChildren();
-    for (const source of data?.coverage?.sources || []) sourceCoverage.append(U.el('p', `${source.resource}: ${U.statusNames[source.status] || source.status} · ${source.item_count || 0} rekordów · odczyt ${U.date(source.fetched_at)}${source.complete === false || source.complete === 0 ? ' · zakres niepełny' : ''}`, 'muted'));
-    if (persistence) sourceCoverage.append(U.el('p', `Zapis historii: ${persistence.pending || 0} w kolejce · ${Object.keys(persistence.errors || {}).length} błędów · ${persistence.rejected_submissions || 0} pominiętych odczytów`, 'muted'));
-    if (movingPersistence) sourceCoverage.append(U.el('p', `Katalog samolotów i statków: ${movingPersistence.pending || 0} oczekujących zapisów · ${Object.keys(movingPersistence.errors || {}).length} błędów · ${movingPersistence.coalesced_snapshots || 0} odczytów zastąpionych nowszymi w kolejce. Zapis tras działa osobno.`, Object.keys(movingPersistence.errors || {}).length ? 'notice' : 'muted'));
-    persistenceNotice.textContent = Object.keys(movingPersistence?.errors || {}).length ? 'Nie udało się zapisać odczytu samolotów lub statków w katalogu Analizy. Katalog może być nieaktualny. Ponów odczyt źródła w karcie; szczegóły są w „Pokrycie i aktualność źródeł”.' : movingPersistence?.pending ? 'Odczyt transportu oczekuje na zapis w katalogu Analizy. Po zakończeniu odśwież zestaw; źródło i katalog mogą chwilowo różnić się aktualnością.' : '';
-    sourceCoverage.append(U.el('small', 'Historia pomiarów powstaje z odczytów na żądanie, przez 14 dni. Daty pierwszego i ostatniego pomiaru nie gwarantują ciągłego pokrycia.'));
+    renderSourceCoverage(state.displayTimezone);
     const regionStatus = state.query.time.mode === 'range' && state.query.types.some(type => ['ua_region', 'civil_alert'].includes(type)) ? ` · mapa alarmów przy kursorze: ${(alertReplay?.series || []).filter(item => item.geometry).length} z ${state.comparedRegionRefs.length} porównywanych regionów` : '';
     const replayStatus = state.query.time.mode === 'range' && state.query.types.some(type => ['aircraft', 'ship'].includes(type)) ? ` · mapa tras przy kursorze: ${[...motion.frames.values()].filter(frame => frame.point).length} z ${state.comparedRefs.length} porównywanych obiektów` : '';
     status.textContent = state.error ? `Odczyt nie powiódł się: ${state.error}. Ostatni zestaw pozostaje dostępny.` : state.loading ? 'Odświeżanie wspólnego zestawu…' : data ? `${data.total} obiektów · ${replayStatus ? 'katalog' : 'mapa'}: ${data.map?.located_total ?? 0} z geometrią, ${data.map?.unlocated_total ?? 0} bez geometrii${replayStatus}${regionStatus} · stan na ${U.date(data.as_of)}${data.map?.mode === 'aggregates' ? ' · agregaty: zawęź typ, region lub nazwę' : ''}` : 'Przygotowywanie katalogu…';
-    positionCard();
+    const cardLayout = JSON.stringify([active, state.detailOpen, state.layout, state.graphMode, state.columns, state.query]);
+    if (cardLayout !== lastCardLayout) {lastCardLayout = cardLayout; scheduleCardPosition();}
   }
   function queryPayload(state, cursor) {return {...state.query, cursor, query_revision: state.queryRevision};}
   async function loadQuery(cursor = null, retries = 0) {
@@ -454,10 +468,11 @@ window.WiciWorkspace = (() => {
       render();
     });
     sourceManager?.subscribe?.(sourceChanged);
-    window.addEventListener?.('resize', () => {positionCard(); graphView?.resize?.();});
+    window.addEventListener?.('resize', () => {scheduleCardPosition(); graphView?.resize?.();});
+    if (window.ResizeObserver) {const observer = new window.ResizeObserver(() => {if (active) scheduleCardPosition();}); observer.observe(toolbar); const panel = shell.querySelector?.('.map-panel'); if (panel) observer.observe(panel);}
     document.addEventListener('keydown', event => {if (active && event.key === 'Escape' && store.getState().detailOpen) {event.preventDefault(); closeCard();}});
     document.addEventListener('visibilitychange', () => {syncSources(); if (document.hidden) timelineView.pause?.(); if (!document.hidden && active && visible) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}});
-    for (const disclosure of toolbar.querySelectorAll?.('details') || []) disclosure.addEventListener('toggle', positionCard);
+    for (const disclosure of toolbar.querySelectorAll?.('details') || []) disclosure.addEventListener('toggle', scheduleCardPosition);
     initialized = true; render(); host.hidden = true;
   }
   function setActive(value) {

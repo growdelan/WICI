@@ -31,12 +31,12 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
   const body = U.el('tbody'); table.append(caption, thead, body); scroll.append(table);
   const pagination = U.el('div', null, 'analysis-pagination'), firstButton = U.button('Pierwsza strona', first), nextButton = U.button('Następna strona →', next);
   nextButton.id = 'analysis-next-page'; pagination.append(firstButton, nextButton); host.append(heading, scroll, pagination);
-  let previousItems = null, previousSort = '', rows = new Map();
+  let previousItems = null, previousSort = '', previousColumns = null, rows = new Map();
   function render(data, state, selectedSample, motion, alerts) {
     host.dataset.tableScope = data?._graphScope ? 'graph' : 'catalog'; title.textContent = data?._graphScope ? 'Węzły grafu' : 'Katalog obiektów'; caption.textContent = data?._graphScope ? 'Obiekty widocznego grafu; mogą wychodzić poza filtry katalogu' : 'Obiekty wspólnego zakresu mapy i osi czasu';
     const items = data?.items || [], sortKey = JSON.stringify(state.query.sort);
     if (items !== previousItems || previousSort !== sortKey) {
-      previousItems = items; previousSort = sortKey; body.replaceChildren(); rows = new Map();
+      previousItems = items; previousSort = sortKey; previousColumns = null; body.replaceChildren(); rows = new Map();
       for (const item of items) {
         const row = U.el('tr'); row.dataset.ref = item.ref;
         const name = U.el('td'), control = U.button(item.label, event => select(item.ref, event.currentTarget)); control.className = 'analysis-object-link'; name.append(control);
@@ -49,9 +49,20 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
       if (!items.length) {const row = U.el('tr'), cell = U.el('td', 'Brak obiektów w tym zakresie. Zmień filtry lub pobierz dane wybranego źródła.'); cell.colSpan = 4; row.append(cell); body.append(row);}
     }
     for (const [field, th] of headers) th.setAttribute('aria-sort', state.query.sort.field === field ? state.query.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none');
-    for (const [ref, {row, time, reading, item, compareControl, watchControl}] of rows) {
+    for (const [ref, entry] of rows) {
+      const {row, time, reading, item, compareControl, watchControl} = entry;
       const graphScope = Boolean(data?._graphScope);
       const selected = state.detailOpen && ref === state.selectedRef, cursor = selected && state.cursorAt && item.type.endsWith('_station'), sample = cursor ? selectedSample : selected && selectedSample ? selectedSample : U.measurement(item);
+      const historical = state.query.time.mode === 'range', moving = M?.isMoving(item), alarm = item.type === 'ua_region' || item.type === 'civil_alert';
+      const frame = moving ? motion?.frames?.get(ref) : alarm ? alerts?.frames?.get(item.type === 'ua_region' ? ref : item.region_ref || item.metadata?.region_ref) : null;
+      const inputs = [item, selected, Boolean(cursor), sample, graphScope, historical, state.displayTimezone,
+        moving || alarm ? state.comparedRefs : null, alarm ? state.comparedRegionRefs : null,
+        moving ? motion?.watched?.has(ref) : alarm ? alerts?.watched?.has(ref) : null,
+        moving ? motion?.busy?.has(ref) : alarm ? alerts?.busy?.has(ref) : null,
+        frame?.point, frame?.lastPoint, frame?.status, frame?.age_seconds, frame?.state, frame?.segment,
+        alarm && historical ? state.cursorAt || state.query.time.filter_range?.to : null];
+      if (entry.inputs && inputs.every((value, index) => value === entry.inputs[index])) continue;
+      entry.inputs = inputs;
       row.classList.toggle('selected', selected); if (selected) row.setAttribute('aria-selected', 'true'); else row.removeAttribute('aria-selected');
       if (item.type === 'ua_region' || item.type === 'civil_alert') {
         const region = item.type === 'ua_region', compared = state.comparedRegionRefs?.includes(ref), watched = alerts?.watched ? alerts.watched.has(ref) : item.watched;
@@ -81,8 +92,10 @@ window.WiciWorkspaceTable = function (host, {select, sort, next, first, compare,
       const note = cursor ? 'Według kursora' : item.freshness ? U.statusNames[item.freshness] || item.freshness : item.type.endsWith('_station') && state.query.time.mode === 'range' ? 'Przegląd okresu' : '';
       if (note) reading.append(U.el('small', note));
     }
-    const columns = ['label', 'type', 'updated_at', 'measurement'];
-    for (const row of [header, ...Array.from(body.children)]) for (const [index, cell] of Array.from(row.children).entries()) if (row === header || rows.size) cell.hidden = !(state.columns || columns).includes(columns[index]);
+    if (previousColumns !== state.columns) {
+      previousColumns = state.columns; const columns = ['label', 'type', 'updated_at', 'measurement'];
+      for (const row of [header, ...Array.from(body.children)]) for (const [index, cell] of Array.from(row.children).entries()) if (row === header || rows.size) cell.hidden = !(state.columns || columns).includes(columns[index]);
+    }
     count.textContent = data?._graphScope ? `${items.length} obiektów widocznego grafu` : `${data?.total || 0} obiektów · ${items.length} na stronie${state.loading ? ' · odświeżanie…' : ''}`;
     nextButton.disabled = !data?.next_cursor || state.loading; firstButton.disabled = !data?._pageCursor || state.loading;
   }

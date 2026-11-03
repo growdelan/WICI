@@ -12,6 +12,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Teren i zabudowa 3D (v0.36.0):** oglądaj mapę ogólną oraz śledź samoloty i autobusy na podkładzie OpenStreetMap z terenem NMT / LiDAR GUGiK i uproszczonymi budynkami OSM. W Warszawie dostępne są też drzewa z miejskiej bazy. Kafle podążają za kadrem i zoomem, a poprzednie budynki pozostają widoczne podczas doładowywania. [Obsługa, źródła i ograniczenia widoku 3D](docs/scene3d.md).
 
+**Płynniejsza mapa i Analiza (v0.36.1):** odświeżanie autobusów i przesuwanie czasu aktualizuje istniejące elementy mapy i tabeli. Odpowiedź API Analizy nie powiela obiektów mapy. Poprawiono też kolory stacji pokazywanych przez obszary, klikanie znaczników grafu i odtwarzanie obrysu regionu. [Pomiary wydajności i weryfikacja](docs/map-performance.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
@@ -286,6 +288,7 @@ Dodatkowe narzędzia:
 - `uv run --locked python scripts/check_sources.py` — jawny test dostępu do źródeł przez internet, bez zapisu do bazy; raport w ignorowanym `tmp/live-checks/`.
 - `uv run --locked python scripts/verify_system.py` — test CLI i restartu z własnymi procesami demo; wymaga portu 8765 i zgodnej konfiguracji, raport w `tmp/live-checks/`.
 - `uv run --locked python scripts/benchmark.py` — pomiar dla 10 000 rekordów.
+- `node scripts/benchmark_map.cjs` — pomiar aktualizacji autobusów i mapy Analizy na danych syntetycznych (Playwright/Chromium); [zakres zmian i wyniki](docs/map-performance.md).
 - `uv run --locked python scripts/prepare_synthetic_fixtures.py` oraz `scripts/prepare_imgw_pdf_fixtures.py` — odtworzenie syntetycznych próbek offline.
 
 Opcjonalna grupa GIS (`geo`) służy odtwarzaniu geometrii. Granice mapy i biblioteka Leaflet są dołączone do projektu. Generator PDF korzysta z podstawowej zależności pypdf; grupa `pdf-check` została usunięta.

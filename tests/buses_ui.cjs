@@ -12,16 +12,17 @@ class Element {
  focus(){doc.activeElement=this;}
 }
 const controls=Object.fromEntries(['enabled','status','line','city','focus','source','license','description'].map(name=>[`buses-${name}`,new Element()]));
-const doc={hidden:false,activeElement:null,getElementById:id=>controls[id],createElement:()=>new Element()};
+const doc={hidden:false,activeElement:null,listeners:{},addEventListener(event,callback){this.listeners[event]=callback;},getElementById:id=>controls[id],createElement:()=>new Element()};
 const attributions=new Set();
 const map={createPane:()=>({style:{}}),attributionControl:{addAttribution(value){attributions.add(value);},removeAttribution(value){attributions.delete(value);}},removeLayer(layer){layer.removed=true;},fitBounds(bounds){this.bounds=bounds;}};
 const L={layerGroup:()=>({addTo(){return this;},removeLayer(marker){marker.removed=true;}}),divIcon:options=>options,
- marker:(coords,options)=>{const marker={coords,options,opened:false,bindPopup(fn){this.popup=fn;return this;},bindTooltip(){return this;},addTo(){return this;},setLatLng(value){this.coords=value;return this;},setIcon(value){this.options.icon=value;if(this.opened)this.content=this.popup();return this;},isPopupOpen(){return this.opened;},getPopup(){return this.popupObject;},setPopupContent(value){this.content=value;return this;}};marker.popupObject={getElement:()=>({querySelector:()=>marker.content})};created.push(marker);return marker;}};
+ marker:(coords,options)=>{const marker={coords,options,opened:false,positionUpdates:0,iconUpdates:0,bindPopup(fn){this.popup=fn;return this;},bindTooltip(){return this;},addTo(){return this;},setLatLng(value){this.positionUpdates++;this.coords=value;return this;},setIcon(value){this.iconUpdates++;this.options.icon=value;if(this.opened)this.content=this.popup();return this;},isPopupOpen(){return this.opened;},getPopup(){return this.popupObject;},setPopupContent(value){this.content=value;return this;}};marker.popupObject={getElement:()=>({querySelector:()=>marker.content})};created.push(marker);return marker;}};
 class ClockDate extends Date {static now(){return now;}}
 const calls={init:[],sync:[],update:[],open:[]};
 const trackingEvents=[];
+let regionChecks=0,insideRegion=true;
 const tracking=Object.fromEntries(Object.keys(calls).map(method=>[method,(...args)=>{calls[method].push(args);trackingEvents.push({method,args});}]));
-const context={window:{WiciBuses3D:tracking},document:doc,L,Date:ClockDate,Number,Math,Map,Set,Boolean,String,AbortController,
+const context={window:{WiciBuses3D:tracking,WiciRegion:{contains(){regionChecks++;return insideRegion;}}},document:doc,L,Date:ClockDate,Number,Math,Map,Set,Boolean,String,AbortController,
  setTimeout(fn,ms){const id=++nextId;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);},
  setInterval(fn,ms){const id=++nextId;intervals.set(id,{fn,ms});return id;},clearInterval(id){intervals.delete(id);},
  fetch(url,options){assert.match(url,/^\/api\/buses\?city=(szczecin|krakow|poznan|warszawa)$/);return new Promise(resolve=>pending.push({url,resolve,signal:options.signal}));}};
@@ -51,13 +52,19 @@ function tick(){[...intervals.values()][0].fn();}
  // re-evaluation, and a new API snapshot. Keep every popup node stable.
  const reading=created[0];reading.opened=true;reading.content=reading.popup();reading.content.scrollTop=90;
  const originalContent=reading.content,originalValues=[...reading.content.children[1].children];follow.focus();
+ const beforeTick={icons:reading.iconUpdates,positions:reading.positionUpdates,regionChecks};
  now+=1000;tick();
+ assert.equal(reading.iconUpdates,beforeTick.icons,'An age tick must preserve an unchanged marker icon');
+ assert.equal(reading.positionUpdates,beforeTick.positions,'An age tick must not reposition an unchanged vehicle');
+ assert.equal(regionChecks,beforeTick.regionChecks,'An age tick must reuse the spatial scope of the current snapshot');
  assert.equal(reading.content.scrollTop,90,'Age refresh must preserve the reading position');
  assert.equal(reading.content,originalContent);assert.equal(reading.content.children.at(-1),follow);assert.equal(doc.activeElement,follow);
  assert.ok(reading.content.children[1].children.some(node=>node.textContent==='3 s'));
  poll();pending.shift().resolve(respond(payload([{...item,model:'Solaris Urbino 18',delay_seconds:45},
   {...item,id:'szczecin:4',line:'80'}])));await settle();
  assert.equal(reading.content.scrollTop,90,'New vehicle data must preserve the reading position');
+ assert.equal(reading.iconUpdates,beforeTick.icons,'Updated metadata alone must not replace the icon');
+ assert.equal(reading.positionUpdates,beforeTick.positions,'Updated metadata alone must not reposition the marker');
  assert.equal(reading.content,originalContent);assert.equal(reading.content.children.at(-1),follow);assert.equal(doc.activeElement,follow);
  originalValues.forEach((value,index)=>assert.equal(reading.content.children[1].children[index],value));
  const updated=reading.content.children[1].children.map(node=>node.textContent);
@@ -74,7 +81,10 @@ function tick(){[...intervals.values()][0].fn();}
  poll();pending.shift().resolve(respond(payload([item,{...item,id:'szczecin:4',line:'80'}])));await settle();
  assert.equal(follow.disabled,false);
  const currentTime=now;now=Date.parse(item.position_at)+60000;tick();assert.equal(follow.disabled,false,'A position exactly 60 seconds old remains eligible');
+ const freshIcons=reading.iconUpdates;
  now++;tick();assert.equal(follow.disabled,true,'Eligibility expires immediately after 60 seconds');
+ assert.equal(reading.iconUpdates,freshIcons+1,'Crossing the freshness boundary changes the icon exactly once');
+ tick();assert.equal(reading.iconUpdates,freshIcons+1,'Repeated stale ticks retain the existing icon');
  now=currentTime;tick();assert.equal(follow.disabled,false);
  reading.opened=false;
  controls['buses-line'].value='75';controls['buses-line'].listeners.change();assert.equal(created[1].removed,true);assert.match(controls['buses-status'].textContent,/1 \/ 2/);
@@ -164,5 +174,16 @@ function tick(){[...intervals.values()][0].fn();}
  assert.match(controls['buses-status'].textContent,/Autobusy: 0 \/ 1/);
  assert.equal(pending.length,0,'The post-report scope sync must not start a second city read');
  assert.equal(timers.size,1,'Exactly the original poller schedules the next city read');
+ controls['buses-line'].value='';controls['buses-line'].listeners.change();
+ const movedMarker=created.at(-1),beforeMove={icons:movedMarker.iconUpdates,positions:movedMarker.positionUpdates};
+ poll();pending.shift().resolve(respond(payload([{...changedLine,line:'81',headsign:'Nowy kierunek',latitude:53.41}])));await settle();
+ assert.equal(created.at(-1),movedMarker,'A moved vehicle retains its marker');
+ assert.equal(movedMarker.positionUpdates,beforeMove.positions+1);assert.equal(movedMarker.coords[0],53.41);
+ assert.equal(movedMarker.iconUpdates,beforeMove.icons+1);assert.equal(movedMarker.options.icon.html.textContent,'81');
+ assert.match(movedMarker.options.title,/Nowy kierunek/);
+ const beforeRegion=created.length;insideRegion=false;doc.listeners['wici:regionchange']();
+ assert.equal(movedMarker.removed,true,'A region change must invalidate the cached spatial scope');
+ insideRegion=true;doc.listeners['wici:regionchange']();
+ assert.equal(created.length,beforeRegion+1,'Re-entering a region restores its vehicles');
  console.log('Bus UI lifecycle passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -12,11 +12,13 @@ window.WiciBuses = (() => {
   const enabledByCity=new Map();
   let map, health={}, visible=false, layer, data, timer=null, ageTimer=null, request=null, requestTimeout=null, generation=0, backendDisabled=false;
   const markers=new Map();
+  let scopedSource=null,scopedItems=[];
+  const emptyItems=[];
   const shown = () => Boolean(map) && visible && !document.hidden && health.mode==='live' && $('enabled').checked && !backendDisabled;
-  const age = item => {const time=Date.parse(item.position_at); return Number.isFinite(time)?Math.max(0,(Date.now()-time)/1000):Infinity;};
+  const age = (item,now=Date.now()) => {const time=Date.parse(item.position_at); return Number.isFinite(time)?Math.max(0,(now-time)/1000):Infinity;};
   const number = (value, unit) => Number.isFinite(value)?`${Math.round(value).toLocaleString('pl-PL')} ${unit}`:'Brak danych';
   const refresh = () => Math.max(10,Number(data?.refresh_seconds)||10);
-  function status(message, warning=false){$('status').textContent=message; $('status').classList.toggle('notice',warning);}
+  function status(message, warning=false){if($('status').textContent!==message)$('status').textContent=message; $('status').classList.toggle('notice',warning);}
   function delay(value){return !Number.isFinite(value)?'Brak danych':value===0?'Zgodnie z rozkładem':`${number(Math.abs(value),'s')} ${value>0?'opóźnienia':'przed rozkładem'}`;}
   const canFollow = item => !backendDisabled && !data?.stale && data?.status!=='error' && age(item)<=60;
   function popup(marker){
@@ -28,7 +30,8 @@ window.WiciBuses = (() => {
       marker.popupView={box,heading,list,source,values:[]};
     }
     const view=marker.popupView;
-    view.heading.textContent=`Autobus · linia ${item.line||'—'}`;
+    const heading=`Autobus · linia ${item.line||'—'}`;
+    if(view.heading.textContent!==heading)view.heading.textContent=heading;
     const fields=[
       ['Kierunek',item.headsign||'Brak danych'],['Numer pojazdu',item.vehicle_number||'Brak danych'],
       ['Model',item.model||'Brak danych'],['Operator',item.operator||'Brak danych'],
@@ -39,9 +42,10 @@ window.WiciBuses = (() => {
     ];
     fields.forEach(([label,value],index)=>{
       if(!view.values[index]){const entry=node('dd');view.list.append(node('dt',label),entry);view.values.push(entry);}
-      view.values[index].textContent=value;
+      if(view.values[index].textContent!==value)view.values[index].textContent=value;
     });
-    view.source.textContent=`${cities[city].source}${data?.stale?' · ostatni odczyt, odświeżanie niedostępne':age(item)>60?' · starsza pozycja':' · bieżące pozycje'}`;
+    const source=`${cities[city].source}${data?.stale?' · ostatni odczyt, odświeżanie niedostępne':age(item)>60?' · starsza pozycja':' · bieżące pozycje'}`;
+    if(view.source.textContent!==source)view.source.textContent=source;
     if(window.WiciBuses3D&&!view.follow){
       const button=node('button','Podążaj w 3D');button.type='button';
       button.addEventListener('click',()=>{
@@ -53,9 +57,20 @@ window.WiciBuses = (() => {
     if(view.follow)view.follow.disabled=!canFollow(item);
     return view.box;
   }
-  function icon(item){
-    const wrap=node('span');wrap.className=`buses-symbol${data?.stale||age(item)>60?' buses-old':''}`;wrap.textContent=item.line||'BUS';
+  function icon(item,old){
+    const wrap=node('span');wrap.className=`buses-symbol${old?' buses-old':''}`;wrap.textContent=item.line||'BUS';
     return L.divIcon({className:'buses-marker',html:wrap,iconSize:[36,28],iconAnchor:[18,14]});
+  }
+  function regionalItems(){
+    const items=data?.items||emptyItems;
+    // Snapshots are immutable. Recompute spatial membership only on a new
+    // snapshot or region, while age/freshness continues to advance every second.
+    if(items!==scopedSource){
+      scopedSource=items;
+      scopedItems=items.filter(item=>Number.isFinite(item.latitude)&&Number.isFinite(item.longitude)&&
+        (!window.WiciRegion||window.WiciRegion.contains(item.latitude,item.longitude)));
+    }
+    return scopedItems;
   }
   function updateLines(){
     const selected=$('line').value||'';
@@ -69,16 +84,17 @@ window.WiciBuses = (() => {
   function render(){
     if(!shown())return;
     if(!layer){layer=L.layerGroup();layer.addTo(map);}
-    const live=new Set();let total=0,old=0;
-    for(const item of data?.items||[]){
-      if(window.WiciRegion&&!window.WiciRegion.contains(item.latitude,item.longitude))continue;
-      if(!Number.isFinite(item.latitude)||!Number.isFinite(item.longitude)||age(item)>120)continue;
+    const live=new Set(),now=Date.now(),lineFilter=$('line').value;let total=0,old=0;
+    for(const item of regionalItems()){
+      const positionAge=age(item,now);
+      if(positionAge>120)continue;
       total++;
-      if($('line').value&&String(item.line)!==$('line').value)continue;
-      if(age(item)>60||data.stale)old++;
+      if(lineFilter&&String(item.line)!==lineFilter)continue;
+      const isOld=Boolean(positionAge>60||data.stale),line=item.line||'BUS',title=`Linia ${item.line||'—'} · ${item.headsign||'autobus'}`;
+      if(isOld)old++;
       live.add(item.id);let marker=markers.get(item.id);
       if(!marker){
-        marker=L.marker([item.latitude,item.longitude],{pane:'busPositions',icon:icon(item),title:`Linia ${item.line||'—'} · ${item.headsign||'autobus'}`,bubblingMouseEvents:false});
+        marker=L.marker([item.latitude,item.longitude],{pane:'busPositions',icon:icon(item,isOld),title,bubblingMouseEvents:false});
         marker.bus=item;
         marker.bindPopup(()=>popup(marker),{minWidth:260,maxWidth:300});
         marker.bindTooltip(()=>node('span',`Linia ${marker.bus.line||'—'} · ${marker.bus.headsign||'autobus'}`));
@@ -86,8 +102,16 @@ window.WiciBuses = (() => {
       }else{
         // Leaflet can re-evaluate popup content while replacing the marker icon.
         marker.bus=item;
-        marker.setLatLng([item.latitude,item.longitude]).setIcon(icon(item));
+        const previous=marker.busPresentation;
+        if(previous.latitude!==item.latitude||previous.longitude!==item.longitude)marker.setLatLng([item.latitude,item.longitude]);
+        if(previous.line!==line||previous.old!==isOld)marker.setIcon(icon(item,isOld));
+        if(marker.options.title!==title){
+          marker.options.title=title;
+          const element=marker.getElement?.();if(element)element.title=title;
+          marker.setTooltipContent?.(()=>node('span',`Linia ${marker.bus.line||'—'} · ${marker.bus.headsign||'autobus'}`));
+        }
       }
+      marker.busPresentation={latitude:item.latitude,longitude:item.longitude,line,old:isOld};
       // Stable nodes preserve the reading position and the 3D button's focus.
       if(marker.isPopupOpen())popup(marker);
     }
@@ -122,7 +146,7 @@ window.WiciBuses = (() => {
   }
   function stop(){
     generation++;request?.abort();request=null;clearTimeout(requestTimeout);requestTimeout=null;clearTimeout(timer);timer=null;clearInterval(ageTimer);ageTimer=null;
-    if(layer)map.removeLayer(layer);layer=null;markers.clear();
+    if(layer)map.removeLayer(layer);layer=null;markers.clear();scopedSource=null;scopedItems=[];
   }
   function updateAttribution(){
     if(attribution)map.attributionControl.removeAttribution(attribution);
@@ -166,6 +190,6 @@ window.WiciBuses = (() => {
     $('city').addEventListener('change',changeCity);
     $('focus').addEventListener('click',()=>map.fitBounds(cities[city].bounds));
   }
-  document.addEventListener?.('wici:regionchange',()=>{if(map)render();});
+  document.addEventListener?.('wici:regionchange',()=>{scopedSource=null;if(map)render();});
   return {init,sync};
 })();

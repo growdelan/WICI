@@ -73,5 +73,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=1000000)
     parser.add_argument('--runs', type=int, default=30)
+    parser.add_argument('--stations', type=int, default=1500)
+    parser.add_argument('--communications', type=int, default=10000)
     args = parser.parse_args()
-    print(json.dumps(run(args.samples, args.runs), ensure_ascii=False, indent=2))
+    if args.samples < 1 or args.runs < 1 or args.stations < 1 or args.communications < 0:
+        parser.error('Samples, runs and stations must be positive; communications cannot be negative.')
+    print(json.dumps(run(args.samples, args.runs, args.communications, args.stations), ensure_ascii=False, indent=2))

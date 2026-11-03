@@ -5,7 +5,7 @@ const net = require('node:net'), path = require('node:path');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 
-async function setup({blockedStorage = false} = {}) {
+async function setup({blockedStorage = false, instrumentMap = false} = {}) {
   const socket = net.createServer(); socket.listen(0, '127.0.0.1'); await once(socket, 'listening');
   const port = socket.address().port; await new Promise(resolve => socket.close(resolve));
   const process = spawn(path.join(root, '.venv/bin/python'), ['-u', '-c', `
@@ -38,6 +38,15 @@ with tempfile.TemporaryDirectory(prefix='wici-analysis-browser-') as directory:
     if (blockedStorage) await page.addInitScript(() => {
       Storage.prototype.getItem = Storage.prototype.setItem = function () {throw new DOMException('Blocked', 'SecurityError');};
     });
+    if (instrumentMap) await page.addInitScript(() => {
+      window.__mapRenders=[];window.__mapInRender=false;let factory;
+      Object.defineProperty(window,'WiciWorkspaceMap',{configurable:true,get:()=>factory,set(value){factory=(...args)=>{
+        const view=value(...args),render=view.render;
+        view.render=(...args)=>{const start=performance.now();window.__mapInRender=true;
+          try{return render(...args);}finally{window.__mapRenders.push(performance.now()-start);window.__mapInRender=false;}};
+        return view;
+      };}});
+    });
     await page.goto(url);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.map && !document.getElementById('refresh').disabled);
     await page.locator('[data-view="analysis"]').click();
@@ -49,6 +58,96 @@ with tempfile.TemporaryDirectory(prefix='wici-analysis-browser-') as directory:
 async function settle(page) {
   await page.waitForFunction(() => !window.WiciWorkspace.getState().loading && !window.WiciWorkspace.getState().error);
 }
+
+test('Analiza: coordinate-free station areas preserve live alarms and selected historical measurements in Leaflet', {timeout:60000}, async () => {
+  const env=await setup(),{page}=env;
+  try {
+    const result=await page.evaluate(()=>{
+      const now=Date.parse(state.health.now),iso=offset=>new Date(now+offset*60000).toISOString(), captured=[],original=L.geoJSON;
+      L.geoJSON=(...args)=>{const layer=original(...args);captured.push(layer);return layer;};
+      const view=WiciWorkspaceMap({map:state.map,geometries:state.geometries,select(){}});view.setActive(true);
+      try {
+        const measurement={value:500,metric:'water_level',unit:'cm',observed_at:iso(-10),thresholds:{warning_level_cm:300,alarm_level_cm:400}},hydro={ref:'hydro_station:imgw:without-coordinates',type:'hydro_station',label:'Wodowskaz',areas:[{admin_code:'14'}],measurement};
+        const data={as_of:iso(0),map:{areas:[hydro]}},live={...WiciWorkspace.getState(),detailOpen:false,query:{time:{mode:'live'}}};
+        const stroke=layer=>layer.getLayers()[0].getElement().getAttribute('stroke');
+        view.render(data,live);const layer=captured[0],liveAlarm=stroke(layer);
+        const selected={...live,detailOpen:true,selectedRef:hydro.ref,cursorAt:iso(-20),query:{time:{mode:'range',filter_range:{from:iso(-120),to:iso(1)}}}},sample={...measurement,value:350,observed_at:iso(-25)};
+        view.render(data,selected,sample);const warningAtCursor=stroke(layer);
+        view.render(data,selected,measurement);const futureSample=stroke(layer);
+        const gios={ref:'air_quality_station:gios:1',type:'air_quality_station',label:'GIOŚ',areas:[{admin_code:'14'}],official_index:{value:5,observed_at:iso(-10)},measurement:{value:999}},gdata={as_of:iso(0),map:{areas:[gios]}},gstate={...selected,selectedRef:gios.ref};
+        view.render(gdata,gstate,{value:999},{value:0,observed_at:iso(-25)},null,null,{nodes:[gios]});const graph=captured.at(-1),graphIndex=stroke(graph);
+        view.render(gdata,gstate,{value:0},null,null,null,{nodes:[gios]});const missingIndex=stroke(graph);
+        return {liveAlarm,warningAtCursor,futureSample,graphIndex,missingIndex};
+      } finally {L.geoJSON=original;view.destroy();}
+    });
+    assert.deepEqual(result,{liveAlarm:'#bc4145',warningAtCursor:'#b78a28',futureSample:'#7e8990',graphIndex:'#459a77',missingIndex:'#7e8990'});
+    assert.deepEqual(env.errors,[]);assert.deepEqual(env.upstream,[]);
+  } finally {await env.close();}
+});
+
+test('Analiza: real cursor inputs do not regroup 999 communications sharing ten PRG counties', {timeout:60000}, async () => {
+  const env=await setup({instrumentMap:true}),{page}=env;
+  try {
+    const counties=await page.evaluate(()=>[...state.geometries.keys()].filter(code=>code.length===4).slice(0,10));assert.equal(counties.length,10);
+    await page.route('**/api/workspace/query',async route=>{
+      const response=await route.fetch(),result=await response.json(),station=result.map?.points?.find(item=>item.ref==='hydro_station:imgw:demo-wisla');
+      if(!station)return route.fulfill({json:result});
+      const areas=Array.from({length:999},(_,i)=>({ref:`communication:${50000+i}`,type:'communication',label:`Syntetyczny komunikat ${i}`,metadata:{},areas:counties.map(admin_code=>({admin_code}))}));
+      return route.fulfill({json:{...result,total:1000,next_cursor:null,items:[station,...areas.slice(0,99)],map:{mode:'objects',points:[station],areas,aggregates:[],total:1000,located_total:1000,unlocated_total:0}}});
+    });
+    await page.locator('[data-object-type="hydro_station"]').click();await settle(page);
+    await page.evaluate(()=>WiciWorkspace.selectObject('hydro_station:imgw:demo-wisla'));
+    await page.getByRole('button',{name:'Ostatnie 24 godziny',exact:true}).click();await settle(page);
+    // Drain the source manager's already scheduled one-second catalogue refresh
+    // before measuring repeated cursor inputs on an unchanged response.
+    await page.waitForFunction(()=>WiciWorkspaceSources.pendingCount===0);
+    await page.waitForTimeout(1100);await settle(page);
+    await page.waitForFunction(()=>!document.getElementById('analysis-cursor').disabled);
+    const result=await page.evaluate(async()=>{
+      const source=WiciWorkspace.getData().map.areas;window.__membershipReads=0;window.__identifierReads=0;
+      for(const item of source){const areas=item.areas,ref=item.ref;
+        Object.defineProperty(item,'areas',{get(){if(window.__mapInRender)window.__membershipReads++;return areas;}});
+        Object.defineProperty(item,'ref',{get(){if(window.__mapInRender)window.__identifierReads++;return ref;}});
+      }
+      window.__mapRenders=[];
+      const cursor=document.getElementById('analysis-cursor');
+      for(let i=0;i<40;i++){cursor.value=String(i*25);cursor.dispatchEvent(new Event('input',{bubbles:true}));await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));}
+      const times=window.__mapRenders.slice().sort((a,b)=>a-b);
+      return {sameSource:source===WiciWorkspace.getData().map.areas,membershipReads:window.__membershipReads,identifierReads:window.__identifierReads,renders:times.length,median_ms:times[Math.floor(times.length/2)],p95_ms:times[Math.min(times.length-1,Math.floor(times.length*.95))]};
+    });
+    assert.equal(result.sameSource,true);assert.ok(result.renders>=40);assert.equal(result.membershipReads,0);assert.equal(result.identifierReads,0);
+    console.log('Shared-area cursor map render:',JSON.stringify(result));
+    assert.deepEqual(env.errors,[]);assert.deepEqual(env.upstream,[]);
+  } finally {await env.close();}
+});
+
+test('Analiza: cursor updates only the selected station row and preserves unrelated source coverage', {timeout:60000}, async () => {
+  const env=await setup(), {page}=env;
+  try {
+    await page.locator('[data-object-type="hydro_station"]').click();
+    await page.locator('[data-object-type="air_quality_station"]').click();await settle(page);
+    const refs=await page.evaluate(()=>WiciWorkspace.getData().items.filter(item=>item.type.endsWith('_station')).map(item=>item.ref));
+    assert.ok(refs.length>=2);
+    assert.equal(await page.evaluate(()=>Object.hasOwn(WiciWorkspace.getData().map,'items')),false);
+    const selected=refs.find(ref=>ref.startsWith('hydro_station:')), other=refs.find(ref=>ref!==selected);
+    await page.evaluate(ref=>WiciWorkspace.selectObject(ref),selected);
+    await page.getByRole('button',{name:'Ostatnie 24 godziny',exact:true}).click();await settle(page);
+    await page.waitForFunction(()=>!document.getElementById('analysis-cursor').disabled);
+    await page.evaluate(({selected,other})=>{
+      const row=ref=>[...document.querySelectorAll('#analysis-table tr[data-ref]')].find(item=>item.dataset.ref===ref);
+      window.__rowBefore=row(other);window.__rowChanges=0;window.__selectedChanges=0;window.__coverageChanges=0;
+      new MutationObserver(records=>window.__rowChanges+=records.length).observe(__rowBefore,{subtree:true,childList:true,attributes:true,characterData:true});
+      new MutationObserver(records=>window.__selectedChanges+=records.length).observe(row(selected),{subtree:true,childList:true,attributes:true,characterData:true});
+      new MutationObserver(records=>window.__coverageChanges+=records.length).observe(document.querySelector('.analysis-source-coverage'),{subtree:true,childList:true,characterData:true});
+      const cursor=document.getElementById('analysis-cursor');cursor.value='500';cursor.dispatchEvent(new Event('input',{bubbles:true}));
+    },{selected,other});
+    await page.waitForFunction(()=>WiciWorkspace.getState().cursorAt!==null);
+    await page.evaluate(()=>new Promise(requestAnimationFrame));
+    const result=await page.evaluate(other=>({sameRow:[...document.querySelectorAll('#analysis-table tr[data-ref]')].find(item=>item.dataset.ref===other)===__rowBefore,otherChanges:__rowChanges,selectedChanges:__selectedChanges,coverageChanges:__coverageChanges}),other);
+    assert.equal(result.sameRow,true);assert.equal(result.otherChanges,0);assert.equal(result.coverageChanges,0);assert.ok(result.selectedChanges>0);
+    assert.deepEqual(env.errors,[]);assert.deepEqual(env.upstream,[]);
+  } finally {await env.close();}
+});
 
 test('Analiza: a filter click preserves a pending search and restoring a view cancels it', {timeout:60000}, async () => {
   const env = await setup(), {page} = env;

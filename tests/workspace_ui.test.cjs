@@ -46,7 +46,7 @@ function harness() {
     const classes = new Set();
     return {tagName: tag.toUpperCase(), children: [], dataset: {}, value: '', hidden: false, isConnected: true,
       style: {setProperty() {}}, classList: {add: value => classes.add(value), toggle(value, enabled) {enabled ? classes.add(value) : classes.delete(value);}, remove: value => classes.delete(value)},
-      append(...children) {this.children.push(...children);}, replaceChildren(...children) {this.children = children;},
+      replacements: 0, append(...children) {this.children.push(...children);}, replaceChildren(...children) {this.replacements++;this.children = children;},
       setAttribute(key, value) {this[key] = value;}, removeAttribute(key) {delete this[key];},
       addEventListener(event, handler) {this[event] = handler;}, focus() {document.activeElement = this;}, get firstChild() {return this.children[0];}};
   }
@@ -67,7 +67,7 @@ function harness() {
     setTimeout(fn) {timers.set(++timerId, fn); return timerId;}, clearTimeout(id) {timers.delete(id);}, setInterval() {return ++timerId;}, clearInterval() {},
   });
   window.WiciWorkspace.init({map: {invalidateSize() {}}, health: {now: '2026-10-22T12:00:00Z'}, geometries: new Map(), api: (path, body, options) => new Promise((resolve, reject) => requests.push({path, body, options, resolve, reject}))});
-  const queryResponse = {items: [], total: 0, next_cursor: null, map: {items: []}, timeline_summary: {buckets: []}, coverage: {sources: []}, data_revision: 'data1', as_of: '2026-10-22T12:00:00Z'};
+  const queryResponse = {items: [], total: 0, next_cursor: null, map: {points: [], areas: [], aggregates: []}, timeline_summary: {buckets: []}, coverage: {sources: []}, data_revision: 'data1', as_of: '2026-10-22T12:00:00Z'};
   return {ui: window.WiciWorkspace, document, host, requests, cardRenders, queryResponse, sourceCalls, sourceEffects, viewActions, timelineActions, dossierActions, graphActions, graphNodes, tableRenders, tableActions, sourceEvent: event => sourceListener(event)};
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -177,11 +177,14 @@ test('cursor selects a local correction without queries or source demand changes
   const samples = [{ref, metric: 'water_level', observed_at: '2026-10-22T03:00:00Z', revision: 1, value: 20}, {ref, metric: 'water_level', observed_at: '2026-10-22T03:00:00Z', revision: 2, value: null}, {ref, metric: 'water_level', observed_at: '2026-10-22T10:00:00Z', revision: 1, value: 80}];
   for (const request of h.requests.slice(-2)) request.resolve(request.path.includes('/timeline?') ? {ref, items: samples} : {object: row});
   await flush(); const reads = h.requests.length, demands = h.sourceCalls.length;
+  const flatten = node => [node, ...(node.children || []).flatMap(flatten)];
+  const coverage = flatten(h.host).find(node => node.className === 'analysis-source-coverage').children[1], coverageRenders = coverage.replacements;
   h.timelineActions.dispatch({type: 'SET_CURSOR', at: '2026-10-22T04:00:00Z'});
   assert.equal(h.cardRenders.at(-1).sample.value, null);
   h.timelineActions.dispatch({type: 'SET_CURSOR', at: '2026-10-22T10:30:00Z'});
   assert.equal(h.cardRenders.at(-1).sample.value, 80);
   assert.equal(h.requests.length, reads); assert.equal(h.sourceCalls.length, demands);
+  assert.equal(coverage.replacements, coverageRenders, 'Cursor movement must not rebuild unrelated source coverage');
 });
 
 function mapHarness() {

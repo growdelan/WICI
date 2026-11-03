@@ -81,7 +81,7 @@ test('alarm lanes expose gaps, coverage and exact episode navigation at the segm
 test('historical regional map changes to a dashed unknown interval without borrowing current live alarm', () => {
   const added = [], U = ui(); U.measurement = () => null;
   const layer = (kind, geometry) => ({kind, geometry, addTo(group) {this.group = group; added.push(this); return this;}, bindTooltip() {return this;}, bindPopup() {return this;}, on() {return this;}, setStyle(value) {this.style = value;}, setTooltipContent() {}});
-  const L = {layerGroup: () => layer('group'), geoJSON: geometry => layer('area', geometry)};
+  const L = {layerGroup: () => layer('group'), geoJSON: (geometry, options) => Object.assign(layer('area', geometry), {style: options.style})};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceAlerts: Alerts, L}; vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-map.js', 'utf8'), {window, L, Date, Number, Set, Map});
   const map = window.WiciWorkspaceMap({map: {removeLayer() {}}, geometries: new Map(), select() {}}); map.setActive(true);
   const geometry = {type: 'Polygon', coordinates: [[[23,49],[24,49],[24,50],[23,49]]]}, replay = {series: [{...series, geometry}]};
@@ -106,7 +106,7 @@ function controller() {
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/workspace-controller.js', 'utf8'), {window, document, URLSearchParams, Date, Intl, structuredClone, AbortController,
     localStorage: {getItem() {return null;}, setItem() {}}, setTimeout: () => 1, clearTimeout() {}, setInterval: () => 1, clearInterval() {}});
   window.WiciWorkspace.init({map: {invalidateSize() {}}, health: {now: range.to}, geometries: new Map(), api: (path, body, options) => new Promise((resolve, reject) => requests.push({path, body, options, resolve, reject}))});
-  const query = {items: [], total: 0, next_cursor: null, map: {items: []}, coverage: {sources: []}, data_revision: 'one', as_of: range.to};
+  const query = {items: [], total: 0, next_cursor: null, map: {points: [], areas: [], aggregates: []}, coverage: {sources: []}, data_revision: 'one', as_of: range.to};
   return {ui: window.WiciWorkspace, host, requests, sourceCalls, clip, renderedAlerts, query, viewActions, timelineActions, tableActions, cardActions};
 }
 

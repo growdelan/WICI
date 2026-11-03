@@ -40,7 +40,10 @@ window.WiciRegion = (() => {
     current=next;if(control)control.value=current;
     try{localStorage.setItem(storageKey,current);}catch{/* Storage may be blocked. */}
     outline?.remove();outline=null;
-    if(current)outline=L.geoJSON(feature(),{pane:'regionBoundary',interactive:false,style:{color:'#db8524',weight:3,fill:false,interactive:false}}).addTo(map);
+    if(current){
+      outline=L.geoJSON(feature(),{pane:'regionBoundary',interactive:false,style:{color:'#db8524',weight:3,fill:false,interactive:false}});
+      if(!analysisOutsidePoland)outline.addTo(map);
+    }
     const target=L.geoJSON(current?feature():country).getBounds();
     if(fit&&target.isValid())map.fitBounds(target,{padding:[35,55],maxZoom:current?9:6,animate:false});
     clip();const note=document.getElementById('region-note');
