@@ -59,13 +59,14 @@ def test_clips_tile_buffers_and_converts_mercator_y_in_correct_direction():
         decode_buildings(b'broken tile', X, Y)
 
 
-def test_geometry_budget_limits_dense_tiles_and_skips_complex_rings():
+def test_geometry_budget_limits_dense_tiles_and_simplifies_complex_rings():
     points = [(2000+100*math.cos(i*math.pi/150), 2000+100*math.sin(i*math.pi/150)) for i in range(300)]
     items, truncated, _ = decode_buildings(encode([feature() for _ in range(MAX_BUILDINGS+1)]), X, Y)
     assert len(items) == MAX_BUILDINGS and truncated
     assert len({item['id'] for item in items}) == MAX_BUILDINGS
     items, _, skipped = decode_buildings(encode([feature(Polygon(points))]), X, Y)
-    assert not items and skipped == 1
+    assert len(items) == 1 and skipped == 0
+    assert len(items[0]['rings'][0]) < 257
 
 
 @pytest.mark.asyncio

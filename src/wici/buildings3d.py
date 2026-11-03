@@ -7,8 +7,8 @@ from shapely import GEOSException
 from shapely.geometry import box, shape
 
 LEVEL = 14
-MAX_BUILDINGS = 600
-MAX_VERTICES = 30_000
+MAX_BUILDINGS = 3000
+MAX_VERTICES = 120_000
 
 
 def tile_bounds(x, y):
@@ -75,9 +75,11 @@ def decode_buildings(body, x, y):
         for part, polygon in enumerate(polygons):
             if polygon.geom_type != 'Polygon' or polygon.area < 1:
                 continue
+            if len(polygon.exterior.coords) > 257 or any(len(h.coords) > 257 for h in polygon.interiors):
+                polygon = polygon.simplify(1, preserve_topology=True)
             rings = [list(polygon.exterior.coords), *[list(h.coords) for h in polygon.interiors]]
             count = sum(len(r) for r in rings)
-            if any(len(r) > 257 for r in rings) or len(rings) > 17:
+            if any(len(r) > 1025 for r in rings) or len(rings) > 65:
                 skipped += 1
                 continue
             if len(result) >= MAX_BUILDINGS or vertices+count > MAX_VERTICES:

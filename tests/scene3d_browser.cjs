@@ -41,12 +41,87 @@ async function buildingsVisible(page){
     const status=document.querySelector(document.querySelector('#aircraft3d-dialog').open?'#aircraft3d-environment-status':'#atlas3d-status').textContent;
     if(status.includes('ładowanie'))return false;
     const batches=Array.from({length:v.scene.primitives.length},(_,i)=>v.scene.primitives.get(i)).filter(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready);
-    return batches.length&&{batches:batches.length,instances:batches[0]._instanceIds.length,entities:v.entities.values.length};
+    return batches.length&&{batches:batches.length,instances:batches[0]._instanceIds.length,entities:v.entities.values.length,status};
   });
   const metrics=await handle.jsonValue();await handle.dispose();
   assert.equal(metrics.batches,1,'Buildings must use one GPU batch');
-  assert.equal(metrics.instances,500);
+  assert.ok(metrics.instances>0&&metrics.instances<=3000,`Visible building budget: ${metrics.instances}`);
+  return metrics;
 }
+
+test('Buildings cover viewport corners, follow zoom within the same tile and reuse cached tiles',{timeout:60000},async()=>{
+  const env=await environment();const {page}=env;
+  try{
+    const calls=await source(page);
+    await page.evaluate(()=>state.map.setView([50.82,16.28],16,{animate:false}));
+    await page.locator('#atlas3d-toggle').click();await buildingsVisible(page);
+    const inspect=()=>{
+      const C=Cesium,v=window.__vehicleViewers.at(-1),point=window.WiciScene3D.groundTarget(v),p=C.Cartographic.fromCartesian(point);
+      const lon=C.Math.toDegrees(p.longitude),lat=C.Math.toDegrees(p.latitude),region=window.WiciBuildings3D.coverage(v,lon,lat);
+      const scheme=new C.WebMercatorTilingScheme(),tile=scheme.positionToTileXY(p,14),corners=[];
+      for(const x of [0,v.canvas.clientWidth])for(const y of [0,v.canvas.clientHeight]){
+        const ground=v.scene.globe.pick(v.camera.getPickRay(new C.Cartesian2(x,y)),v.scene);
+        const t=scheme.positionToTileXY(C.Cartographic.fromCartesian(ground),14);corners.push(`${t.x}/${t.y}`);
+      }
+      return{key:region.key,tile:`${tile.x}/${tile.y}`,tiles:region.tiles.map(t=>t.key),required:region.tiles.filter(t=>t.required).map(t=>t.key),corners,limited:region.limited};
+    };
+    const close=await page.evaluate(inspect);
+    // Keep exactly the same target; only the camera range changes.
+    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);window.__zoomGround=window.WiciScene3D.groundTarget(v);v.camera.lookAt(window.__zoomGround,new Cesium.HeadingPitchRange(0,-.8,1800));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
+    await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('ładowanie'));
+    await buildingsVisible(page);
+    const wide=await page.evaluate(inspect);
+    assert.equal(wide.tile,close.tile);assert.notEqual(wide.key,close.key);
+    assert.equal(wide.limited,false);assert.ok(wide.tiles.length<=25);
+    for(const corner of wide.corners)assert.ok(wide.required.includes(corner),`Missing corner tile ${corner}`);
+    assert.ok(new Set(wide.corners).size>=4,'Fixture must straddle tile boundaries, including diagonal neighbours');
+    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(window.__zoomGround,new Cesium.HeadingPitchRange(0,-.8,700));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
+    await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('ładowanie'));
+    await buildingsVisible(page);
+    const reads=calls.filter(url=>url.includes('/buildings/'));
+    assert.equal(reads.length,new Set(reads).size,'Zooming back must reuse downloaded source tiles');
+    const selected=await page.evaluate(()=>{
+      const outside=Array.from({length:3100},(_,i)=>({id:`outside-${i}`,rings:[[[20,50],[20.001,50],[20.001,50.001],[20,50.001],[20,50]]]}));
+      const inside={id:'visible-last',rings:[[[16.28,50.82],[16.281,50.82],[16.281,50.821],[16.28,50.821],[16.28,50.82]]]};
+      return window.WiciBuildings3D.select([{items:[...outside,inside]}],[16.27,50.81,16.29,50.83],16.28,50.82).selected.map(v=>v.item.id);
+    });
+    assert.deepEqual(selected,['visible-last'],'Offscreen records must not exhaust the visible building budget');
+    await page.locator('#atlas3d-toggle').click();await env.clean();
+  }finally{await env.stop();}
+});
+
+test('Buildings retain ready geometry through slow downloads and failure, then retry the same view without gaps',{timeout:90000},async()=>{
+  const env=await environment();const {page}=env;
+  let release;
+  try{
+    await source(page);
+    await page.evaluate(()=>state.map.setView([52.225,21.006],16,{animate:false}));
+    await page.locator('#atlas3d-toggle').click();await buildingsVisible(page);
+    await page.evaluate(()=>{
+      const v=window.__vehicleViewers.at(-1);
+      window.__oldBuildings=v.scene.primitives._primitives.find(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready);
+      window.__emptyBuildingFrames=0;
+      v.scene.postRender.addEventListener(()=>{if(!v.scene.primitives._primitives.some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready))window.__emptyBuildingFrames++;});
+    });
+    let fail=true;const reads=[];const gate=new Promise(resolve=>release=resolve);
+    await page.route('**/api/scene3d/buildings/**',async route=>{
+      reads.push(route.request().url());await gate;
+      return fail?route.fulfill({json:{status:'unavailable'}}):route.fallback();
+    });
+    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.12,52.225,110),new Cesium.HeadingPitchRange(0,-.8,700));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
+    await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('ładowanie'));
+    assert.equal(await page.evaluate(()=>window.__oldBuildings.isDestroyed()),false,'Keep the previous batch during download');
+    release();
+    await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('część widoku niedostępna'));
+    assert.equal(await page.evaluate(()=>window.__oldBuildings.isDestroyed()),false,'A failed tile must preserve the previous batch');
+    fail=false;
+    await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.match(/Budynki OSM: \d+ brył/) && window.__oldBuildings.isDestroyed(),null,{timeout:45000});
+    await buildingsVisible(page);
+    assert.ok(reads.length>new Set(reads).size,'Failed tiles must retry without a camera movement');
+    assert.equal(await page.evaluate(()=>window.__emptyBuildingFrames),0,'Preparing/replacing GPU geometry must never leave an empty frame');
+    await page.locator('#atlas3d-toggle').click();await env.clean();
+  }finally{release?.();await env.stop();}
+});
 
 test('Atlas 3D: lazy engine, terrain, batched trees, zoom/pan, idle budget and return to 2D',{timeout:90000},async()=>{
   const env=await environment();const {page}=env;
@@ -66,7 +141,7 @@ test('Atlas 3D: lazy engine, terrain, batched trees, zoom/pan, idle budget and r
     assert.equal(view.requestRenderMode,true);
     assert.equal(await page.locator('.map-panel > .map-legend').isVisible(),false);
     assert.equal(await page.locator('#atlas3d-scene .cesium-widget-credits').isVisible(),true);
-    assert.match(await page.locator('#atlas3d-status').textContent(),/Budynki OSM: 500 brył/);
+    assert.match(await page.locator('#atlas3d-status').textContent(),/Budynki OSM: \d+ brył/);
     const idle=calls.length;await page.waitForTimeout(1200);assert.equal(calls.length,idle,'Idle map must not poll terrain/trees');
     const png=require('pngjs').PNG.sync.read(await page.locator('#atlas3d-scene').screenshot());
     let buildingPixels=0;for(let i=0;i<png.data.length;i+=4)if(png.data[i]>png.data[i+1]+8&&png.data[i+1]>png.data[i+2]+8)buildingPixels++;
@@ -94,10 +169,10 @@ for(const kind of ['aircraft','bus'])test(`${kind}: 3D environment and camera gr
     await page.evaluate(()=>state.map.setView([52.225,21.006],13,{animate:false}));
     await env.open();
     await page.waitForFunction(treePrimitive);
-    await buildingsVisible(page);
+    const buildingMetrics=await buildingsVisible(page);
     await page.waitForFunction(()=>window.__vehicleViewers.at(-1).scene.globe.tilesLoaded);
     assert.match(await page.locator('#aircraft3d-environment-status').textContent(),/60 drzew/);
-    assert.match(await page.locator('#aircraft3d-environment-status').textContent(),/Budynki OSM: 500 brył/);
+    assert.match(buildingMetrics.status,/Budynki OSM: \d+ brył/);
     if(kind==='bus'){
       const altitude=await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1),e=v.entities.values.find(e=>e.model);return Cesium.Cartographic.fromCartesian(e.position.getValue(Cesium.JulianDate.now())).height;});
       assert.ok(Math.abs(altitude-110)<2,`Bus must stand on terrain: ${altitude}`);
@@ -155,12 +230,12 @@ test('Buildings source failure preserves terrain and trees; distant view release
     await page.evaluate(()=>state.map.setView([52.225,21.006],16,{animate:false}));
     await page.locator('#atlas3d-toggle').click();
     await page.waitForFunction(treePrimitive);
-    await page.waitForFunction(()=>window.__vehicleViewers.at(-1).scene.globe.tilesLoaded&&document.querySelector('#atlas3d-status').textContent.includes('Budynki OSM chwilowo niedostępne')&&document.querySelector('#atlas3d-status').textContent.includes('60 drzew'));
+    await page.waitForFunction(()=>window.__vehicleViewers.at(-1).scene.globe.tilesLoaded&&document.querySelector('#atlas3d-status').textContent.includes('część widoku niedostępna')&&document.querySelector('#atlas3d-status').textContent.includes('60 drzew'));
     assert.match(await page.locator('#atlas3d-status').textContent(),/60 drzew/);
     await source(page); // New fixture response for the next camera area.
-    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.04,52.225,110),new Cesium.HeadingPitchRange(0,-.8,700));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
+    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.12,52.225,110),new Cesium.HeadingPitchRange(0,-.8,700));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
     await buildingsVisible(page);
-    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.04,52.225,110),new Cesium.HeadingPitchRange(0,-.8,30000));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
+    await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.12,52.225,110),new Cesium.HeadingPitchRange(0,-.8,30000));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
     await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('Budynki: przybliż mapę'));
     assert.equal(await page.evaluate(()=>window.__vehicleViewers.at(-1).scene.primitives._primitives.some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed)),false);
     await page.locator('#atlas3d-toggle').click();await env.clean();
@@ -240,12 +315,12 @@ test('Terrain at 2000 m selects visible ground buildings and preserves the 2D re
       return{longitude:C.Math.toDegrees(carto.longitude),latitude:C.Math.toDegrees(carto.latitude),height:carto.height,
         distanceFromEllipsoid:new C.EllipsoidGeodesic(carto,other).surfaceDistance,
         helperError:C.Cartesian3.distance(window.WiciScene3D.groundTarget(v),ground),
-        buildingId:`building:synthetic-building-${tile.x}-${tile.y}-0`};
+        buildingPrefix:`building:synthetic-building-${tile.x}-${tile.y}-`};
     });
     assert.ok(Math.abs(target.height-2000)<2,JSON.stringify(target));
     assert.ok(target.distanceFromEllipsoid>1000,'The fixture must expose the kilometre-scale ellipsoid targeting error');
     assert.ok(target.helperError<.001,'Shared target must be the ray/terrain intersection');
-    await page.waitForFunction(id=>window.__vehicleViewers.at(-1).scene.primitives._primitives.some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready&&p._instanceIds[0]===id),target.buildingId);
+    await page.waitForFunction(id=>window.__vehicleViewers.at(-1).scene.primitives._primitives.some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready&&p._instanceIds.some(value=>value.startsWith(id))),target.buildingPrefix);
     const fallbackError=await page.evaluate(()=>{
       const C=Cesium,v=window.__vehicleViewers.at(-1),pick=v.scene.globe.pick;
       try{
