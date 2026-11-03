@@ -5,7 +5,7 @@ window.WiciAtlas3D = (() => {
   function target() {
     const C = window.Cesium;
     if (!viewer || viewer.isDestroyed()) return null;
-    const point = viewer.camera.pickEllipsoid(new C.Cartesian2(viewer.canvas.clientWidth/2,viewer.canvas.clientHeight/2),C.Ellipsoid.WGS84);
+    const point = window.WiciScene3D.groundTarget(viewer);
     return point ? C.Cartographic.fromCartesian(point) : viewer.camera.positionCartographic;
   }
   function update() {
@@ -74,6 +74,8 @@ window.WiciAtlas3D = (() => {
         viewer.camera.lookAtTransform(C.Matrix4.IDENTITY); update(); viewer.scene.requestRender();
       }).catch(()=>{});
       viewer.camera.moveEnd.addEventListener(update);
+      // The initial camera can settle before the terrain meshes are ready.
+      viewer.scene.globe.tileLoadProgressEvent.addEventListener(pending=>{if(current===run&&pending===0&&!document.hidden)update();});
       viewer.scene.renderError.addEventListener(()=>{if(current===run){$('atlas3d-status').textContent='Renderowanie przerwane. Wróć do 2D i otwórz widok ponownie.';context?.destroy();}});
       viewer.canvas.addEventListener('webglcontextlost',()=>{if(current===run)$('atlas3d-status').textContent='Utracono dostęp do grafiki. Wróć do 2D.';});
       $('map').parentElement.dataset.view3d = 'true';

@@ -33,11 +33,17 @@ const buildingPrimitive=()=>{
   return v&&Array.from({length:v.scene.primitives.length},(_,i)=>v.scene.primitives.get(i)).some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready);
 };
 async function buildingsVisible(page){
-  await page.waitForFunction(buildingPrimitive);
-  const metrics=await page.evaluate(()=>{
-    const v=window.__vehicleViewers.at(-1), batches=Array.from({length:v.scene.primitives.length},(_,i)=>v.scene.primitives.get(i)).filter(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready);
-    return{batches:batches.length,instances:batches[0]._instanceIds.length,entities:v.entities.values.length};
+  // Terrain arrival can change the camera's ground target and replace an old
+  // ready batch. Wait for the current terrain/environment, and sample atomically.
+  const handle=await page.waitForFunction(()=>{
+    const v=window.__vehicleViewers.at(-1);
+    if(!v||!v.scene.globe.tilesLoaded)return false;
+    const status=document.querySelector(document.querySelector('#aircraft3d-dialog').open?'#aircraft3d-environment-status':'#atlas3d-status').textContent;
+    if(status.includes('ładowanie'))return false;
+    const batches=Array.from({length:v.scene.primitives.length},(_,i)=>v.scene.primitives.get(i)).filter(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready);
+    return batches.length&&{batches:batches.length,instances:batches[0]._instanceIds.length,entities:v.entities.values.length};
   });
+  const metrics=await handle.jsonValue();await handle.dispose();
   assert.equal(metrics.batches,1,'Buildings must use one GPU batch');
   assert.equal(metrics.instances,500);
 }
@@ -149,7 +155,7 @@ test('Buildings source failure preserves terrain and trees; distant view release
     await page.evaluate(()=>state.map.setView([52.225,21.006],16,{animate:false}));
     await page.locator('#atlas3d-toggle').click();
     await page.waitForFunction(treePrimitive);
-    await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('Budynki OSM chwilowo niedostępne'));
+    await page.waitForFunction(()=>window.__vehicleViewers.at(-1).scene.globe.tilesLoaded&&document.querySelector('#atlas3d-status').textContent.includes('Budynki OSM chwilowo niedostępne')&&document.querySelector('#atlas3d-status').textContent.includes('60 drzew'));
     assert.match(await page.locator('#atlas3d-status').textContent(),/60 drzew/);
     await source(page); // New fixture response for the next camera area.
     await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.04,52.225,110),new Cesium.HeadingPitchRange(0,-.8,700));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
@@ -179,5 +185,79 @@ test('Podzamcze: delayed mountain terrain preserves camera range and detailed st
     assert.ok(terrainCalls.every(url=>url.startsWith('/api/scene3d/terrain/12/')));
     await page.screenshot({path:path.join(root,'tmp/podzamcze-regression.png'),fullPage:true});
     await page.locator('#atlas3d-toggle').click();await env.clean();
+  }finally{await env.stop();}
+});
+
+
+test('Atlas retains the same scene and camera while a hidden tab pauses rendering',{timeout:60000},async()=>{
+  const env=await environment();const {page}=env;
+  try{
+    const calls=await source(page);
+    await page.evaluate(()=>state.map.setView([52.225,21.006],15,{animate:false}));
+    await page.locator('#atlas3d-toggle').click();await buildingsVisible(page);
+    await page.waitForFunction(()=>window.__vehicleViewers.at(-1).scene.globe.tilesLoaded);
+    const before=await page.evaluate(()=>{
+      const v=window.__vehicleViewers.at(-1);
+      window.__retainedAtlasViewer=v;window.__atlasFrames=0;
+      v.scene.postRender.addEventListener(()=>window.__atlasFrames++);
+      return{count:window.__vehicleViewers.length,position:[v.camera.positionWC.x,v.camera.positionWC.y,v.camera.positionWC.z],direction:[v.camera.directionWC.x,v.camera.directionWC.y,v.camera.directionWC.z]};
+    });
+    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+    await page.waitForTimeout(150);
+    assert.equal(await page.locator('#atlas3d-toggle').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>window.__retainedAtlasViewer.isDestroyed()),false);
+    assert.equal(await page.evaluate(()=>window.__retainedAtlasViewer.useDefaultRenderLoop),false);
+    const frames=await page.evaluate(()=>window.__atlasFrames),reads=calls.length;
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(()=>window.__atlasFrames),frames);
+    assert.equal(calls.length,reads,'Hidden Atlas must not load environment tiles');
+    await page.evaluate(()=>{delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));});
+    await page.waitForFunction(()=>window.__retainedAtlasViewer.useDefaultRenderLoop&&window.__atlasFrames>0);
+    const resumed=await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);return{same:v===window.__retainedAtlasViewer,count:window.__vehicleViewers.length,position:[v.camera.positionWC.x,v.camera.positionWC.y,v.camera.positionWC.z],direction:[v.camera.directionWC.x,v.camera.directionWC.y,v.camera.directionWC.z]};});
+    assert.equal(resumed.same,true);assert.equal(resumed.count,before.count);
+    assert.ok(Math.hypot(...resumed.position.map((v,i)=>v-before.position[i]))<.01,'Hidden tab must retain the camera position');
+    assert.ok(Math.hypot(...resumed.direction.map((v,i)=>v-before.direction[i]))<1e-8,'Hidden tab must retain the camera direction');
+    await page.locator('.tab[data-view="sources"]').click();
+    assert.equal(await page.evaluate(()=>window.__retainedAtlasViewer.isDestroyed()),true,'Leaving Situation still releases the scene');
+    assert.equal(await page.locator('#atlas3d-toggle').getAttribute('aria-pressed'),'false');
+    await env.clean();
+  }finally{await env.stop();}
+});
+
+
+test('Terrain at 2000 m selects visible ground buildings and preserves the 2D return centre',{timeout:60000},async()=>{
+  const env=await environment();const {page}=env;
+  try{
+    await source(page,{terrainHeight:2000});
+    await page.evaluate(()=>state.map.setView([50.82,16.28],15,{animate:false}));
+    await page.locator('#atlas3d-toggle').click();
+    await page.waitForFunction(()=>{const v=window.__vehicleViewers.at(-1);return v?.camera.positionCartographic.height>2500&&v.scene.globe.tilesLoaded;});
+    const target=await page.evaluate(()=>{
+      const C=Cesium,v=window.__vehicleViewers.at(-1),pixel=new C.Cartesian2(v.canvas.clientWidth/2,v.canvas.clientHeight/2);
+      const ground=v.scene.globe.pick(v.camera.getPickRay(pixel),v.scene),ellipsoid=v.camera.pickEllipsoid(pixel);
+      const carto=C.Cartographic.fromCartesian(ground),other=C.Cartographic.fromCartesian(ellipsoid);
+      const tile=new C.WebMercatorTilingScheme().positionToTileXY(carto,14);
+      return{longitude:C.Math.toDegrees(carto.longitude),latitude:C.Math.toDegrees(carto.latitude),height:carto.height,
+        distanceFromEllipsoid:new C.EllipsoidGeodesic(carto,other).surfaceDistance,
+        helperError:C.Cartesian3.distance(window.WiciScene3D.groundTarget(v),ground),
+        buildingId:`building:synthetic-building-${tile.x}-${tile.y}-0`};
+    });
+    assert.ok(Math.abs(target.height-2000)<2,JSON.stringify(target));
+    assert.ok(target.distanceFromEllipsoid>1000,'The fixture must expose the kilometre-scale ellipsoid targeting error');
+    assert.ok(target.helperError<.001,'Shared target must be the ray/terrain intersection');
+    await page.waitForFunction(id=>window.__vehicleViewers.at(-1).scene.primitives._primitives.some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed&&p.ready&&p._instanceIds[0]===id),target.buildingId);
+    const fallbackError=await page.evaluate(()=>{
+      const C=Cesium,v=window.__vehicleViewers.at(-1),pick=v.scene.globe.pick;
+      try{
+        v.scene.globe.pick=()=>undefined;
+        const pixel=new C.Cartesian2(v.canvas.clientWidth/2,v.canvas.clientHeight/2);
+        return C.Cartesian3.distance(window.WiciScene3D.groundTarget(v),v.camera.pickEllipsoid(pixel));
+      }finally{v.scene.globe.pick=pick;}
+    });
+    assert.ok(fallbackError<.001,'Missing terrain must fall back to the ellipsoid');
+    await page.locator('#atlas3d-toggle').click();
+    const drift=await page.evaluate(target=>state.map.getCenter().distanceTo([target.latitude,target.longitude]),target);
+    assert.ok(drift<2,`Return to 2D must keep the visible ground centre, drift=${drift} m`);
+    await env.clean();
   }finally{await env.stop();}
 });

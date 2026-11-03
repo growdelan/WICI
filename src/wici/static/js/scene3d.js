@@ -33,6 +33,12 @@ window.WiciScene3D = (() => {
     return enginePromise;
   }
   const MAX_LEVEL = 14, SIZE = 65, MAX_TREES = 1800, MAX_BUILDINGS = 1000, MAX_BUILDING_VERTICES = 40000;
+  function groundTarget(viewer) {
+    const C=window.Cesium, center=new C.Cartesian2(viewer.canvas.clientWidth/2,viewer.canvas.clientHeight/2);
+    const ray=viewer.camera.getPickRay(center);
+    // Pick terrain rather than scene depth, which may contain a building roof.
+    return (ray&&viewer.scene.globe.pick(ray,viewer.scene))||viewer.camera.pickEllipsoid(center,C.Ellipsoid.WGS84);
+  }
   function environment(viewer, report = () => {}) {
     const C = window.Cesium, controller = new AbortController(), terrainCache = new Map();
     const scheme = new C.GeographicTilingScheme(), buildingScheme = new C.WebMercatorTilingScheme();
@@ -165,7 +171,7 @@ window.WiciScene3D = (() => {
       if (dead || document.hidden) return;
       // In aircraft POV the visible ground can be kilometres ahead of the
       // vehicle. Load the camera footprint, also when orbiting around a bus.
-      const point = viewer.camera.pickEllipsoid(new C.Cartesian2(viewer.canvas.clientWidth/2,viewer.canvas.clientHeight/2),C.Ellipsoid.WGS84);
+      const point = groundTarget(viewer);
       if (point) {const ground = C.Cartographic.fromCartesian(point); longitude=C.Math.toDegrees(ground.longitude); latitude=C.Math.toDegrees(ground.latitude);}
       if (height > 12000 || longitude < 14 || longitude > 24.5 || latitude < 49 || latitude > 55) {
         buildingRun++; buildingKey=''; clearBuildings();
@@ -226,5 +232,5 @@ window.WiciScene3D = (() => {
       return Number.isFinite(positions[0].height) ? positions[0].height : 0;
     }, destroy() {dead=true; treeRun++; buildingRun++; removeWake(); controller.abort(); clearTrees(); clearBuildings(); terrainCache.clear();}};
   }
-  return {loadEngine,environment};
+  return {loadEngine,environment,groundTarget};
 })();

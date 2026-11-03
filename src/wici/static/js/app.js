@@ -243,7 +243,8 @@ $('gddkia-enabled').addEventListener('change',()=>syncGddkia());
 function osmVisible(){return $('osm-enabled').checked&&state.health.mode==='live'&&(atlasVisible()||analysisVisible())&&Boolean(state.map)&&Boolean(window.L);}
 function osmStatus(message){$('osm-status').classList.toggle('notice',state.osmError);$('osm-status').textContent=message;}
 function syncOsm(){
- window.WiciAtlas3D?.sync({visible:atlasVisible()});
+ // Hiding a browser tab pauses 3D; only leaving Situation closes its scene.
+ window.WiciAtlas3D?.sync({visible:state.view==='situation'});
  $('osm-enabled').disabled=state.health.mode!=='live';
  const visible=osmVisible();
  state.administrativeLayer?.setStyle({fillOpacity:visible?0:1});
