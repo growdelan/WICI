@@ -87,6 +87,22 @@ def test_map_serializes_each_object_in_one_collection(workspace):
     assert result['map']['aggregates'] == []
 
 
+def test_station_without_coordinates_preserves_area_measurement_and_alarm_threshold(workspace):
+    ref = station(workspace, latitude=None, longitude=None)
+    sample(workspace, ref, value=500, at=(NOW-timedelta(minutes=10)).isoformat())
+    with workspace.repo.lock, workspace.db:
+        workspace.db.execute('UPDATE station_measurements SET thresholds_json=? WHERE object_ref=?',
+                            ('{"warning_level_cm":300,"alarm_level_cm":400}', ref))
+    result = workspace.query({'types': ['hydro_station']})
+    assert result['total'] == result['map']['located_total'] == 1
+    assert result['map']['points'] == []
+    area = result['map']['areas'][0]
+    assert area['ref'] == ref and area['latitude'] is None and area['longitude'] is None
+    assert area['areas'][0]['admin_code'] == '14'
+    assert area['measurement']['value'] == 500
+    assert area['measurement']['thresholds']['alarm_level_cm'] == 400
+
+
 def test_search_polish_identifiers_unlocated_and_no_fictitious_region(workspace):
     communication(workspace, areas=())
     assert workspace.query({'types': ['communication'], 'q': 'zolc'})['total'] == 1

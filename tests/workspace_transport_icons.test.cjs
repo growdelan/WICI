@@ -25,6 +25,74 @@ function item(type, metadata = {}, heading = 90) {
     position: {position_at: at, latitude: 52, longitude: 21, heading, speed_kmh: 100}};
 }
 const state = (patch = {}) => ({detailOpen: false, comparedRefs: [], query: {time: {mode: 'live'}}, ...patch});
+function province(h, code='14') {
+  const feature={type:'Feature',properties:{admin_code:code},geometry:{type:'Polygon',coordinates:[[[21,52],[22,52],[22,53],[21,52]]]}};
+  h.geometries.set(code,feature);return feature;
+}
+const shownColor = area => (area.style || area.options.style).color;
+
+test('stations represented by administrative areas retain measurements, thresholds and cursor freshness', () => {
+  const h=setup();province(h);
+  const reading={value:500,unit:'cm',metric:'water_level',observed_at:'2020-01-01T11:50:00Z',thresholds:{warning_level_cm:300,alarm_level_cm:400}}, station={ref:'hydro_station:imgw:1',type:'hydro_station',label:'Wodowskaz bez współrzędnych',areas:[{admin_code:'14'}],measurement:reading}, data={as_of:at,map:{areas:[station]}};
+  h.map.render(data,state());const area=h.added.find(entry=>entry.kind==='area');
+  assert.equal(shownColor(area),'#bc4145','A fresh alarm must remain red without inventing station coordinates');
+  const selected=state({detailOpen:true,selectedRef:station.ref,cursorAt:'2020-01-01T11:40:00Z',query:{time:{mode:'range',filter_range:{from:'2020-01-01T08:00:00Z',to:at}}}}), sample={...reading,value:350,observed_at:'2020-01-01T11:35:00Z'};
+  h.map.render(data,selected,sample);assert.equal(shownColor(area),'#b78a28','Use the selected sample and cursor, not the newer overview measurement');
+  h.map.render(data,selected,null);assert.equal(shownColor(area),'#7e8990','A missing sample at the cursor stays unknown');
+  h.map.render(data,{...selected,cursorAt:'2020-01-01T11:55:00Z'},reading);assert.equal(shownColor(area),'#bc4145');
+  h.map.render(data,selected,reading);assert.equal(shownColor(area),'#7e8990','A sample later than the cursor must not color the area');
+  h.map.render(data,{...selected,cursorAt:'2020-01-01T16:00:00Z',query:{time:{mode:'range',filter_range:{from:'2020-01-01T08:00:00Z',to:'2020-01-01T17:00:00Z'}}}},sample);assert.equal(shownColor(area),'#7e8990','An old cursor sample must expire');
+  h.map.render(data,state());assert.equal(shownColor(area),'#bc4145');
+  assert.equal(h.added.filter(entry=>entry.kind==='area').length,1);
+});
+
+test('a selected GIOS area uses its own cursor index even when sharing a province or shown through the graph', () => {
+  const h=setup();province(h);
+  const notice={ref:'communication:1',type:'communication',label:'Komunikat',areas:[{admin_code:'14'}]}, station={ref:'air_quality_station:gios:1',type:'air_quality_station',label:'GIOŚ bez współrzędnych',areas:notice.areas,official_index:{value:5,observed_at:'2020-01-01T11:50:00Z'},measurement:{value:999}},data={as_of:at,map:{areas:[notice,station]}};
+  const selected=state({detailOpen:true,selectedRef:station.ref,cursorAt:'2020-01-01T11:40:00Z',query:{time:{mode:'range',filter_range:{from:'2020-01-01T08:00:00Z',to:at}}}}), index={value:0,observed_at:'2020-01-01T11:35:00Z'};
+  h.map.render(data,selected,{value:999},index);const base=h.added.find(entry=>entry.kind==='area');
+  assert.equal(shownColor(base),'#459a77','The selected station controls its shared area and the index is independent of concentration');
+  h.map.render(data,selected,{value:0},null);assert.equal(shownColor(base),'#7e8990','Do not borrow the overview index when the cursor has no index');
+  h.map.render(data,selected,{value:0},index,null,null,{nodes:[station]});
+  const graph=h.added.find(entry=>entry.options?.style?.className==='analysis-graph-map-area');assert.ok(graph);assert.equal(shownColor(graph),'#459a77');
+  h.map.render(data,selected,{value:0},null,null,null,{nodes:[station]});assert.equal(shownColor(graph),'#7e8990');
+  h.map.render(data,state());assert.equal(shownColor(base),'#c38235','Closing selection restores the shared catalogue context');
+});
+
+test('cursor updates reuse grouped communication membership instead of scanning the unchanged input', () => {
+  const h=setup(), codes=Array.from({length:10},(_,i)=>String(i+10));for(const code of codes)province(h,code);
+  let memberships=0,identifiers=0;
+  const documents=Array.from({length:999},(_,i)=>({get ref(){identifiers++;return `communication:${i}`;},type:'communication',label:`Komunikat ${i}`,get areas(){memberships++;return codes.map(admin_code=>({admin_code}));}}));
+  const selected=state({detailOpen:true,selectedRef:'hydro_station:imgw:1',cursorAt:at,query:{time:{mode:'range',filter_range:range}}}),data={as_of:at,map:{areas:documents}};
+  h.map.render(data,selected);memberships=identifiers=0;const before={...h.mutations};
+  for(let i=1;i<=3;i++)h.map.render(data,{...selected,cursorAt:`2020-01-01T12:0${i}:00Z`});
+  assert.equal(memberships,0,'An unchanged set must not repeat spatial grouping for every cursor input');
+  assert.equal(identifiers,0,'Unchanged group membership and popup contents must not rescan document identifiers');
+  assert.deepEqual(h.mutations,before);assert.equal(h.added.filter(entry=>entry.kind==='area').length,10);
+  const refreshed={...data,map:{areas:documents.slice(1)}};h.map.render(refreshed,selected);
+  assert.ok(memberships>0);assert.equal(h.added.find(entry=>entry.kind==='area').popup.children.length,999,'A new response must refresh the popup membership');
+});
+
+test('group membership refreshes when graph overrides change without a new catalogue response', () => {
+  const h=setup();province(h,'14');province(h,'16');
+  const first={ref:'communication:1',type:'communication',label:'Pierwszy',areas:[{admin_code:'14'}]},second={...first,ref:'communication:2',label:'Drugi'},data={as_of:at,map:{areas:[first,second]}};
+  h.map.render(data,state());const base=h.added.find(entry=>entry.kind==='area');
+  const historic={...first,metadata_context:'selected_document_version',areas:[{admin_code:'16'}]};
+  h.map.render(data,state(),null,null,null,null,{nodes:[historic]});
+  assert.equal(base.popup.children.length,2);assert.equal(base.popup.children[1].textContent,'Drugi');
+  const graph=h.added.find(entry=>entry.options?.style?.className==='analysis-graph-map-area');assert.ok(graph,'An overridden reference must not remain in cached catalogue membership');
+  h.map.render(data,state());assert.equal(base.popup.children.length,3);assert.equal(graph.removed,true);
+});
+
+test('group membership refreshes on live/range transitions and after map deactivation', () => {
+  const h=setup();province(h);
+  const region={ref:'ua_region:neptun:oblast:1',type:'ua_region',label:'Region',areas:[{admin_code:'14'}]},data={as_of:at,map:{areas:[region]}};
+  h.map.render(data,state());const live=h.added.find(entry=>entry.kind==='area');
+  h.map.render(data,state({query:{time:{mode:'range',filter_range:range}}}));assert.equal(live.removed,true);
+  h.map.render(data,state());assert.equal(h.added.filter(entry=>entry.kind==='area').length,2);
+  h.map.setActive(false);province(h,'14');h.map.setActive(true);h.map.render(data,state());
+  assert.equal(h.added.filter(entry=>entry.kind==='area').length,3);assert.equal(h.added.filter(entry=>entry.kind==='area').at(-1).feature,h.geometries.get('14'));
+});
 
 test('unchanged and refreshed catalogue points retain their Leaflet nodes without DOM mutations', () => {
   const h=setup(), first=item('aircraft'), second={...item('ship'),ref:'ship:mmsi:261000002'}, data={as_of:at,map:{points:[first,second]}};

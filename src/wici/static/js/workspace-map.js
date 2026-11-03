@@ -3,7 +3,8 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
   const U = window.WiciWorkspaceUI, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts;
   const groups = new Map(), points = new Map(), areas = new Map(), aggregates = new Map(), alertLayers = new Map(), replayMarkers = new Map(), graphPoints = new Map(), graphAreas = new Map();
   const featureCache = new WeakMap();
-  let active = false, routeGroup = null, lastReplay = null, lastRouteKey = '';
+  const emptyAreas = [];
+  let active = false, routeGroup = null, lastReplay = null, lastRouteKey = '', areaGroups = null;
   const colors = {communication: '#c38235', hydro_station: '#16819c', air_quality_station: '#787e91', area: '#587a8a', aircraft: '#237a99', ship: '#93682f'};
   function group(name) {if (!groups.has(name)) groups.set(name, L.layerGroup().addTo(map)); return groups.get(name);}
   function prune(records, wanted) {for (const [key, entry] of records) if (!wanted.has(key)) {entry.group.removeLayer(entry.layer); records.delete(key);}}
@@ -11,7 +12,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     for (const layer of groups.values()) map?.removeLayer(layer);
     if (routeGroup) map?.removeLayer(routeGroup);
     groups.clear(); for (const records of [points, areas, aggregates, alertLayers, replayMarkers, graphPoints, graphAreas]) records.clear();
-    routeGroup = lastReplay = null; lastRouteKey = '';
+    routeGroup = lastReplay = areaGroups = null; lastRouteKey = '';
   }
   function areaFeatures(item) {
     if (item.geometry?.type && item.geometry.type !== 'Point') {
@@ -25,6 +26,24 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
   }
   function coordinates(item) {const lat = item.latitude ?? item.geometry?.coordinates?.[1], lon = item.longitude ?? item.geometry?.coordinates?.[0];
     return Number.isFinite(lat) && Number.isFinite(lon) ? [lat, lon] : null;}
+  function groupAreas(source, historical, overrides) {
+    const overrideKey = overrides.size ? JSON.stringify([...overrides].sort()) : '';
+    if (areaGroups?.source === source && areaGroups.historical === historical && areaGroups.overrideKey === overrideKey) return areaGroups;
+    const grouped = new Map(), refs = new Set();
+    // Map snapshots are immutable. Cursor/selection changes only affect styling;
+    // membership changes on a new snapshot, mode or graph override set.
+    for (const item of source) {
+      const ref = item.ref;
+      if (overrides.has(ref) || historical && ['ua_region', 'civil_alert'].includes(item.type)) continue;
+      areaFeatures(item).forEach((feature, index) => {
+        const key = String(['ua_region', 'civil_alert'].includes(item.type) ? item.region_ref || ref : feature.properties?.admin_code || feature.id || `${ref}:${index}`);
+        if (!grouped.has(key)) grouped.set(key, {feature, items: [], byRef: new Map()}); const value = grouped.get(key);
+        if (!value.byRef.has(ref)) {value.byRef.set(ref, item); if (item.type === 'ua_region') value.items.unshift(item); else value.items.push(item);}
+        refs.add(ref);
+      });
+    }
+    areaGroups = {source, historical, overrideKey, grouped, refs}; return areaGroups;
+  }
   function transportValue(item, point) {return {...item.metadata, ...point, track: point?.heading};}
   function transportIcon(item, point, referenceAt, selected, className) {
     const value = transportValue(item, point);
@@ -68,6 +87,11 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     }
     return item.type === 'custom_area' ? item.metadata?.color || item.color || '#217c83' : colors[item.type] || '#587a8a';
   }
+  function areaColor(item, chosen, selectedSample, selectedIndex, referenceAt, cursor) {
+    const sample = chosen && item.type?.endsWith('_station') && (cursor || selectedSample) ? selectedSample : U.measurement(item);
+    const shown = chosen && cursor ? {...item, official_index: selectedIndex} : item;
+    return color(shown, sample, referenceAt);
+  }
   function tooltip(entry, text) {
     if (entry.tooltip === text) return;
     entry.tooltip = text; entry.layer.setTooltipContent(U.el('span', text));
@@ -101,6 +125,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
   }
   function area(records, name, key, feature, items, presentation, text = null, click = null) {
     let entry = records.get(key);
+    const popupKey = text === null ? entry?.items === items ? entry.popupKey : JSON.stringify(items.map(item => [item.ref, item.label, item.type])) : null;
     // PRG features keep their identity. Source/custom geometry can be replaced
     // with an equal JSON value on refresh without replacing its Leaflet layer.
     const geometryKey = entry?.feature === feature ? entry.geometryKey : JSON.stringify(feature);
@@ -115,9 +140,9 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     } else {
       entry.feature = feature; style(entry, presentation);
       if (text !== null) tooltip(entry, text);
-      else if (entry.popupKey !== JSON.stringify(items.map(item => [item.ref, item.label, item.type]))) entry.layer.setPopupContent(popup(items));
+      else if (entry.popupKey !== popupKey) entry.layer.setPopupContent(popup(items));
     }
-    entry.items = items; entry.click = click; entry.popupKey = JSON.stringify(items.map(item => [item.ref, item.label, item.type]));
+    entry.items = items; entry.click = click; entry.popupKey = popupKey;
     return entry;
   }
   function render(data, state, selectedSample, selectedIndex, motion, alerts, graph) {
@@ -125,7 +150,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     const historical = state.query?.time?.mode === 'range', referenceAt = historical ? Date.parse(state.query.time.filter_range?.to) - 1 : Date.parse(data?.as_of || state.asOf);
     const cursorAt = state.cursorAt ? Date.parse(state.cursorAt) : referenceAt, selected = ref => state.detailOpen && state.selectedRef === ref;
     const graphNodes = graph?.nodes || [], overrides = new Set(graphNodes.filter(item => item.metadata_context === 'selected_document_version' || state.cursorAt && item.type?.endsWith('_station')).map(item => item.ref));
-    const wanted = new Set(), baseRefs = new Set(), grouped = new Map(), result = data?.map || {};
+    const wanted = new Set(), baseRefs = new Set(), result = data?.map || {};
     for (const item of result.points || []) {
       const coords = coordinates(item); if (overrides.has(item.ref) || !coords || M?.isMoving(item) && historical) continue;
       const chosen = selected(item.ref), sample = chosen && item.type.endsWith('_station') && (state.cursorAt || selectedSample) ? selectedSample : U.measurement(item);
@@ -133,18 +158,11 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
       wanted.add(item.ref); baseRefs.add(item.ref);
     }
     prune(points, wanted); wanted.clear();
-    for (const item of result.areas || []) {
-      if (overrides.has(item.ref) || historical && ['ua_region', 'civil_alert'].includes(item.type)) continue;
-      areaFeatures(item).forEach((feature, index) => {
-        const key = String(['ua_region', 'civil_alert'].includes(item.type) ? item.region_ref || item.ref : feature.properties?.admin_code || feature.id || `${item.ref}:${index}`);
-        if (!grouped.has(key)) grouped.set(key, {feature, items: []}); const items = grouped.get(key).items;
-        if (!items.some(existing => existing.ref === item.ref)) {if (item.type === 'ua_region') items.unshift(item); else items.push(item);}
-        baseRefs.add(item.ref);
-      });
-    }
-    for (const [key, value] of grouped) {
-      const chosen = value.items.some(item => selected(item.ref)), item = value.items[0];
-      area(areas, 'base', key, value.feature, value.items, {weight: chosen ? 4 : 1.5, fillOpacity: chosen ? .7 : .13, color: color(item, null, referenceAt)}); wanted.add(key);
+    const grouped = groupAreas(result.areas || emptyAreas, historical, overrides);
+    for (const [key, value] of grouped.grouped) {
+      const selectedItem = state.detailOpen ? value.byRef.get(state.selectedRef) : null, chosen = Boolean(selectedItem), item = selectedItem || value.items[0];
+      area(areas, 'base', key, value.feature, value.items, {weight: chosen ? 4 : 1.5, fillOpacity: chosen ? .7 : .13,
+        color: areaColor(item, chosen, selectedSample, selectedIndex, chosen && state.cursorAt ? cursorAt : referenceAt, state.cursorAt)}); wanted.add(key);
     }
     prune(areas, wanted); wanted.clear();
     for (const item of result.aggregates || []) {
@@ -181,13 +199,14 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     }
     prune(replayMarkers, wanted); wanted.clear(); const wantedGraphAreas = new Set();
     for (const item of graphNodes) {
-      if (baseRefs.has(item.ref) || replayMarkers.has(item.ref) || alarmRefs.has(item.ref)) continue;
+      if (baseRefs.has(item.ref) || grouped.refs.has(item.ref) || replayMarkers.has(item.ref) || alarmRefs.has(item.ref)) continue;
       const chosen = selected(item.ref), sample = chosen && item.type?.endsWith('_station') && (state.cursorAt || selectedSample) ? selectedSample : U.measurement(item), coords = coordinates(item);
       if (coords) {
         point(graphPoints, 'graph', item, coords, {referenceAt: state.cursorAt ? cursorAt : referenceAt, selected: chosen, sample, index: selectedIndex, cursor: state.cursorAt, className: 'analysis-graph-map-marker', note: 'węzeł grafu', graph: true}); wanted.add(item.ref);
       } else areaFeatures(item).forEach((feature, index) => {
         const key = `${item.ref}:${index}`;
-        area(graphAreas, 'graph', key, feature, [item], {className: 'analysis-graph-map-area', color: color(item, null, referenceAt), weight: chosen ? 4 : 2, fillOpacity: .12}, `${item.label} · węzeł grafu`); wantedGraphAreas.add(key);
+        area(graphAreas, 'graph', key, feature, [item], {className: 'analysis-graph-map-area',
+          color: areaColor(item, chosen, selectedSample, selectedIndex, state.cursorAt ? cursorAt : referenceAt, state.cursorAt), weight: chosen ? 4 : 2, fillOpacity: .12}, `${item.label} · węzeł grafu`); wantedGraphAreas.add(key);
       });
     }
     prune(graphPoints, wanted); prune(graphAreas, wantedGraphAreas);

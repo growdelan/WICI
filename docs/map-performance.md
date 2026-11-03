@@ -40,7 +40,7 @@ node scripts/benchmark_map.cjs
 
 Benchmark przeglądarki wymaga dostępnego pakietu Playwright i jego Chromium, jak pozostałe scenariusze przeglądarkowe projektu. `NODE_PATH` może wskazywać katalog z pakietem. Opcjonalna zmienna `WICI_CHROMIUM_EXECUTABLE` wskazuje istniejący plik wykonywalny Chromium. Benchmark uruchamia własny serwer na wolnym porcie i usuwa jego bazę po zakończeniu.
 
-## Weryfikacja i ograniczenia
+## Weryfikacja pierwotnego wdrożenia i ograniczenia
 
 - Pełny Python: 1174 zaliczone, trzy dotychczasowe ostrzeżenia bibliotek.
 - Pełny Node: 379 zaliczonych.
@@ -51,3 +51,25 @@ Benchmark przeglądarki wymaga dostępnego pakietu Playwright i jego Chromium, j
 W zestawie ośmiu scenariuszy autobusów 3D sześć przeszło, a dwa zatrzymały się na asercjach ruchu kamery poniżej 0,1 m po zatrzymaniu lub odrzuceniu raportu (`buses3d_browser.cjs:87` i `:185`). Oba błędy odtworzono również na odizolowanym, niezmienionym `main` (`36e8cd4`) z tym samym Chromium. Nie zmieniano algorytmu kamery ani tolerancji tych testów.
 
 Próby nie oceniają szybkości usług LIVE, Safari ani Firefox.
+
+## Poprawki po niezależnym review
+
+Niezależny przegląd commitu `43ae457` wskazał dwa P2: utratę koloru pomiaru dla stacji reprezentowanych przez obszar oraz ponowne grupowanie niezmienionych komunikatów podczas przesuwania czasu.
+
+- Obszary stacji korzystają ponownie z pomiaru i jego progów. Zaznaczona stacja nadaje kolor współdzielonemu obszarowi; przy kursorze używane są wybrany pomiar, niezależny oficjalny indeks GIOŚ i czas kursora. Brak, stary lub przyszły odczyt pozostaje szary. Zasada działa również dla stacji pokazanej przez graf. Świeży odczyt 500 cm przy progu alarmowym 400 cm jest ponownie czerwony.
+- Grupy obszarów są obliczane raz dla niezmienionej tablicy `map.areas`, trybu live/przedział i zestawu referencji zastępowanych przez graf. Nowy snapshot, zmiana trybu lub nadpisań unieważnia cache, a dezaktywacja mapy zwalnia go. Grupowanie nowego zestawu deduplikuje identyfikatory przez `Map`, zamiast kwadratowego `items.some`. Kolejne ruchy kursora nie odczytują ponownie przynależności i identyfikatorów komunikatów ani nie przeliczają podpisów niezmienionych list w dymkach.
+
+Próba rzeczywistego interfejsu obejmuje dokładnie 1000 obiektów: 999 komunikatów z dziesięcioma wspólnymi, rzeczywistymi powiatami PRG oraz wybrany wodowskaz demo. W przedziale ostatnich 24 h wykonano 40 kolejnych zdarzeń `input` kursora. Mierzona była sama funkcja renderowania mapy; wcześniejsze planowane odświeżenie źródła zakończyło się przed pomiarem.
+
+| Render mapy podczas ruchu kursora | Przed poprawką review | Po |
+|---|---:|---:|
+| Mediana | 13,2 ms | 0,1 ms |
+| p95 | 22,9 ms | 0,2–0,3 ms |
+
+Po poprawce kolejne rendery nie odczytują przynależności ani identyfikatorów komunikatów. Test sprawdza tę własność bez progu czasowego zależnego od maszyny. Osobny scenariusz prawdziwego Leaflet sprawdza kolory alarmu, historycznego pomiaru i indeksu GIOŚ.
+
+```sh
+node --test --test-name-pattern='coordinate-free|real cursor inputs' tests/workspace_browser.cjs
+```
+
+Nowe regresje odtworzyły oba zgłoszenia przed poprawką i przeszły po niej. Pełny Node: 384 zaliczone; celowane testy API katalogu, transportu i Ukrainy: 92 zaliczone; końcowa regresja Analizy: 51/51 scenariuszy Chromium. Ruff, składnia zmienionego JS i kontrola diffu są poprawne. Ponowny niezależny przegląd zwrócił `No findings.`; reviewer osobno potwierdził czerwony alarm i koszt kursora 0,1 ms / p95 0,2 ms w Chromium.
