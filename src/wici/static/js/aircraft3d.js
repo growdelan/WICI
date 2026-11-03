@@ -6,7 +6,7 @@ window.WiciVehicle3D = (() => {
   const profiles = {
     aircraft: {maxAgeMs:30000,key:'hex',noun:'samolotu',model:'aircraft',height:100,
       distance:{min:300,max:12000,step:100,value:1800},groundRadius:250,
-      followBack:.57,followUp:.82,eyeAhead:7,eyeHeight:3,pitch:-12,modelHeadingOffset:-Math.PI/2,
+      followBack:.57,followUp:.82,eyeAhead:7,eyeHeight:3,pitch:-12,modelHeadingOffset:0,
       label:item=>item?.id || item?.registration || item?.hex || 'Samolot'},
     buses: {maxAgeMs:60000,key:'id',noun:'autobusu',model:'bus',height:0,
       distance:{min:15,max:500,step:5,value:70},groundRadius:6,
@@ -188,7 +188,8 @@ window.WiciVehicle3D = (() => {
     const position = C.Cartesian3.fromDegrees(sample.longitude, sample.latitude, height, C.Ellipsoid.WGS84, scratch.position);
     const heading = C.Math.toRadians(sample.track ?? 0);
     entity.position = position;
-    // Include the model's axes after Cesium's glTF axis correction.
+    // Both authored models face +X; Cesium's glTF axis correction already
+    // aligns that axis with north at heading 0. No extra quarter-turn is needed.
     entity.orientation = C.Transforms.headingPitchRollQuaternion(position, new C.HeadingPitchRoll(heading + profile.modelHeadingOffset, 0, 0));
     ground.position = C.Cartesian3.fromDegrees(sample.longitude, sample.latitude, surface);
     ground.ellipse.height = surface + .1;
