@@ -10,6 +10,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Własne obszary, reguły i zdarzenia (v0.35.0):** narysuj wielokąt, prostokąt lub koło, wybierz jeden z czterech szablonów i sprawdź historyczny podgląd. Skrzynka zachowuje podstawę wykrycia i osobną historię obsługi, z możliwością zapisania w teczce. Monitoring w tle wymaga jawnego wyboru i działającego serwera. [Obsługa i zasady wyzwalania](docs/analysis-monitoring.md).
 
+**Teren i zabudowa 3D (v0.36.0):** oglądaj mapę ogólną oraz śledź samoloty i autobusy na podkładzie OpenStreetMap z terenem NMT / LiDAR GUGiK i uproszczonymi budynkami OSM. W Warszawie dostępne są też drzewa z miejskiej bazy. Kafle podążają za kadrem i zoomem, a poprzednie budynki pozostają widoczne podczas doładowywania. [Obsługa, źródła i ograniczenia widoku 3D](docs/scene3d.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
