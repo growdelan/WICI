@@ -172,3 +172,16 @@ RGB pobierane live w warstwie Sentinel-2: `Contains modified Copernicus Sentinel
 ## Sentinel-5P L2 / Copernicus Data Space Ecosystem
 
 Obrazy NO₂, SO₂ i UVAI pobierane live: `Contains modified Copernicus Sentinel data [rok obserwacji]`, processed with Sentinel Hub / CDSE. Modyfikacje WICI: wybór obserwacji i pasma, progi jakości, maski braków, reprojekcja nearest-neighbour, kolory i przezroczystość. Obowiązują [warunki CDSE](https://dataspace.copernicus.eu/terms-and-conditions) oraz [atrybucja Sentinel](https://documentation.dataspace.copernicus.eu/FAQ.html); nie deklarujemy odrębnej licencji CC. Demo i jego zrzuty są syntetyczne, nie pochodzą z Copernicus. NumPy/rasterio są używane na zasadach opisanych powyżej. [Kontrakt, profil SO₂, jakość i ograniczenia interpretacji](docs/sentinel5p.md).
+
+## Otoczenie 3D — NMT i miejska Baza Zieleni
+
+NMT: GUGiK, usługa WCS Numerycznego Modelu Terenu, `DTM_PL-KRON86-NH_TIFF`.
+Źródło i zasady dostępu: https://www.geoportal.gov.pl/pl/usluga/uslugi-pobierania-wcs/ .
+Dane są pobierane na żądanie, nie są dołączone do dystrybucji.
+
+Drzewa: Urząd m.st. Warszawy, Baza Zieleni (`BOS_ZIELEN_DRZEWA`).
+Warunki: https://mapa.um.warszawa.pl/strony/Warunki-ponownego-wykorzystania-informacji-publicznej .
+Źródłowa aktualność i czas pobrania są podawane w widoku. Modyfikacja: schematyczne bryły 3D,
+szacowane brakujące wymiary, ograniczenie liczby widocznych drzew. Punkt 3e warunków
+przewiduje powiadomienie urzędu o przetworzeniu — krok operatora opisany w docs/scene3d.md.
+Dane nie są objęte licencją MIT kodu WICI; nie są dołączone do dystrybucji.

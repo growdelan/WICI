@@ -7,6 +7,8 @@
 <script defer src="/static/js/aircraft-motion.js"></script>
 <script defer src="/static/js/aircraft-camera-motion.js"></script>
 <script defer src="/static/js/bus-motion.js"></script>
+<script defer src="/static/js/scene3d.js"></script>
+<script defer src="/static/js/atlas3d.js"></script>
 <script defer src="/static/js/aircraft3d.js"></script>
 <script src="/static/js/theme.js"></script>
 <link rel="stylesheet" href="/static/css/aircraft3d.css">
@@ -56,6 +58,9 @@
   </aside>
   <section class="map-panel" aria-label="Mapa obszarów publikacji">
     <div id="map" tabindex="0" aria-label="Interaktywna mapa sytuacji"></div>
+    <div id="atlas3d-scene" aria-label="Mapa 3D terenu i drzew" hidden></div>
+    <button id="atlas3d-toggle" type="button" aria-pressed="false" aria-controls="atlas3d-scene">Widok 3D</button>
+    <aside id="atlas3d-info" hidden><p>Przybliż kółkiem lub gestem. Obrót: Ctrl + przeciągnięcie / dwa palce. Teren i drzewa; pozostałe warstwy dostępne w 2D.</p><p id="atlas3d-imagery"></p><p id="atlas3d-status" role="status" aria-live="polite"></p></aside>
     <div class="map-heading"><strong id="map-title">Mapa sytuacji</strong><span id="map-subtitle">Komunikaty i warstwy danych</span></div>
 <details id="layer-panel" class="layer-panel"><summary><strong>Warstwy</strong><span id="layer-selection" aria-live="polite">· 0 aktywnych</span></summary><div class="layer-panel-body">
 <p class="layer-count-note muted">Liczone są dostępne, włączone warstwy danych. Podkład i opcje pomocnicze poza licznikiem. Rozwinięcie grupy otwiera ustawienia.</p>
@@ -400,8 +405,9 @@
   <div class="aircraft3d-footer">
     <p id="aircraft3d-status" role="status" aria-live="polite"></p>
     <p id="aircraft3d-map-status"></p>
+    <p id="aircraft3d-environment-status" role="status" aria-live="polite"></p>
     <details><summary>Źródło i dokładność widoku</summary>
-      <p id="aircraft3d-description">Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Powierzchnia uproszczona, bez rzeźby terenu i budynków.</p>
+      <p id="aircraft3d-description">Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Teren: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy, przy zbliżeniu. Brak danych oznacza powierzchnię zastępczą; brak modeli budynków.</p>
       <p>Pozycje: <a id="aircraft3d-source" href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a><span id="aircraft3d-source-note"> · użytek osobisty, niekomercyjny</span>. Granice: PRG / GUGiK. <span id="aircraft3d-model-note">Model samolotu: schematyczny, nie przedstawia konkretnego typu.</span> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> — po włączeniu podkładu. <a href="/notices" target="_blank" rel="noopener noreferrer">Licencje</a>.</p>
     </details>
   </div>

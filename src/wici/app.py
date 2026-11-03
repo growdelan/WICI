@@ -29,6 +29,7 @@ from wici.position_quality import PositionQuality
 from wici.radar import RadarService, RadarUnavailable
 from wici.repository import Repository
 from wici.runtime import InstanceLock, configure_logs
+from wici.scene3d import Scene3DService
 from wici.scheduler import Scheduler
 from wici.sentinel2 import SentinelError, SentinelService
 from wici.sentinel5p import Sentinel5PError, Sentinel5PService
@@ -79,6 +80,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 enabled=config.enabled('gddkia'), demo=demo)
             app.state.aircraft = AircraftService(network, repo.clock, config.timeout_seconds,
                 enabled=config.enabled('aircraft'), demo=demo)
+            app.state.scene3d = Scene3DService(network, demo=demo, enabled=config.enabled('scene3d'))
             app.state.ukraine = UkraineService(network, repo.clock, config.timeout_seconds,
                 enabled=config.enabled('ukraine'), demo=demo)
             quality = PositionQuality(repo, app.state.aircraft, enabled=config.position_quality.enabled,
@@ -158,6 +160,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 await app.state.sentinel5p.close()
             if hasattr(app.state, 'gfm_monitor'):
                 await app.state.gfm_monitor.close()
+            if hasattr(app.state, 'scene3d'):
+                await app.state.scene3d.close()
             if network and client is None:
                 await network.aclose()
             if station_history:
@@ -227,6 +231,20 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     @app.get('/api/sources')
     def sources():
         return {'items':app.state.scheduler.sources()}
+    @app.get('/api/scene3d/terrain/{level}/{x}/{y}')
+    async def scene3d_terrain(request: Request, level: int, x: int, y: int):
+        if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
+                or request.headers.get('origin', origin) != origin):
+            return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
+        return await app.state.scene3d.terrain(x, y, level)
+
+    @app.get('/api/scene3d/trees/{x}/{y}')
+    async def scene3d_trees(request: Request, x: int, y: int):
+        if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
+                or request.headers.get('origin', origin) != origin):
+            return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
+        return await app.state.scene3d.trees(x, y)
+
     @app.post('/api/sources/{source_id}/refresh')
     async def refresh(source_id:str):
         return {'scheduled':app.state.scheduler.refresh(source_id)}

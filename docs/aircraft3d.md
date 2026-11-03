@@ -6,7 +6,9 @@ Atlas zachowuje swoją instancję Leaflet, kadr, warstwy, filtry i szczegóły. 
 
 ## Podkład i zakres
 
-Silnik i wszystkie jego zasoby są lokalne, ładowane dopiero przy pierwszym otwarciu. Nie trzeba Node, npm, konta Cesium ion ani klucza Google. Podstawą jest globus WGS84 z lokalnymi granicami województw PRG, siatką współrzędnych i podpisami kilku dużych miast. Powierzchnia jest uproszczona: **brak rzeźby terenu i budynków**, w tym fotogrametrii. To pierwszy etap funkcji kamery, nie kopia fotorealistycznego krajobrazu God's Eye View.
+Silnik i wszystkie jego zasoby są lokalne, ładowane dopiero przy pierwszym otwarciu. Nie trzeba Node, npm, konta Cesium ion ani klucza Google. Podstawą jest globus WGS84 z lokalnymi granicami województw PRG, siatką współrzędnych i podpisami kilku dużych miast. Otoczenie doładowuje teren NMT / LiDAR GUGiK i drzewa miejskie Warszawy; brak danych jest jawnie oznaczony. Budynki i fotogrametria nie są odwzorowane.
+
+[Otoczenie 3D](scene3d.md) doładowuje NMT / LiDAR GUGiK i drzewa miejskie Warszawy oraz działa także na mapie ogólnej.
 
 Ten sam renderer obsługuje także [autobusy w 3D](buses3d.md). W danej chwili istnieje jeden aktywny viewer; otwarcie innego rodzaju pojazdu zwalnia poprzedni. Odczyty i synchronizacja autobusów nie zmieniają śledzenia samolotu ani odwrotnie. Profil samolotu zachowuje własną wysokość, zakres kamery, aktualność i ograniczoną predykcję.
 
@@ -24,7 +26,7 @@ Błąd odczytu, brak celu w najnowszej odpowiedzi lub brak świeżej pozycji/wys
 
 Błąd samego renderera (`scene.renderError`) lub utrata kontekstu GPU zatrzymuje pętlę do zamknięcia widoku. Nowe dane i synchronizacja widoczności nie wznawiają uszkodzonej sceny. WICI pokazuje jeden komunikat błędu i pozostawia powrót do Atlasu; wyłączono seryjne panele błędów wbudowanej pętli Cesium. Ponowne otwarcie tworzy nowy viewer i resetuje stan awarii. Listener błędu jest odpinany przy sprzątaniu.
 
-Wysokość barometryczna jest przybliżeniem, a nie wysokością geometryczną nad elipsoidą. Rysowanie stosuje minimalną wysokość 100 m nad uproszczoną powierzchnią, aby kamera nie weszła w globus. Kurs względem ziemi wyznacza kierunek widoku; rzeczywiste przechylenie, pochylenie kadłuba i orientacja kabiny są nieznane. Nie odtwarzamy startu/lądowania na rzeczywistym modelu terenu. Brakujące dane nie są zastępowane zerem.
+Wysokość barometryczna jest przybliżeniem, a nie wysokością geometryczną nad elipsoidą. Rysowanie stosuje minimum 100 m w scenie oraz co najmniej 20 m nad załadowanym terenem, aby model nie wszedł w powierzchnię. To korekta renderowania, nie korekta pomiaru w telemetrii. Kurs względem ziemi wyznacza kierunek widoku; rzeczywiste przechylenie, pochylenie kadłuba i orientacja kabiny są nieznane. Nie odtwarzamy startu/lądowania na rzeczywistym modelu terenu. Brakujące dane nie są zastępowane zerem.
 
 ## Zasoby i CSP
 
