@@ -118,3 +118,13 @@ async def test_buildings_demo_disabled_and_outside_poland_are_offline():
         for options in ({'demo': True}, {'enabled': False}):
             assert (await Scene3DService(client, **options).buildings(X, Y))['status'] == 'empty'
         assert (await Scene3DService(client).buildings(0, 0))['status'] == 'empty'
+
+
+def test_touching_buildings_in_one_height_group_are_not_discarded():
+    a = Polygon([(100, 100), (200, 100), (200, 200), (100, 200)])
+    b = Polygon([(200, 100), (300, 100), (300, 200), (200, 200)])
+    group = MultiPolygon([a, b])
+    assert not group.is_valid  # This is how real Podzamcze tiles group blocks.
+    items, truncated, skipped = decode_buildings(encode([feature(group, render_height=30)]), X, Y)
+    assert len(items) == 2 and skipped == 0 and not truncated
+    assert all(item['height'] == 30 for item in items)

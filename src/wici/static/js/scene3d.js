@@ -45,9 +45,9 @@ window.WiciScene3D = (() => {
       if (!response.ok) throw Error('Dane otoczenia niedostępne');
       return response.json();
     }
-    function heightmap(x, y, level) {
+    function sourceHeightmap(x, y, level) {
       const rectangle = scheme.tileXYToRectangle(x,y,level);
-      if (level < 10 || rectangle.east < C.Math.toRadians(14) || rectangle.west > C.Math.toRadians(24.5)
+      if (level < 12 || rectangle.east < C.Math.toRadians(14) || rectangle.west > C.Math.toRadians(24.5)
           || rectangle.north < C.Math.toRadians(49) || rectangle.south > C.Math.toRadians(55)) return Promise.resolve(flat());
       const key = `${level}/${x}/${y}`;
       if (terrainCache.has(key)) return terrainCache.get(key);
@@ -66,27 +66,42 @@ window.WiciScene3D = (() => {
       if (terrainCache.size > 96) terrainCache.delete(terrainCache.keys().next().value);
       return result;
     }
+    function heightmap(x,y,level) {
+      if(level<=12)return sourceHeightmap(x,y,level);
+      const key=`${level}/${x}/${y}`;
+      if(terrainCache.has(key))return terrainCache.get(key);
+      const scale=2**(level-12), source=sourceHeightmap(Math.floor(x/scale),Math.floor(y/scale),12);
+      if(!source)return undefined;
+      // One ~5 km NMT grid serves its finer display tiles and foundations.
+      // Do not fetch dozens of separate WCS rasters for offscreen buildings.
+      const result=Promise.resolve(source).then(values=>{
+        const output=new Float32Array(SIZE*SIZE), ox=(x%scale)*(SIZE-1)/scale, oy=(y%scale)*(SIZE-1)/scale;
+        for(let row=0;row<SIZE;row++)for(let col=0;col<SIZE;col++){
+          const px=ox+col/scale,py=oy+row/scale,x0=Math.floor(px),y0=Math.floor(py),x1=Math.min(SIZE-1,x0+1),y1=Math.min(SIZE-1,y0+1),fx=px-x0,fy=py-y0;
+          output[row*SIZE+col]=(values[y0*SIZE+x0]*(1-fx)+values[y0*SIZE+x1]*fx)*(1-fy)+(values[y1*SIZE+x0]*(1-fx)+values[y1*SIZE+x1]*fx)*fy;
+        }
+        return output;
+      });
+      terrainCache.set(key,result);if(terrainCache.size>96)terrainCache.delete(terrainCache.keys().next().value);
+      return result;
+    }
     const terrain = new C.CustomHeightmapTerrainProvider({width:SIZE,height:SIZE,tilingScheme:scheme,
       callback:heightmap, credit:new C.Credit('NMT / GUGiK · PL-KRON86-NH',true)});
-    // Stop subdivision at ~20 m grid spacing; extra sub-metre tiles would add
-    // network/mesh work without helping these approximate vehicle positions.
+    // Display meshes stop at level 14; their NMT source is shared at level 12.
     terrain.requestTileGeometry = (x,y,level) => {
       const result = heightmap(x,y,level);
       return result && Promise.resolve(result).then(buffer => new C.HeightmapTerrainData({buffer,width:SIZE,height:SIZE,childTileMask:level >= MAX_LEVEL ? 0 : 15}));
     };
     terrain.getTileDataAvailable = (x,y,level) => level <= MAX_LEVEL;
-    const geometricError = terrain.getLevelMaximumGeometricError.bind(terrain);
-    // Quadtree traversal selects an SSE level before loading its ancestors.
-    // Cap traversal as well as availability, otherwise a close camera can wait
-    // forever for level 16 while the level-14 parent has never been loaded.
-    terrain.getLevelMaximumGeometricError = level => level >= MAX_LEVEL ? 0 : geometricError(level);
+    // Keep the real, nonzero geometric error: imagery LOD uses it too.
+    // Returning zero here makes Cesium select the zoom-0 world raster.
     viewer.terrainProvider = terrain;
     // Native fetch/heightmap promises do not signal Cesium's Resource scheduler.
     // Keep refinement awake until meshes are ready, then let the Atlas sleep.
     const removeWake = viewer.scene.postRender.addEventListener(()=>{if(!dead&&!document.hidden&&!viewer.scene.globe.tilesLoaded)viewer.scene.requestRender();});
     viewer.scene.globe.maximumScreenSpaceError = 4;
     viewer.scene.globe.tileCacheSize = 64;
-    viewer.scene.globe.preloadAncestors = false;
+    viewer.scene.globe.preloadAncestors = true;
     viewer.scene.globe.preloadSiblings = false;
     const credit = new C.Credit('<a href="https://mapa.um.warszawa.pl/strony/Warunki-ponownego-wykorzystania-informacji-publicznej" target="_blank" rel="noopener noreferrer">Drzewa: Urząd m.st. Warszawy</a> · schematyczne bryły; brakujące wymiary szacowane',true);
     function clearTrees() { if (trees && !viewer.isDestroyed()) viewer.scene.primitives.remove(trees); trees = null; }

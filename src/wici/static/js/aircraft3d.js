@@ -235,7 +235,7 @@ window.WiciVehicle3D = (() => {
     const current = viewer;
     try {
       const provider = new window.Cesium.OpenStreetMapImageryProvider({
-        url: 'https://tile.openstreetmap.org/', maximumLevel: 17,
+        url: 'https://tile.openstreetmap.org/', maximumLevel: 19,
         credit: new window.Cesium.Credit('<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>', true)
       });
       provider.errorEvent.addEventListener(() => {

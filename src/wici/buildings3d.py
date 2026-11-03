@@ -54,18 +54,24 @@ def decode_buildings(body, x, y):
             continue
         try:
             geometry = shape(feature.get('geometry'))
-            if not geometry.is_valid or geometry.geom_type not in ('Polygon', 'MultiPolygon'):
+            if geometry.geom_type not in ('Polygon', 'MultiPolygon'):
                 skipped += 1
                 continue
-            # Tile buffers overlap; clip before rendering so adjacent fragments
-            # meet without duplicate roofs. GEOS also keeps courtyard topology.
-            geometry = geometry.intersection(clip)
+            # Tile generators group touching buildings with the same attributes.
+            # Such a MultiPolygon can be invalid as a whole even though every
+            # individual building is valid. Validate/clip the parts separately.
+            source_parts = list(geometry.geoms) if geometry.geom_type == 'MultiPolygon' else [geometry]
+            polygons = []
+            for component in source_parts:
+                if not component.is_valid:
+                    skipped += 1
+                    continue
+                clipped = component.intersection(clip)
+                if not clipped.is_empty:
+                    polygons.extend(clipped.geoms if clipped.geom_type == 'MultiPolygon' else [clipped])
         except (GEOSException, ValueError, TypeError, AttributeError):
             skipped += 1
             continue
-        if geometry.is_empty:
-            continue
-        polygons = list(geometry.geoms) if geometry.geom_type == 'MultiPolygon' else [geometry]
         for part, polygon in enumerate(polygons):
             if polygon.geom_type != 'Polygon' or polygon.area < 1:
                 continue

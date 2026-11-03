@@ -57,18 +57,19 @@ window.WiciAtlas3D = (() => {
       viewer.camera.lookAt(C.Cartesian3.fromDegrees(center.lng,center.lat),new C.HeadingPitchRange(0,C.Math.toRadians(-55),height));
       viewer.camera.lookAtTransform(C.Matrix4.IDENTITY);
       if (health()?.mode === 'live' && $('osm-enabled').checked) {
-        const provider = new C.OpenStreetMapImageryProvider({url:'https://tile.openstreetmap.org/',maximumLevel:17});
+        const provider = new C.OpenStreetMapImageryProvider({url:'https://tile.openstreetmap.org/',maximumLevel:19});
         provider.errorEvent.addEventListener(()=>{if(current===run)$('atlas3d-imagery').textContent='Kafelki OSM chwilowo niedostępne.';});
         viewer.imageryLayers.addImageryProvider(provider);
         $('atlas3d-imagery').textContent = 'OpenStreetMap';
       } else $('atlas3d-imagery').textContent = 'Podkład lokalny · OSM włączysz w Warstwach w trybie LIVE';
       context = window.WiciScene3D.environment(viewer,text=>{if(current===run)$('atlas3d-status').textContent=text;});
+      let userMoved=false;
+      for(const event of ['pointerdown','wheel','keydown'])viewer.canvas.addEventListener(event,()=>{userMoved=true;},{once:true});
       // Ground elevation can exceed a close camera's nominal range (e.g. in
       // mountains). Lift the initial frame once NMT arrives, unless the user
       // has already moved the camera in the meantime.
-      const initialHeight = viewer.camera.positionCartographic.height;
       context.height(center.lng,center.lat).then(elevation=>{
-        if(current!==run||!viewer||Math.abs(viewer.camera.positionCartographic.height-initialHeight)>1)return;
+        if(current!==run||!viewer||userMoved)return;
         viewer.camera.lookAt(C.Cartesian3.fromDegrees(center.lng,center.lat,elevation),new C.HeadingPitchRange(0,C.Math.toRadians(-55),height));
         viewer.camera.lookAtTransform(C.Matrix4.IDENTITY); update(); viewer.scene.requestRender();
       }).catch(()=>{});

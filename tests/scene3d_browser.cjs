@@ -2,12 +2,12 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');
 const {environment,aircraft,snapshot,bus,busSnapshot,root}=require('./helpers/vehicle3d_browser.cjs');
-async function source(page,{fail=false,failBuildings=false}={}) {
+async function source(page,{fail=false,failBuildings=false,terrainHeight=110,terrainDelay=0}={}) {
   const calls=[];
   await page.route('**/api/scene3d/**',async route=>{
     const url=new URL(route.request().url());calls.push(url.pathname);
     if(fail)return route.fulfill({json:{status:'unavailable',message:'Syntetyczna awaria'}});
-    if(url.pathname.includes('/terrain/'))return route.fulfill({json:{status:'ready',size:65,heights:Array(65*65).fill(110)}});
+    if(url.pathname.includes('/terrain/')){if(terrainDelay)await new Promise(resolve=>setTimeout(resolve,terrainDelay));return route.fulfill({json:{status:'ready',size:65,heights:Array(65*65).fill(terrainHeight)}});}
     const [x,y]=url.pathname.split('/').slice(-2).map(Number),step=180/2**14;
     if(url.pathname.includes('/buildings/')){
       if(failBuildings)return route.fulfill({json:{status:'unavailable'}});
@@ -157,6 +157,27 @@ test('Buildings source failure preserves terrain and trees; distant view release
     await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);v.camera.lookAt(Cesium.Cartesian3.fromDegrees(21.04,52.225,110),new Cesium.HeadingPitchRange(0,-.8,30000));v.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);});
     await page.waitForFunction(()=>document.querySelector('#atlas3d-status').textContent.includes('Budynki: przybliż mapę'));
     assert.equal(await page.evaluate(()=>window.__vehicleViewers.at(-1).scene.primitives._primitives.some(p=>p.appearance instanceof Cesium.PerInstanceColorAppearance&&p.appearance.closed)),false);
+    await page.locator('#atlas3d-toggle').click();await env.clean();
+  }finally{await env.stop();}
+});
+
+
+test('Podzamcze: delayed mountain terrain preserves camera range and detailed street imagery',{timeout:60000},async()=>{
+  const env=await environment({liveMapPolicy:true});const {page}=env;
+  try{
+    const calls=await source(page,{terrainHeight:400,terrainDelay:300});
+    await page.evaluate(()=>{document.querySelector('#osm-enabled').checked=true;state.map.setView([50.82,16.28],16,{animate:false});});
+    await page.locator('#atlas3d-toggle').click();
+    await buildingsVisible(page);
+    await page.waitForFunction(()=>{const v=window.__vehicleViewers.at(-1);return v.scene.globe._surface._tilesToRender.some(t=>t.data?.imagery?.some(i=>i.readyImagery?.level>=14));});
+    const view=await page.evaluate(()=>{const v=window.__vehicleViewers.at(-1);return{camera:v.camera.positionCartographic.height,ground:v.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(16.28,50.82)),error:v.terrainProvider.getLevelMaximumGeometricError(14)};});
+    assert.ok(view.error>0,'Zero geometric error makes imagery select zoom 0');
+    assert.ok(view.camera>650,`Terrain loading must preserve the initial viewing distance: ${JSON.stringify(view)}`);
+    assert.ok(Math.abs(view.ground-400)<2,JSON.stringify(view));
+    const terrainCalls=calls.filter(url=>url.includes('/terrain/'));
+    assert.ok(terrainCalls.length>0&&terrainCalls.length<=12,`Bounded shared NMT grids: ${terrainCalls.length}`);
+    assert.ok(terrainCalls.every(url=>url.startsWith('/api/scene3d/terrain/12/')));
+    await page.screenshot({path:path.join(root,'tmp/podzamcze-regression.png'),fullPage:true});
     await page.locator('#atlas3d-toggle').click();await env.clean();
   }finally{await env.stop();}
 });
