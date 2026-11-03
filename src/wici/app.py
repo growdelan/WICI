@@ -245,6 +245,13 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
         return await app.state.scene3d.trees(x, y)
 
+    @app.get('/api/scene3d/buildings/{x}/{y}')
+    async def scene3d_buildings(request: Request, x: int, y: int):
+        if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
+                or request.headers.get('origin', origin) != origin):
+            return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
+        return await app.state.scene3d.buildings(x, y)
+
     @app.post('/api/sources/{source_id}/refresh')
     async def refresh(source_id:str):
         return {'scheduled':app.state.scheduler.refresh(source_id)}

@@ -185,3 +185,18 @@ Warunki: https://mapa.um.warszawa.pl/strony/Warunki-ponownego-wykorzystania-info
 szacowane brakujące wymiary, ograniczenie liczby widocznych drzew. Punkt 3e warunków
 przewiduje powiadomienie urzędu o przetworzeniu — krok operatora opisany w docs/scene3d.md.
 Dane nie są objęte licencją MIT kodu WICI; nie są dołączone do dystrybucji.
+
+## Budynki 3D — OpenFreeMap, OpenMapTiles, OpenStreetMap
+
+Gotowe kafle wektorowe: [OpenFreeMap](https://openfreemap.org/), schemat
+[OpenMapTiles](https://openmaptiles.org/schema/#building), dane
+[OpenStreetMap contributors](https://www.openstreetmap.org/copyright) / ODbL 1.0.
+Widoczna atrybucja: OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors.
+Wysokości i obrysy są przekształcane w schematyczne bryły, bez tekstur;
+nie są częścią licencji MIT kodu WICI. Dane pobierane na żądanie pozostają w ograniczonym cache
+pamięciowym; repozytorium nie zawiera rzeczywistych kafli ani ich obrysów.
+Zasady publicznej usługi i brak SLA: https://openfreemap.org/ .
+
+Dekoder [mapbox-vector-tile](https://github.com/tilezen/mapbox-vector-tile): MIT;
+[Shapely](https://github.com/shapely/shapely): BSD-3-Clause. Biblioteki są instalowane przez `uv`,
+wraz z ich zależnościami i odrębnymi licencjami; nie są vendoryzowane w kodzie WICI.

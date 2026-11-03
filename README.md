@@ -94,13 +94,13 @@ Przeglądarka zapamiętuje wybory wszystkich checkboxów, także opcje pomocnicz
 
 Dostęp bez klucza nie oznacza dowolnego zastosowania komercyjnego: publiczne API Open-Meteo jest przeznaczone do użytku niekomercyjnego, a darmowy radar RainViewer do użytku osobistego i edukacyjnego. Warunki i atrybucje źródeł zebrano w [dokumentacji źródeł](docs/sources.md) i [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-### Mapa ogólna — teren i drzewa w 3D
+### Mapa ogólna — teren, budynki i drzewa w 3D
 
-Przybliż miejsce i wybierz **Widok 3D** w prawym dolnym rogu mapy. Możesz przesuwać, przybliżać i obracać widok bez wybierania pojazdu. Teren Polski pochodzi z NMT / LiDAR GUGiK, a drzewa z miejskiej Bazy Zieleni Warszawy. Brakujące wymiary drzew są jawnie szacowane. Te same dane otoczenia działają przy śledzeniu samolotów i autobusów. Bez nowych zależności, kluczy i usług; dane są pobierane kafelkami, z cache i limitami. **Wróć do 2D** przywraca dotychczasowe warstwy. [Obsługa, pokrycie, dokładność i warunki miasta](docs/scene3d.md).
+Przybliż miejsce i wybierz **Widok 3D** po prawej stronie mapy. Możesz przesuwać, przybliżać i obracać widok bez wybierania pojazdu. Teren Polski pochodzi z NMT / LiDAR GUGiK, bryły budynków z OSM przez OpenFreeMap, a drzewa z miejskiej Bazy Zieleni Warszawy. Wysokości budynków są przybliżone; dziedzińce i części budynków są zachowane. Brakujące wymiary drzew są jawnie szacowane. Te same dane otoczenia działają przy śledzeniu samolotów i autobusów. Bez kluczy i dodatkowych usług do uruchomienia; dane są pobierane kafelkami, z cache i limitami. **Wróć do 2D** przywraca dotychczasowe warstwy. [Obsługa, pokrycie, dokładność i warunki miasta](docs/scene3d.md).
 
 ### Samolot — śledzenie w 3D
 
-Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostępną wysokością i wybierz **Podążaj w 3D**. Kamera zewnętrzna i pierwsza osoba poruszają się wraz z samolotem; powrót lub Escape zachowuje kadr i warstwy Atlasu. Silnik Cesium jest lokalny i nie wymaga kluczy. Podstawowy globus zawiera lokalne granice Polski; OpenStreetMap można włączyć osobno. Widok doładowuje teren NMT / LiDAR GUGiK oraz miejskie drzewa Warszawy; brak danych oznacza jawną powierzchnię zastępczą. Animacja korzysta z opóźnionych raportów i ograniczonej predykcji, a utrata świeżych danych zatrzymuje ruch. [Obsługa, dokładność i weryfikacja](docs/aircraft3d.md).
+Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostępną wysokością i wybierz **Podążaj w 3D**. Kamera zewnętrzna i pierwsza osoba poruszają się wraz z samolotem; powrót lub Escape zachowuje kadr i warstwy Atlasu. Silnik Cesium jest lokalny i nie wymaga kluczy. Podstawowy globus zawiera lokalne granice Polski; OpenStreetMap można włączyć osobno. Widok doładowuje teren NMT / LiDAR GUGiK, bryły budynków OSM i miejskie drzewa Warszawy; brak danych oznacza jawną powierzchnię zastępczą. Animacja korzysta z opóźnionych raportów i ograniczonej predykcji, a utrata świeżych danych zatrzymuje ruch. [Obsługa, dokładność i weryfikacja](docs/aircraft3d.md).
 
 ### Samoloty i statki — zapis tras i odtwarzanie
 

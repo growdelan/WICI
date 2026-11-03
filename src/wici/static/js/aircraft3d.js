@@ -37,8 +37,8 @@ window.WiciVehicle3D = (() => {
     $('distance-value').textContent = `${distance.value} m`;
     $('behind').textContent = bus ? 'Za autobusem' : 'Za samolotem';
     $('description').textContent = bus
-      ? 'Wirtualny widok z pozycji autobusu, około 2,2 m nad powierzchnią NMT (po jej załadowaniu). Animacja opóźniona o 12 s, bez przewidywania dalszej jazdy. Między raportami pozycja jest interpolowana, bez dopasowania do dróg. Kierunek kamery pochodzi ze źródła lub jest szacowany z kolejnych pozycji i wtedy oznaczony. Brak pomiaru wysokości, rzeczywistej kabiny i budynków. Rzeźba terenu: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy. Brak danych terenu oznacza powierzchnię zastępczą.'
-      : 'Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Teren: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy, przy zbliżeniu. Brak danych terenu oznacza powierzchnię zastępczą; brak modeli budynków.';
+      ? 'Wirtualny widok z pozycji autobusu, około 2,2 m nad powierzchnią NMT (po jej załadowaniu). Animacja opóźniona o 12 s, bez przewidywania dalszej jazdy. Między raportami pozycja jest interpolowana, bez dopasowania do dróg. Kierunek kamery pochodzi ze źródła lub jest szacowany z kolejnych pozycji i wtedy oznaczony. Brak pomiaru wysokości i rzeczywistej kabiny. Rzeźba terenu: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy; budynki: uproszczone bryły OSM z przybliżonymi wysokościami. Brak danych terenu oznacza powierzchnię zastępczą.'
+      : 'Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Teren: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy, przy zbliżeniu. Budynki: uproszczone bryły OSM z przybliżonymi wysokościami. Brak danych terenu oznacza powierzchnię zastępczą.';
     $('source').textContent = bus ? scope.source?.source || 'Źródło pozycji autobusów' : 'adsb.fi';
     $('source').href = bus ? scope.source?.url || '/notices' : 'https://adsb.fi/';
     $('source-note').textContent = bus ? `${scope.source?.license || ''} · dane przetworzone przez WICI` : ' · użytek osobisty, niekomercyjny';
@@ -230,7 +230,7 @@ window.WiciVehicle3D = (() => {
   async function basemap() {
     if (!viewer) return;
     if (imagery) { viewer.imageryLayers.remove(imagery, true); imagery = null; }
-    $('map-status').textContent = 'Lokalne granice Polski · dane terenu i drzew ładowane osobno.';
+    $('map-status').textContent = 'Lokalne granice Polski · teren, budynki i drzewa ładowane osobno.';
     if (!$('osm').checked) return;
     const current = viewer;
     try {
@@ -242,7 +242,7 @@ window.WiciVehicle3D = (() => {
         if (viewer === current) $('map-status').textContent = 'Kafelki OSM niedostępne. Lokalne granice i śledzenie pozostają dostępne.';
       });
       imagery = viewer.imageryLayers.addImageryProvider(provider);
-      $('map-status').textContent = 'OpenStreetMap · teren i drzewa ładowane osobno.';
+      $('map-status').textContent = 'OpenStreetMap · teren, budynki i drzewa ładowane osobno.';
     } catch {
       $('map-status').textContent = 'Nie udało się włączyć OSM. Dostępne są lokalne granice Polski.';
     }

@@ -32,13 +32,13 @@ window.WiciScene3D = (() => {
     });
     return enginePromise;
   }
-  const MAX_LEVEL = 14, SIZE = 65, MAX_TREES = 1800;
+  const MAX_LEVEL = 14, SIZE = 65, MAX_TREES = 1800, MAX_BUILDINGS = 1000, MAX_BUILDING_VERTICES = 40000;
   function environment(viewer, report = () => {}) {
     const C = window.Cesium, controller = new AbortController(), terrainCache = new Map();
-    const scheme = new C.GeographicTilingScheme();
+    const scheme = new C.GeographicTilingScheme(), buildingScheme = new C.WebMercatorTilingScheme();
     let dead = false, pending = 0, treeKey = '', treeRun = 0, trees, terrainNote = 'NMT GUGiK: ładowanie przy zbliżeniu', treeNote = 'Drzewa miejskie: przybliż mapę';
-    let lastReport = '';
-    const notify = () => { const text = `${terrainNote} · ${treeNote}`; if (!dead && text !== lastReport) {lastReport = text; report(text);} };
+    let lastReport = '', buildingNote = 'Budynki OSM: przybliż mapę', buildingKey = '', buildingRun = 0, buildings;
+    const notify = () => { const text = `${terrainNote} · ${buildingNote} · ${treeNote}`; if (!dead && text !== lastReport) {lastReport = text; report(text);} };
     const flat = () => new Float32Array(SIZE * SIZE);
     async function read(url) {
       const response = await fetch(url, {signal:controller.signal});
@@ -144,12 +144,72 @@ window.WiciScene3D = (() => {
         clearTrees(); treeKey = ''; treeNote = 'Drzewa niedostępne; mapa i śledzenie działają'; notify();
       }
     }
+    function clearBuildings() { if (buildings && !viewer.isDestroyed()) viewer.scene.primitives.remove(buildings); buildings = null; }
+    const buildingCredit = new C.Credit('<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> · budynki: wysokości przybliżone',true);
+    async function updateBuildings(longitude,latitude,height) {
+      if (dead || document.hidden) return;
+      // In aircraft POV the visible ground can be kilometres ahead of the
+      // vehicle. Load the camera footprint, also when orbiting around a bus.
+      const point = viewer.camera.pickEllipsoid(new C.Cartesian2(viewer.canvas.clientWidth/2,viewer.canvas.clientHeight/2),C.Ellipsoid.WGS84);
+      if (point) {const ground = C.Cartographic.fromCartesian(point); longitude=C.Math.toDegrees(ground.longitude); latitude=C.Math.toDegrees(ground.latitude);}
+      if (height > 12000 || longitude < 14 || longitude > 24.5 || latitude < 49 || latitude > 55) {
+        buildingRun++; buildingKey=''; clearBuildings();
+        buildingNote=height>12000?'Budynki: przybliż mapę (poniżej 12 km)':'Budynki OSM: obszar Polski'; notify(); return;
+      }
+      const center=buildingScheme.positionToTileXY(C.Cartographic.fromDegrees(longitude,latitude),MAX_LEVEL);
+      const key=`${center.x}/${center.y}`;
+      if (key===buildingKey) return;
+      buildingKey=key;
+      const run=++buildingRun;
+      buildingNote='Budynki OSM: ładowanie…'; notify();
+      try {
+        const offsets=[[0,0],[-1,0],[1,0],[0,-1],[0,1]];
+        const data=await Promise.all(offsets.map(([dx,dy])=>read(`/api/scene3d/buildings/${center.x+dx}/${center.y+dy}`)));
+        if(dead||run!==buildingRun)return;
+        let vertices=0, limited=false;
+        const seen=new Set(), items=[];
+        for(const item of data.flatMap(tile=>tile.items||[])) {
+          if(seen.has(item.id)||!item.rings?.length)continue;
+          const count=item.rings.reduce((sum,ring)=>sum+ring.length,0);
+          if(items.length>=MAX_BUILDINGS||vertices+count>MAX_BUILDING_VERTICES){limited=true;continue;}
+          seen.add(item.id);items.push(item);vertices+=count;
+        }
+        if(!items.length){
+          clearBuildings();buildingNote=data.some(tile=>tile.status==='unavailable')?'Budynki OSM chwilowo niedostępne':data[0].message||'Brak budynków OSM w tym miejscu';notify();return;
+        }
+        const positions=items.map(item=>{
+          const outline=item.rings[0], xs=outline.map(p=>p[0]), ys=outline.map(p=>p[1]);
+          return C.Cartographic.fromDegrees((Math.min(...xs)+Math.max(...xs))/2,(Math.min(...ys)+Math.max(...ys))/2);
+        });
+        await C.sampleTerrain(terrain,MAX_LEVEL,positions);
+        if(dead||run!==buildingRun)return;
+        const instances=items.map((item,index)=>{
+          const base=Number.isFinite(positions[index].height)?positions[index].height:0;
+          const hierarchy=ring=>new C.PolygonHierarchy(C.Cartesian3.fromDegreesArray(ring.slice(0,-1).flat()));
+          const polygon=hierarchy(item.rings[0]);polygon.holes=item.rings.slice(1).map(hierarchy);
+          return new C.GeometryInstance({id:`building:${item.id}`,geometry:new C.PolygonGeometry({
+            polygonHierarchy:polygon,height:base+item.min_height,extrudedHeight:base+item.height,
+            closeBottom:false,vertexFormat:C.PerInstanceColorAppearance.VERTEX_FORMAT}),
+            attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#c7b8a1'))}});
+        });
+        clearBuildings();
+        buildings=viewer.scene.primitives.add(new C.Primitive({geometryInstances:instances,
+          appearance:new C.PerInstanceColorAppearance({flat:false,translucent:false,closed:true}),asynchronous:true,allowPicking:false}));
+        viewer.scene.frameState.creditDisplay.addStaticCredit(buildingCredit);viewer.scene.requestRender();
+        const failed=data.some(tile=>tile.status==='unavailable'), skipped=data.reduce((sum,tile)=>sum+(tile.skipped||0),0);
+        buildingNote=`Budynki OSM: ${items.length} brył · wysokości przybliżone${limited||data.some(tile=>tile.truncated)?' · limit widoczności':''}${failed?' · część kafli niedostępna':''}${skipped?' · pominięto złożone lub niepoprawne obrysy':''}`;
+        notify();
+      } catch {
+        if(dead||run!==buildingRun)return;
+        clearBuildings();buildingNote='Budynki OSM niedostępne; mapa i śledzenie działają';notify();
+      }
+    }
     notify();
-    return {update:updateTrees, async height(longitude,latitude) {
+    return {update(longitude,latitude,height=0) {updateTrees(longitude,latitude,height);updateBuildings(longitude,latitude,height);}, async height(longitude,latitude) {
       const positions = [C.Cartographic.fromDegrees(longitude,latitude)];
       await C.sampleTerrain(terrain,MAX_LEVEL,positions);
       return Number.isFinite(positions[0].height) ? positions[0].height : 0;
-    }, destroy() {dead=true; treeRun++; removeWake(); controller.abort(); clearTrees(); terrainCache.clear();}};
+    }, destroy() {dead=true; treeRun++; buildingRun++; removeWake(); controller.abort(); clearTrees(); clearBuildings(); terrainCache.clear();}};
   }
   return {loadEngine,environment};
 })();

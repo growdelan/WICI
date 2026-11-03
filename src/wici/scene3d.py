@@ -1,5 +1,6 @@
-"""Small on-demand terrain/tree tiles. No credentials, collectors or new services."""
+"""Small on-demand terrain, building and tree tiles. No credentials, collectors or new services."""
 import asyncio
+import json
 import math
 import re
 import time
@@ -11,6 +12,9 @@ import numpy as np
 from rasterio.errors import RasterioError
 from rasterio.io import MemoryFile
 
+from wici.buildings3d import decode_buildings, tile_bounds
+
+BUILDINGS_URL = 'https://tiles.openfreemap.org/planet'
 NMT_URL = 'https://mapy.geoportal.gov.pl/wss/service/PZGIK/NMT/GRID1/WCS/DigitalTerrainModelFormatTIFF'
 TREES_URL = 'https://mapa.um.warszawa.pl/mapviewer/dataserver/DANE_WAWA'
 SIZE = 65
@@ -144,7 +148,6 @@ class Scene3DService:
             return {**base, 'status': 'empty', 'message': 'Miejska baza drzew: pokrycie Warszawy.'}
 
         async def work():
-            import json
             body = await self.read(TREES_URL, {
                 't': 'BOS_ZIELEN_DRZEWA', 'bbox': ','.join(map(str, box)),
                 'bbox_srid': 4326, 'to_srid': 4326, 'include_style_info': 'false', 'include_label_box': 'false',
@@ -153,6 +156,38 @@ class Scene3DService:
             return {**base, 'status': 'ready', 'items': items, 'truncated': truncated,
                     'source_dates': dates, 'fetched_at': datetime.now(UTC).isoformat()}
         return await self.cached(('trees', x, y), work)
+
+    async def buildings(self, x, y):
+        box = tile_bounds(x, y)
+        base = {'items': [], 'source': 'OpenFreeMap / © OpenMapTiles / © OpenStreetMap contributors',
+                'license': 'ODbL 1.0'}
+        if self.demo or not self.enabled:
+            return {**base, 'status': 'empty', 'message': 'Budynki 3D wyłączone w demonstracji lub konfiguracji.'}
+        if not intersects(box, (14, 49, 24.5, 55)):
+            return {**base, 'status': 'empty', 'message': 'Budynki 3D: obszar Polski.'}
+
+        async def source():
+            data = json.loads(await self.read(BUILDINGS_URL, {}, 100_000))
+            templates = data.get('tiles')
+            if not isinstance(templates, list) or not templates or not isinstance(templates[0], str):
+                raise ValueError('Brak adresu kafelków budynków.')
+            template = templates[0]
+            if not re.fullmatch(r'https://tiles\.openfreemap\.org/planet/[A-Za-z0-9_]+/\{z\}/\{x\}/\{y\}\.pbf', template):
+                raise ValueError('Nieprawidłowy adres kafelków budynków.')
+            return {'status': 'ready', 'template': template}
+        # Resolve metadata before acquiring a tile's shared network semaphore.
+        # Nested cached jobs could otherwise occupy both slots waiting on it.
+        metadata = await self.cached(('building-source',), source)
+        if metadata['status'] != 'ready':
+            return {**base, **metadata}
+
+        async def work():
+            url = metadata['template'].format(z=14, x=x, y=y)
+            body = await self.read(url, {}, 4_000_000)
+            items, truncated, skipped = await asyncio.to_thread(decode_buildings, body, x, y)
+            return {**base, 'status': 'ready', 'items': items, 'truncated': truncated, 'skipped': skipped,
+                    'fetched_at': datetime.now(UTC).isoformat()}
+        return await self.cached(('buildings', x, y), work)
 
     async def close(self):
         jobs = list(self.jobs.values())

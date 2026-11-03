@@ -132,11 +132,12 @@ def test_api_validation_origin_policy_and_demo(tmp_path):
     with TestClient(create_app(demo=True, root=tmp_path, config=Config()),
                     base_url='http://127.0.0.1:8765') as client:
         x, y = tile()
-        for url in (f'/api/scene3d/terrain/14/{x}/{y}', f'/api/scene3d/trees/{x}/{y}'):
+        for url in (f'/api/scene3d/terrain/14/{x}/{y}', f'/api/scene3d/trees/{x}/{y}', '/api/scene3d/buildings/9148/5395'):
             assert client.get(url).json()['status'] == 'empty'
             assert client.get(url, headers={'Sec-Fetch-Site': 'cross-site'}).status_code == 403
             assert client.get(url, headers={'Origin': 'https://example.com'}).status_code == 403
         assert client.get(f'/api/scene3d/terrain/15/{x}/{y}').status_code == 422
         assert client.get('/api/scene3d/trees/-1/1').status_code == 422
+        assert client.get('/api/scene3d/buildings/16384/1').status_code == 422
         assert 'atlas3d-toggle' in client.get('/').text
         assert 'mapa.um.warszawa.pl' not in client.get('/').headers['content-security-policy']

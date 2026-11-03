@@ -6,7 +6,7 @@ Atlas zachowuje swoją instancję Leaflet, kadr, warstwy, filtry i szczegóły. 
 
 ## Podkład i zakres
 
-Silnik i wszystkie jego zasoby są lokalne, ładowane dopiero przy pierwszym otwarciu. Nie trzeba Node, npm, konta Cesium ion ani klucza Google. Podstawą jest globus WGS84 z lokalnymi granicami województw PRG, siatką współrzędnych i podpisami kilku dużych miast. Otoczenie doładowuje teren NMT / LiDAR GUGiK i drzewa miejskie Warszawy; brak danych jest jawnie oznaczony. Budynki i fotogrametria nie są odwzorowane.
+Silnik i wszystkie jego zasoby są lokalne, ładowane dopiero przy pierwszym otwarciu. Nie trzeba Node, npm, konta Cesium ion ani klucza Google. Podstawą jest globus WGS84 z lokalnymi granicami województw PRG, siatką współrzędnych i podpisami kilku dużych miast. Otoczenie doładowuje teren NMT / LiDAR GUGiK i drzewa miejskie Warszawy; brak danych jest jawnie oznaczony. Budynki OSM są rysowane jako uproszczone bryły z przybliżonymi wysokościami, bez fotogrametrii i tekstur.
 
 [Otoczenie 3D](scene3d.md) doładowuje NMT / LiDAR GUGiK i drzewa miejskie Warszawy oraz działa także na mapie ogólnej.
 
