@@ -10,6 +10,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Własne obszary, reguły i zdarzenia (v0.35.0):** narysuj wielokąt, prostokąt lub koło, wybierz jeden z czterech szablonów i sprawdź historyczny podgląd. Skrzynka zachowuje podstawę wykrycia i osobną historię obsługi, z możliwością zapisania w teczce. Monitoring w tle wymaga jawnego wyboru i działającego serwera. [Obsługa i zasady wyzwalania](docs/analysis-monitoring.md).
 
+**Teren i zabudowa 3D (v0.36.0):** oglądaj mapę ogólną oraz śledź samoloty i autobusy na podkładzie OpenStreetMap z terenem NMT / LiDAR GUGiK i uproszczonymi budynkami OSM. W Warszawie dostępne są też drzewa z miejskiej bazy. Kafle podążają za kadrem i zoomem, a poprzednie budynki pozostają widoczne podczas doładowywania. [Obsługa, źródła i ograniczenia widoku 3D](docs/scene3d.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
@@ -94,9 +96,13 @@ Przeglądarka zapamiętuje wybory wszystkich checkboxów, także opcje pomocnicz
 
 Dostęp bez klucza nie oznacza dowolnego zastosowania komercyjnego: publiczne API Open-Meteo jest przeznaczone do użytku niekomercyjnego, a darmowy radar RainViewer do użytku osobistego i edukacyjnego. Warunki i atrybucje źródeł zebrano w [dokumentacji źródeł](docs/sources.md) i [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+### Mapa ogólna — teren, budynki i drzewa w 3D
+
+Przybliż miejsce i wybierz **Widok 3D** po prawej stronie mapy. Możesz przesuwać, przybliżać i obracać widok bez wybierania pojazdu. Teren Polski pochodzi z NMT / LiDAR GUGiK, bryły budynków z OSM przez OpenFreeMap, a drzewa z miejskiej Bazy Zieleni Warszawy. Wysokości budynków są przybliżone; dziedzińce i części budynków są zachowane. Brakujące wymiary drzew są jawnie szacowane. Te same dane otoczenia działają przy śledzeniu samolotów i autobusów. Bez kluczy i dodatkowych usług do uruchomienia; dane są pobierane kafelkami, z cache i limitami. **Wróć do 2D** przywraca dotychczasowe warstwy. [Obsługa, pokrycie, dokładność i warunki miasta](docs/scene3d.md).
+
 ### Samolot — śledzenie w 3D
 
-Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostępną wysokością i wybierz **Podążaj w 3D**. Kamera zewnętrzna i pierwsza osoba poruszają się wraz z samolotem; powrót lub Escape zachowuje kadr i warstwy Atlasu. Silnik Cesium jest lokalny i nie wymaga kluczy. Podstawowy globus zawiera lokalne granice Polski; OpenStreetMap można włączyć osobno. Powierzchnia jest uproszczona, bez rzeźby terenu i budynków. Animacja korzysta z opóźnionych raportów i ograniczonej predykcji, a utrata świeżych danych zatrzymuje ruch. [Obsługa, dokładność i weryfikacja](docs/aircraft3d.md).
+Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostępną wysokością i wybierz **Podążaj w 3D**. Kamera zewnętrzna i pierwsza osoba poruszają się wraz z samolotem; powrót lub Escape zachowuje kadr i warstwy Atlasu. Silnik Cesium jest lokalny i nie wymaga kluczy. Podstawowy globus zawiera lokalne granice Polski; OpenStreetMap można włączyć osobno. Widok doładowuje teren NMT / LiDAR GUGiK, bryły budynków OSM i miejskie drzewa Warszawy; brak danych oznacza jawną powierzchnię zastępczą. Animacja korzysta z opóźnionych raportów i ograniczonej predykcji, a utrata świeżych danych zatrzymuje ruch. [Obsługa, dokładność i weryfikacja](docs/aircraft3d.md).
 
 ### Samoloty i statki — zapis tras i odtwarzanie
 
@@ -180,7 +186,7 @@ Fioletowe punkty oznaczają stacje; romby ze znakiem pociągu — **pozycje szac
 
 Włącz **„Warstwy mapy → Komunikacja miejska → Autobusy miejskie”**, wybierz miasto i naciśnij „Pokaż…” aby ustawić mapę. Filtr „Linia” ogranicza znaczniki; kliknięcie numeru linii pokazuje dostępne szczegóły pojazdu i wiek pozycji. Zmiana miasta resetuje filtr linii i usuwa poprzednie znaczniki.
 
-W szczegółach świeżej pozycji wybierz **„Podążaj w 3D”**. Kamera zewnętrzna i pierwsza osoba podążają za autobusem na uproszczonej powierzchni; opcjonalny OpenStreetMap można włączyć osobno. Brakujący kierunek kamery jest szacowany z kolejnych pozycji i oznaczony. Wspólny lokalny silnik 3D nie wymaga dodatkowych kluczy, a powrót zachowuje kadr Atlasu. [Obsługa, dokładność i ograniczenia](docs/buses3d.md).
+W szczegółach świeżej pozycji wybierz **„Podążaj w 3D”**. Kamera zewnętrzna i pierwsza osoba podążają za autobusem na powierzchni doładowywanego NMT; opcjonalny OpenStreetMap można włączyć osobno. Brakujący kierunek kamery jest szacowany z kolejnych pozycji i oznaczony. Wspólny lokalny silnik 3D nie wymaga dodatkowych kluczy, a powrót zachowuje kadr Atlasu. [Obsługa, dokładność i ograniczenia](docs/buses3d.md).
 
 Szczecin, Kraków i Poznań działają bez klucza. Pierwsze wczytanie Krakowa lub Poznania może potrwać dłużej, ponieważ WICI pobiera rozkład GTFS. Pobieranie działa tylko na widocznej mapie, bez zapisu historii. Szare znaczniki oznaczają pozycje starsze niż minutę lub problem odświeżania; po 2 minutach pozycje znikają. Warstwa obejmuje także trasy podmiejskie i jest niezależna od dnia publikacji oraz filtra województwa. W DEMO nie pobiera danych.
 

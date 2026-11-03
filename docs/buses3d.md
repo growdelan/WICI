@@ -14,7 +14,7 @@ Duplikaty i raporty cofające czas nie zastępują przyjętego toru. Przerwa pon
 
 ## Powierzchnia i powrót do Atlasu
 
-Autobus korzysta z powierzchni elipsoidy WGS84 na umownej wysokości 0. To położenie renderowania, **nie pomiar wysokości GPS**. Wzgórza, mosty, wiadukty, tunele, budynki i rzeczywiste pochylenie drogi nie są odwzorowane. Model to autorski, ogólny autobus około 12 m, a nie typ przypisany do pojazdu u dostawcy. Zera wysokości nie pokazujemy w telemetrii jako pomiaru.
+Autobus korzysta z doładowywanego NMT / LiDAR GUGiK, a bez danych z powierzchni zastępczej WGS84. [Teren, drzewa, pokrycie i ograniczenia wysokości](scene3d.md). To położenie renderowania, **nie pomiar wysokości GPS**. Rzeźba terenu pochodzi z NMT; mosty, wiadukty, tunele, rzeczywiste pochylenie drogi nie są odwzorowane. Budynki OSM są pokazywane jako uproszczone bryły z przybliżonymi wysokościami. Model to autorski, ogólny autobus około 12 m, a nie typ przypisany do pojazdu u dostawcy. Zera wysokości nie pokazujemy w telemetrii jako pomiaru.
 
 Silnik Cesium, workery, model i zasoby są lokalne. Ten sam viewer, modal i mechanizm ładowania obsługują [samoloty](aircraft3d.md); otwarcie kolejnego pojazdu usuwa poprzedni viewer. Pozostałe warstwy nie przejmują jego kamery. Domyślny podkład jest lokalny; **OpenStreetMap (online)** można osobno włączyć, z widoczną atrybucją. Obowiązują istniejące CSP i warunki dostawcy, bez nowych zewnętrznych origin, kont i kluczy.
 

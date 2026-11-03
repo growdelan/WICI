@@ -6,7 +6,7 @@ window.WiciVehicle3D = (() => {
   const profiles = {
     aircraft: {maxAgeMs:30000,key:'hex',noun:'samolotu',model:'aircraft',height:100,
       distance:{min:300,max:12000,step:100,value:1800},groundRadius:250,
-      followBack:.57,followUp:.82,eyeAhead:7,eyeHeight:3,pitch:-12,modelHeadingOffset:-Math.PI/2,
+      followBack:.57,followUp:.82,eyeAhead:7,eyeHeight:3,pitch:-12,modelHeadingOffset:0,
       label:item=>item?.id || item?.registration || item?.hex || 'Samolot'},
     buses: {maxAgeMs:60000,key:'id',noun:'autobusu',model:'bus',height:0,
       distance:{min:15,max:500,step:5,value:70},groundRadius:6,
@@ -14,11 +14,11 @@ window.WiciVehicle3D = (() => {
       label:item=>`Autobus · linia ${item?.line || '—'} · ${item?.vehicle_number || item?.id || 'pojazd'}`}
   };
   let activeKind = null, profile = profiles.aircraft, scope = {};
-  let map, initialized = false, enginePromise, engineCssReady = false, viewer, entity, ground, track, follower, selected;
+  let map, initialized = false, viewer, entity, ground, track, follower, selected;
   let session = 0, frame = null, lastFrame = 0, lastHud = 0, mode = 'follow';
   let snapshot, returnFocus, display, frozen = '', paused = false, orbit = 0, imagery;
   let renderFailed = false, removeRenderError = null, renderedCourse = null;
-  let atlasPopupState = null;
+  let atlasPopupState = null, environment = null;
   const scratch = {};
   const label = item => profile.label(item);
   const fresh = (item, settings = profile) => {
@@ -37,8 +37,8 @@ window.WiciVehicle3D = (() => {
     $('distance-value').textContent = `${distance.value} m`;
     $('behind').textContent = bus ? 'Za autobusem' : 'Za samolotem';
     $('description').textContent = bus
-      ? 'Wirtualny widok z pozycji autobusu, około 2,2 m nad uproszczoną powierzchnią WGS84. Animacja opóźniona o 12 s, bez przewidywania dalszej jazdy. Między raportami pozycja jest interpolowana, bez dopasowania do dróg. Kierunek kamery pochodzi ze źródła lub jest szacowany z kolejnych pozycji i wtedy oznaczony. Brak pomiaru wysokości, rzeczywistej kabiny, rzeźby terenu i budynków.'
-      : 'Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Powierzchnia uproszczona, bez rzeźby terenu i budynków.';
+      ? 'Wirtualny widok z pozycji autobusu, około 2,2 m nad powierzchnią NMT (po jej załadowaniu). Animacja opóźniona o 12 s, bez przewidywania dalszej jazdy. Między raportami pozycja jest interpolowana, bez dopasowania do dróg. Kierunek kamery pochodzi ze źródła lub jest szacowany z kolejnych pozycji i wtedy oznaczony. Brak pomiaru wysokości i rzeczywistej kabiny. Rzeźba terenu: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy; budynki: uproszczone bryły OSM z przybliżonymi wysokościami. Brak danych terenu oznacza powierzchnię zastępczą.'
+      : 'Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Teren: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy, przy zbliżeniu. Budynki: uproszczone bryły OSM z przybliżonymi wysokościami. Brak danych terenu oznacza powierzchnię zastępczą.';
     $('source').textContent = bus ? scope.source?.source || 'Źródło pozycji autobusów' : 'adsb.fi';
     $('source').href = bus ? scope.source?.url || '/notices' : 'https://adsb.fi/';
     $('source-note').textContent = bus ? `${scope.source?.license || ''} · dane przetworzone przez WICI` : ' · użytek osobisty, niekomercyjny';
@@ -47,36 +47,6 @@ window.WiciVehicle3D = (() => {
   function status(text, state = '') {
     if ($('status').textContent !== text) $('status').textContent = text;
     $('dialog').dataset.state = state;
-  }
-  function loadEngine() {
-    if (window.Cesium && engineCssReady) return Promise.resolve(window.Cesium);
-    if (enginePromise) return enginePromise;
-    window.CESIUM_BASE_URL = '/static/vendor/cesium/';
-    enginePromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script'), css = document.createElement('link');
-      script.src = '/static/vendor/cesium/Cesium.js'; script.async = true;
-      css.rel = 'stylesheet'; css.href = '/static/vendor/cesium/Widgets/widgets.css';
-      let loaded = 0, settled = false;
-      const finish = () => {
-        if (settled) return;
-        if (++loaded !== 2) return;
-        if (!window.Cesium) { fail(); return; }
-        settled = true;
-        clearTimeout(timeout);
-        resolve(window.Cesium);
-      };
-      const fail = () => {
-        if (settled) return;
-        settled = true; engineCssReady = false;
-        clearTimeout(timeout); script.remove(); css.remove(); enginePromise = null;
-        reject(new Error('Nie udało się wczytać lokalnego silnika 3D. Wróć do mapy i spróbuj ponownie.'));
-      };
-      const timeout = setTimeout(fail, 20000);
-      script.onload = finish; css.onload = () => { if (!settled) { engineCssReady = true; finish(); } };
-      script.onerror = fail; css.onerror = fail;
-      document.head.append(css, script);
-    });
-    return enginePromise;
   }
   function stopFrame() {
     if (frame !== null) cancelAnimationFrame(frame);
@@ -123,6 +93,7 @@ window.WiciVehicle3D = (() => {
   }
   function close({restoreFocus = true} = {}) {
     session++; stopFrame();
+    environment?.destroy(); environment = null;
     removeRenderError?.(); removeRenderError = null;
     try { if (viewer && !viewer.isDestroyed()) viewer.destroy(); }
     catch { /* A lost GPU must not prevent leaving the viewer. */ }
@@ -210,13 +181,18 @@ window.WiciVehicle3D = (() => {
   }
   function place(sample) {
     const C = window.Cesium;
-    const height = Math.max(profile.height, sample.altitude_m);
+    // Coarse ellipsoid meshes can report a negative chord height while
+    // detailed terrain is still loading. Keep the camera above that mesh.
+    const surface = Math.max(0,viewer.scene.globe.getHeight(C.Cartographic.fromDegrees(sample.longitude,sample.latitude)) || 0);
+    const height = activeKind === 'buses' ? surface : Math.max(surface+20,profile.height,sample.altitude_m);
     const position = C.Cartesian3.fromDegrees(sample.longitude, sample.latitude, height, C.Ellipsoid.WGS84, scratch.position);
     const heading = C.Math.toRadians(sample.track ?? 0);
     entity.position = position;
-    // Include the model's axes after Cesium's glTF axis correction.
+    // Both authored models face +X; Cesium's glTF axis correction already
+    // aligns that axis with north at heading 0. No extra quarter-turn is needed.
     entity.orientation = C.Transforms.headingPitchRollQuaternion(position, new C.HeadingPitchRoll(heading + profile.modelHeadingOffset, 0, 0));
-    ground.position = C.Cartesian3.fromDegrees(sample.longitude, sample.latitude, 0);
+    ground.position = C.Cartesian3.fromDegrees(sample.longitude, sample.latitude, surface);
+    ground.ellipse.height = surface + .1;
     const transform = C.Transforms.eastNorthUpToFixedFrame(position, C.Ellipsoid.WGS84, scratch.transform);
     if (mode === 'follow') {
       const distance = Number($('distance').value), angle = heading + orbit;
@@ -243,7 +219,7 @@ window.WiciVehicle3D = (() => {
           display = follower.step(sampled, time, {freeze:Boolean(frozen) || sampled.state === 'stale'});
           updatePovAvailability(sampled, display);
           place(display);
-          if (now - lastHud >= 1000) { hud({...display, track:renderedCourse, state: sampled.state}, now); lastHud = now; }
+          if (now - lastHud >= 1000) { environment?.update(display.longitude,display.latitude,activeKind === 'buses' ? 0 : Math.max(0,display.altitude_m)); hud({...display, track:renderedCourse, state: sampled.state}, now); lastHud = now; }
         }
         viewer.resize(); viewer.render();
       }
@@ -255,19 +231,19 @@ window.WiciVehicle3D = (() => {
   async function basemap() {
     if (!viewer) return;
     if (imagery) { viewer.imageryLayers.remove(imagery, true); imagery = null; }
-    $('map-status').textContent = 'Lokalne granice Polski · powierzchnia uproszczona, bez rzeźby terenu i budynków.';
+    $('map-status').textContent = 'Lokalne granice Polski · teren, budynki i drzewa ładowane osobno.';
     if (!$('osm').checked) return;
     const current = viewer;
     try {
       const provider = new window.Cesium.OpenStreetMapImageryProvider({
-        url: 'https://tile.openstreetmap.org/', maximumLevel: 17,
+        url: 'https://tile.openstreetmap.org/', maximumLevel: 19,
         credit: new window.Cesium.Credit('<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>', true)
       });
       provider.errorEvent.addEventListener(() => {
         if (viewer === current) $('map-status').textContent = 'Kafelki OSM niedostępne. Lokalne granice i śledzenie pozostają dostępne.';
       });
       imagery = viewer.imageryLayers.addImageryProvider(provider);
-      $('map-status').textContent = 'OpenStreetMap · powierzchnia uproszczona, bez rzeźby terenu i budynków.';
+      $('map-status').textContent = 'OpenStreetMap · teren, budynki i drzewa ładowane osobno.';
     } catch {
       $('map-status').textContent = 'Nie udało się włączyć OSM. Dostępne są lokalne granice Polski.';
     }
@@ -293,7 +269,7 @@ window.WiciVehicle3D = (() => {
       // Explicitly local GeoJSON; no Cesium ion/imagery/terrain defaults.
       const data = await C.GeoJsonDataSource.load(geo, {
         stroke: C.Color.fromCssColorString('#aec4bb'), strokeWidth: 2,
-        fill: C.Color.fromCssColorString('#385852').withAlpha(.58), clampToGround: false
+        fill: C.Color.TRANSPARENT, clampToGround: true
       });
       if (run !== session || current !== viewer) { data.entities.removeAll(); return; }
       current.dataSources.add(data);
@@ -311,6 +287,7 @@ window.WiciVehicle3D = (() => {
     if (!initialized || !fresh(item, settings) || data?.stale || data?.status === 'error'
         || (kind === 'buses' && !context.city)) return;
     if ($('dialog').open) close({restoreFocus:false});
+    window.WiciAtlas3D?.close({restore:false});
     const run = ++session;
     activeKind = kind; profile = settings; scope = context;
     selected = item; snapshot = data; returnFocus = focus;
@@ -321,14 +298,14 @@ window.WiciVehicle3D = (() => {
     renderFailed = false; renderedCourse = null;
     $('title').textContent = `${label(item)} · śledzenie 3D`;
     $('telemetry').textContent = ''; $('time').textContent = '';
-    $('scene').replaceChildren();
+    $('scene').replaceChildren(); $('environment-status').textContent = '';
     configure();
     updatePovAvailability(null);
     setMode('follow'); status('Wczytywanie lokalnego silnika 3D…', 'loading');
     holdAtlasPopup(popup);
     $('dialog').showModal(); $('close').focus();
     try {
-      const C = await loadEngine();
+      const C = await window.WiciScene3D.loadEngine();
       if (run !== session) return;
       // The standalone IIFE embeds a classic-worker blob which importScripts
       // another blob. Use the separately vendored ESM workers instead, keeping
@@ -366,6 +343,7 @@ window.WiciVehicle3D = (() => {
       ground = viewer.entities.add({position:C.Cartesian3.fromDegrees(item.longitude,item.latitude),
         ellipse:{semiMajorAxis:profile.groundRadius,semiMinorAxis:profile.groundRadius,
           material:C.Color.fromCssColorString('#ffc36b').withAlpha(.3),height:kind === 'buses' ? .04 : 2}});
+      environment = window.WiciScene3D.environment(viewer,text=>{if(run===session)$('environment-status').textContent=text;});
       update(snapshot, scope); basemap(); localContext(viewer, run);
       // Losing the GPU must leave a usable exit, never a stuck modal.
       viewer.canvas.addEventListener('webglcontextlost', () => {

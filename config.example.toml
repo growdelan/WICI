@@ -126,3 +126,9 @@ enabled = false
 enabled = false
 # client_id = "WKLEJ_ID_KLIENTA_OAUTH"
 # client_secret = "WKLEJ_SEKRET_KLIENTA_OAUTH"
+
+# Otoczenie 3D na mapie ogólnej oraz przy śledzeniu pojazdów.
+# Bez kluczy i dodatkowych usług. NMT GUGiK i budynki OSM/OpenFreeMap (Polska), drzewa miejskie (Warszawa).
+# Pobieranie wyłącznie na żądanie w 3D; demo offline. Warunki miasta: docs/scene3d.md.
+[sources.scene3d]
+enabled = true

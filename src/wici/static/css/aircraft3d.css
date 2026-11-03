@@ -60,3 +60,21 @@
   .aircraft3d-controls .check {margin-left:0}
   .aircraft3d-footer {padding:6px 12px 10px}
 }
+
+/* Atlas uses the existing map panel and keeps its 2D state alive beneath it. */
+#atlas3d-scene {position:absolute;inset:0;z-index:500;background:#203d3c}
+#atlas3d-scene[hidden],#atlas3d-info[hidden] {display:none}
+#atlas3d-scene .cesium-viewer,#atlas3d-scene .cesium-widget {width:100%;height:100%}
+.map-panel[data-view3d] #map {visibility:hidden}
+#atlas3d-toggle {position:absolute;right:16px;top:88px;z-index:700;min-height:44px;background:var(--paper);color:var(--ink);box-shadow:var(--shadow)}
+#atlas3d-toggle[aria-pressed="true"] {background:var(--teal);color:var(--paper)}
+#atlas3d-info {position:absolute;right:16px;bottom:114px;z-index:600;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:11px;max-width:min(380px,calc(100% - 32px));max-height:160px;overflow:auto;pointer-events:auto}
+#atlas3d-info p {margin:3px 0}
+#aircraft3d-environment-status {color:var(--muted);font-size:11px;max-height:60px;overflow:auto}
+
+@media(max-width:600px) {#atlas3d-toggle {top:144px}}
+
+/* These controls describe the 2D layers; leave the 3D source credits visible. */
+.map-panel[data-view3d]>.map-legend,.map-panel[data-view3d]>.tracking-panel {display:none}
+#atlas3d-scene .cesium-widget-credits {max-width:calc(100% - 12px);font-size:11px;background:#08191dd9;color:#fff}
+#atlas3d-scene .cesium-widget-credits a {color:#fff}

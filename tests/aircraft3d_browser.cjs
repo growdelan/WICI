@@ -6,6 +6,37 @@ const {environment,aircraft,snapshot,camera,distance,root}=require('./helpers/ve
 const evidence=path.join(root,'tmp/aircraft3d-evidence');
 fs.mkdirSync(evidence,{recursive:true});
 
+test('aircraft 3D: rendered model nose follows the course in every direction and matches POV',{timeout:90000},async()=>{
+  const env=await environment({name:'model-orientation'});const {page}=env;
+  try{
+    for(const [index,course] of [90,0,180,270,359,1].entries()){
+      await env.next(snapshot([aircraft(Date.now()-18000,{track:course})]));
+      if(index===0)await env.open();else await env.button.click();
+      await page.waitForFunction(()=>window.__aircraftViewers.at(-1)?.scene.primitives._primitives.some(p=>p instanceof Cesium.Model&&p.ready));
+      const pose=await page.evaluate(()=>{
+        const C=Cesium,v=window.__aircraftViewers.at(-1),model=v.scene.primitives._primitives.find(p=>p instanceof C.Model&&p.ready);
+        // Measure the actual glTF axes after Cesium's axis conversion, rather
+        // than just the entity quaternion. The authored nose is +X, up is +Y.
+        const matrix=model.sceneGraph.computedModelMatrix,origin=C.Matrix4.getTranslation(matrix,new C.Cartesian3());
+        const local=C.Matrix4.multiply(C.Matrix4.inverseTransformation(C.Transforms.eastNorthUpToFixedFrame(origin),new C.Matrix4()),matrix,new C.Matrix4());
+        const nose=C.Matrix4.multiplyByPointAsVector(local,C.Cartesian3.UNIT_X,new C.Cartesian3());
+        const up=C.Cartesian3.normalize(C.Matrix4.multiplyByPointAsVector(local,C.Cartesian3.UNIT_Y,new C.Cartesian3()),new C.Cartesian3());
+        return{course:(C.Math.toDegrees(Math.atan2(nose.x,nose.y))+360)%360,up:up.z};
+      });
+      const difference=(a,b)=>Math.abs((a-b+540)%360-180);
+      assert.ok(difference(pose.course,course)<.1,`Rendered nose must follow ${course}°, got ${pose.course}°`);
+      assert.ok(pose.up>.999,'Aircraft must remain upright');
+      if(index===0)await page.screenshot({path:path.join(evidence,'model-orientation-follow.png'),fullPage:true});
+      await page.locator('#aircraft3d-pov').click();
+      await page.waitForFunction(()=>Cesium.Matrix4.equals(window.__aircraftViewers.at(-1).camera.transform,Cesium.Matrix4.IDENTITY));
+      const pov=await camera(page);
+      assert.ok(difference(pov.heading*180/Math.PI,pose.course)<.1,'POV and the rendered nose must face the same direction');
+      await page.locator('#aircraft3d-close').click();
+    }
+    await env.clean();
+  }finally{await env.stop();}
+});
+
 test('aircraft 3D: lazy real WebGL, existing feed, cameras, held states, recovery and Atlas return',{timeout:90000},async()=>{
   const env=await environment();const {page,feed,observations}=env;
   try{

@@ -105,3 +105,44 @@ def test_version_13_track_upgrade_preserves_history_and_aircraft_classification(
                 db.rollback()
         finally:
             db.close()
+
+
+@pytest.mark.parametrize('version,kind', [(21, 'event'), (23, 'infrastructure'), (24, 'exposure')])
+def test_infrastructure_schema_upgrade_and_reopen_preserve_saved_materials(tmp_path, version, kind):
+    """Branches that wrote v24 must remain readable; v21 still upgrades forward."""
+    path = tmp_path/'app.sqlite3'
+    migrations = sorted((Path(__file__).parents[1]/'src/wici/migrations').glob('*.sql'))
+    db = sqlite3.connect(path)
+    db.execute('PRAGMA foreign_keys=ON')
+    for migration in migrations[:version]:
+        db.executescript(migration.read_text())
+    db.execute(f'PRAGMA user_version={version}')
+    db.execute("INSERT INTO app_state VALUES('schema-marker','preserved')")
+    db.execute("INSERT INTO workspace_dossiers VALUES('dossier','History','',1,'2026-10-27','2026-10-27')")
+    # Whitespace and UTF-8 bytes are part of the saved, immutable payload.
+    snapshot = '{ "żółć": [1, null], "schema_version": 3 }'
+    db.execute('INSERT INTO workspace_dossier_materials VALUES(?,?,?,?,?,?,?,?,?)',
+               ('material', 'dossier', 'Saved', kind, None, '2026-10-27', 'original-hash',
+                len(snapshot.encode()), snapshot))
+    original = db.execute('SELECT * FROM workspace_dossier_materials').fetchone()
+    if version == 24:
+        db.execute('CREATE TABLE alternate_branch_data(value TEXT)')
+        db.execute("INSERT INTO alternate_branch_data VALUES('keep')")
+    db.commit()
+    db.close()
+
+    for _ in range(2):
+        db = connect(path)
+        try:
+            assert db.execute('PRAGMA user_version').fetchone()[0] == len(migrations)
+            assert db.execute("SELECT value FROM app_state WHERE key='schema-marker'").fetchone()[0] == 'preserved'
+            assert tuple(db.execute('SELECT * FROM workspace_dossier_materials').fetchone()) == original
+            assert db.execute('SELECT COUNT(*) FROM infrastructure_objects').fetchone()[0] == 0
+            if version == 24:
+                assert db.execute('SELECT value FROM alternate_branch_data').fetchone()[0] == 'keep'
+            assert db.execute('PRAGMA foreign_key_check').fetchall() == []
+            with pytest.raises(sqlite3.IntegrityError, match='immutable'):
+                db.execute("UPDATE workspace_dossier_materials SET title='Changed'")
+            db.rollback()
+        finally:
+            db.close()

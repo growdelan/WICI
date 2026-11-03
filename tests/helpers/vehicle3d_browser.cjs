@@ -8,7 +8,7 @@ const {chromium}=require('playwright');
 const {PNG}=require('pngjs');
 const root=path.resolve(__dirname,'../..');
 
-async function server(){
+async function server({liveEnvironment=false}={}){
   const socket=net.createServer();socket.listen(0,'127.0.0.1');await once(socket,'listening');
   const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
   const child=spawn(path.join(root,'.venv/bin/python'),['-u','-c',`
@@ -22,6 +22,20 @@ def forbidden(request):
 with tempfile.TemporaryDirectory(prefix='wici-aircraft3d-browser-') as directory:
     client=httpx.AsyncClient(transport=httpx.MockTransport(forbidden))
     app=create_app(demo=True,root=Path(directory),config=Config(port=${port}),client=client)
+    if ${liveEnvironment?'True':'False'}:
+        from contextlib import asynccontextmanager
+        from wici.scene3d import Scene3DService
+        original_lifespan=app.router.lifespan_context
+        @asynccontextmanager
+        async def live_scene_lifespan(app):
+            async with original_lifespan(app):
+                async with httpx.AsyncClient(timeout=12,follow_redirects=False,headers={'User-Agent':'WICI-local/0.35 (private scenery check)'}) as scene_client:
+                    app.state.scene3d=Scene3DService(scene_client)
+                    try:
+                        yield
+                    finally:
+                        await app.state.scene3d.close()
+        app.router.lifespan_context=live_scene_lifespan
     uvicorn.run(app,host='127.0.0.1',port=${port},log_level='error')
 `],{cwd:root,stdio:['ignore','pipe','pipe']});
   let logs='';child.stdout.on('data',b=>logs+=b);child.stderr.on('data',b=>logs+=b);
@@ -50,10 +64,10 @@ function bus(at=Date.now()-18000,overrides={}){
     speed_kmh:36,bearing:90,delay_seconds:0,low_floor:true,position_at:new Date(at).toISOString(),...overrides};
 }
 const busSnapshot=items=>({...snapshot(items),enabled:true});
-async function environment({kind='aircraft',viewport={width:1440,height:1000},theme='light',noWebgl=false,holdVendor=false,liveMapPolicy=false,name}={}){
+async function environment({kind='aircraft',viewport={width:1440,height:1000},theme='light',noWebgl=false,holdVendor=false,liveMapPolicy=false,liveEnvironment=false,name}={}){
   const isBus=kind==='bus',evidence=path.join(root,`tmp/${isBus?'buses':'aircraft'}3d-evidence`);
   fs.mkdirSync(evidence,{recursive:true});
-  const app=await server();
+  const app=await server({liveEnvironment});
   let browser,releaseVendor,enteredVendor;
   try{
   browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});
