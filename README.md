@@ -16,6 +16,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Eksplorator Analizy (v0.37.0):** wyszukiwanie i filtry są nad listą wyników, centralną mapą i stałym panelem szczegółów. Karta obiektu pokazuje pomiar, historię oraz działania teczki i grafu, a dolna oś przedstawia historię wybranej stacji. Dostępne są też tabela, motyw nocny i układ mobilny. [Obsługa Eksploratora](docs/analysis-workspace.md#układ-eksploratora).
 
+**Szybsze przetwarzanie i odświeżanie (v0.37.1):** zoptymalizowano odczyty katalogu, komunikatów, grafu i teczek, monitoring, API oraz dokładne testy geometrii. Atlas i warstwy transportu zachowują niezmienione elementy mapy. Poprawiono też dostępność zamknięcia okienka IODA na telefonie. Zachowane są precyzja danych, geometria, historia i częstotliwość odczytów. [Pomiary i weryfikacja](docs/performance-audit.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
