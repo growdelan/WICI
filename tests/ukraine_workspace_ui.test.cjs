@@ -10,12 +10,23 @@ const series = {ref: region, label: 'Львівська область', segment
   {from: '2026-10-23T10:30:00Z', to: range.to, state: 'none'},
 ]};
 const flush = () => new Promise(resolve => setImmediate(resolve));
-function node(tag = 'div', text) {
+function node(tag = 'div', text, className = '') {
   const classes = new Set();
-  return {tagName: tag.toUpperCase(), textContent: text, children: [], dataset: {}, value: '', hidden: false, isConnected: true,
-    style: {setProperty(key, value) {this[key] = value;}}, classList: {add: value => classes.add(value), toggle(value, enabled) {enabled ? classes.add(value) : classes.delete(value);}, remove: value => classes.delete(value)},
-    append(...children) {this.children.push(...children);}, replaceChildren(...children) {this.children = children;}, setAttribute(key, value) {this[key] = value;}, removeAttribute(key) {delete this[key];},
+  const element = {tagName: tag.toUpperCase(), textContent: text, className, children: [], dataset: {}, value: '', hidden: false, isConnected: true, parentNode: null,
+    style: {setProperty(key, value) {this[key] = value;}},
+    classList: {add: (...values) => values.forEach(value => classes.add(value)), toggle(value, enabled) {enabled ? classes.add(value) : classes.delete(value);}, remove: value => classes.delete(value), contains: value => classes.has(value) || element.className.split(' ').includes(value)},
+    append(...children) {for (const child of children.filter(Boolean)) {child.remove?.(); child.parentNode = this; this.children.push(child);}},
+    prepend(...children) {for (const child of children.filter(Boolean).reverse()) {child.remove?.(); child.parentNode = this; this.children.unshift(child);}},
+    replaceChildren(...children) {for (const child of this.children) child.parentNode = null; this.children = []; this.append(...children);},
+    remove() {if (this.parentNode) {const siblings = this.parentNode.children; siblings.splice(siblings.indexOf(this), 1); this.parentNode = null;}},
+    matches(selector) {if (selector.includes(',')) return selector.split(',').some(part => this.matches(part)); if (selector.endsWith('[open]')) return this.open && this.matches(selector.slice(0, -6)); return selector.startsWith('.') ? this.classList.contains(selector.slice(1)) : selector.startsWith('#') ? this.id === selector.slice(1) : this.tagName === selector.toUpperCase();},
+    closest(selector) {return this.matches(selector) ? this : this.parentNode?.closest(selector) || null;},
+    contains(child) {return child === this || this.children.some(value => value.contains?.(child));},
+    querySelectorAll(selector) {const parts = selector.trim().split(/\s+/), result = []; const visit = current => {for (const child of current.children || []) {if (child.matches?.(parts.at(-1))) {let ancestor = child.parentNode, index = parts.length - 2; while (index >= 0 && ancestor) {if (ancestor.matches(parts[index])) index--; ancestor = ancestor.parentNode;} if (index < 0) result.push(child);} visit(child);}}; visit(this); return result;},
+    querySelector(selector) {return this.querySelectorAll(selector)[0] || null;},
+    setAttribute(key, value) {this[key] = value;}, removeAttribute(key) {delete this[key];},
     addEventListener(event, handler) {this[event] = handler;}, focus() {}, get firstChild() {return this.children[0];}, get lastChild() {return this.children.at(-1);}};
+  return element;
 }
 const flatten = value => [value, ...(value.children || []).flatMap(flatten)];
 function ui() {return {el: node, button(text, action) {return Object.assign(node('button', text), {click: action});}, field(label, control) {const el = node('label', label); el.append(control); return el;}, date: value => value || 'Brak czasu', typeNames: {}, statusNames: {}, safeLink: () => null};}
@@ -95,8 +106,10 @@ test('historical regional map changes to a dashed unknown interval without borro
 
 function controller() {
   const requests = [], sourceCalls = [], clip = [], renderedAlerts = []; let viewActions, timelineActions, tableActions, cardActions;
-  const U = ui(), shell = node(), host = node(); host.closest = () => shell;
-  const document = {hidden: false, activeElement: null, createElement: node, getElementById: id => id === 'analysis-workspace' ? host : null, addEventListener() {}};
+  const U = ui(), shell = node(), host = node(), mapPanel = node(), body = node(); shell.className = 'workspace'; mapPanel.className = 'map-panel'; shell.append(host, mapPanel); body.append(shell);
+  const document = {body, hidden: false, activeElement: null, listeners: [], createElement: node,
+    getElementById: id => id === 'analysis-workspace' ? host : body.querySelector('#'+id), querySelector: selector => body.querySelector(selector),
+    addEventListener(name, listener, capture = false) {this.listeners.push({name, listener, capture});}};
   const source = {setVisible() {}, setTypes(types, options) {sourceCalls.push({types, options});}, subscribe() {}, deactivate() {}, demandIndexes() {}};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceStore: Store, WiciWorkspaceAlerts: {...Alerts, view: () => ({render(state, context) {renderedAlerts.push(context);}})}, WiciWorkspaceSources: source,
     WiciRegion: {code: () => '14', setAnalysisOutsidePoland: value => clip.push(value)},
@@ -107,7 +120,7 @@ function controller() {
     localStorage: {getItem() {return null;}, setItem() {}}, setTimeout: () => 1, clearTimeout() {}, setInterval: () => 1, clearInterval() {}});
   window.WiciWorkspace.init({map: {invalidateSize() {}}, health: {now: range.to}, geometries: new Map(), api: (path, body, options) => new Promise((resolve, reject) => requests.push({path, body, options, resolve, reject}))});
   const query = {items: [], total: 0, next_cursor: null, map: {points: [], areas: [], aggregates: []}, coverage: {sources: []}, data_revision: 'one', as_of: range.to};
-  return {ui: window.WiciWorkspace, host, requests, sourceCalls, clip, renderedAlerts, query, viewActions, timelineActions, tableActions, cardActions};
+  return {ui: window.WiciWorkspace, host, document, requests, sourceCalls, clip, renderedAlerts, query, viewActions, timelineActions, tableActions, cardActions};
 }
 
 test('restoring Ukrainian views never starts recording or sources; unassigned raions remain selectable', async () => {
@@ -173,4 +186,32 @@ test('all countries clears the hidden Polish province left by Situation when lea
   country.value = 'UA'; country.change(); assert.equal(h.ui.getState().query.country, 'UA'); assert.equal(h.ui.getState().query.province, null);
   country.value = ''; country.change(); assert.equal(h.ui.getState().query.country, null); assert.equal(h.ui.getState().query.province, null);
   country.value = 'PL'; country.change(); assert.equal(h.ui.getState().query.province, '14');
+});
+
+test('Explorer does not label an archived full-day query as the last 24 hours', () => {
+  const h = controller(); h.ui.setActive(true);
+  const preset = h.document.getElementById('analysis-time-preset');
+  const archived = {from: '2025-10-23T11:00:00Z', to: '2025-10-24T11:00:00Z'};
+  h.timelineActions.dispatch({type: 'SET_TIME_RANGE', range: archived});
+  assert.equal(preset.value, 'custom');
+  assert.deepEqual(h.ui.getState().query.time.filter_range, archived);
+  h.timelineActions.dispatch({type: 'SET_TIME_RANGE', range: {from: '2026-10-22T11:00:00Z', to: range.to}});
+  assert.equal(preset.value, '24h');
+  h.timelineActions.dispatch({type: 'RETURN_TO_LIVE'});
+  assert.equal(preset.value, 'live');
+});
+
+test('Explorer Escape preserves the native modal handling before closing the underlying tools menu', () => {
+  const h = controller(); h.ui.setActive(true);
+  const tools = h.document.getElementById('analysis-tools'), modal = node('dialog');
+  tools.open = true; modal.open = true; h.document.body.append(modal);
+  const capture = h.document.listeners.find(item => item.name === 'keydown' && item.capture).listener;
+  let prevented = false, stopped = false;
+  const event = {key: 'Escape', preventDefault() {prevented = true;}, stopImmediatePropagation() {stopped = true;}};
+  capture(event);
+  assert.equal(prevented, false, 'native modal must receive Escape');
+  assert.equal(stopped, false);
+  assert.equal(tools.open, true, 'background menu must not take focus from the modal');
+  modal.open = false; capture(event);
+  assert.equal(prevented, true); assert.equal(stopped, true); assert.equal(tools.open, false);
 });

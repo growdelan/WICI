@@ -1,11 +1,42 @@
 'use strict';
-window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
+window.WiciWorkspaceMap = function ({map, geometries, select, narrow, markerStyle = 'circle'}) {
   const U = window.WiciWorkspaceUI, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts;
   const groups = new Map(), points = new Map(), areas = new Map(), aggregates = new Map(), alertLayers = new Map(), replayMarkers = new Map(), graphPoints = new Map(), graphAreas = new Map();
   const featureCache = new WeakMap();
   const emptyAreas = [];
   let active = false, routeGroup = null, lastReplay = null, lastRouteKey = '', areaGroups = null, graphOrderDirty = false;
   const colors = {communication: '#c38235', hydro_station: '#16819c', air_quality_station: '#787e91', area: '#587a8a', aircraft: '#237a99', ship: '#93682f'};
+  let graphPaneName = null;
+  function graphPane() {
+    if (markerStyle !== 'symbol' || !map?.createPane) return {};
+    if (!graphPaneName) {
+      graphPaneName = 'wici-analysis-graph';
+      const pane = map.getPane?.(graphPaneName) || map.createPane(graphPaneName);
+      // Graph evidence must stay above the base marker pane (600), including
+      // polygons. SVG bringToFront alone cannot cross a Leaflet pane boundary.
+      pane.style.zIndex = '625';
+    }
+    return {pane: graphPaneName};
+  }
+  function symbolIcon(item, color, selected) {
+    const symbol = U.el('span', null, `analysis-point-symbol${selected ? ' is-selected' : ''}`);
+    symbol.dataset.type = item.type; symbol.style.setProperty('--marker-color', color);
+    symbol.setAttribute('aria-hidden', 'true'); symbol.append(U.icon(item.type, 'analysis-point-glyph'));
+    return L.divIcon({className: 'analysis-symbol-marker', html: symbol, iconSize: [30, 30], iconAnchor: [15, 15], tooltipAnchor: [0, -18]});
+  }
+  function symbolAccessibility(entry, item, text, selected) {
+    const element = entry.layer.getElement?.(); if (!element) return;
+    if (entry.element !== element) {
+      entry.element = element; entry.accessibility = null;
+      element.setAttribute('role', 'button'); element.setAttribute('tabindex', '0');
+      // Leaflet handles Enter for keyboard markers; provide the other button key.
+      element.addEventListener('keydown', event => {if (event.key === ' ') {event.preventDefault(); select(item.ref);}});
+    }
+    const label = `${U.typeNames[item.type] || item.type}: ${text}`, key = `${label}|${selected}`;
+    if (entry.accessibility === key) return;
+    entry.accessibility = key; element.title = item.label;
+    element.setAttribute('aria-label', label); element.setAttribute('aria-pressed', String(Boolean(selected)));
+  }
   function group(name) {if (!groups.has(name)) groups.set(name, L.layerGroup().addTo(map)); return groups.get(name);}
   function prune(records, wanted) {for (const [key, entry] of records) if (!wanted.has(key)) {entry.group.removeLayer(entry.layer); records.delete(key);}}
   function clear() {
@@ -101,17 +132,19 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     entry.style = key; entry.layer.setStyle?.(value);
   }
   function point(records, name, item, coords, {referenceAt, selected, sample, index, cursor, className = '', note = '', graph = false}) {
-    const moving = Boolean(M?.isMoving(item)), kind = moving ? item.type : 'circle', position = item.position;
-    const iconKey = moving ? transportKey(item, position, referenceAt, selected, className) : null;
+    const moving = Boolean(M?.isMoving(item)), symbol = !moving && !graph && markerStyle === 'symbol' && typeof U.icon === 'function';
+    const kind = moving ? item.type : symbol ? 'symbol' : 'circle', position = item.position;
     const shown = cursor && selected ? {...item, official_index: index} : item;
     const presentation = {weight: selected ? 4 : moving ? 2 : 1.5, fillOpacity: graph ? .85 : selected ? .7 : .8, color: color(shown, sample, referenceAt)};
+    const iconKey = moving ? transportKey(item, position, referenceAt, selected, className) : symbol ? `${item.type}|${presentation.color}|${selected}` : null;
     const radius = selected ? 10 : graph ? 7 : 6;
     const text = moving ? transportText(item, position, note) : `${item.label} · ${U.value(sample)}${graph ? ` · ${U.date(sample?.observed_at)} · węzeł grafu` : ''}${cursor && selected || graph && cursor ? ' · Według kursora' : ''}`;
     let entry = records.get(item.ref);
     if (entry && entry.kind !== kind) {entry.group.removeLayer(entry.layer); records.delete(item.ref); entry = null;}
     if (!entry) {
       const layer = moving ? L.marker(coords, {icon: transportIcon(item, position, referenceAt, selected, className), title: item.label, bubblingMouseEvents: false})
-        : L.circleMarker(coords, {...presentation, radius, ...(className ? {className} : {})});
+        : symbol ? L.marker(coords, {icon: symbolIcon(item, presentation.color, selected), title: item.label, keyboard: true, bubblingMouseEvents: false})
+          : L.circleMarker(coords, {...presentation, radius, ...(className ? {className} : {}), ...(graph ? graphPane() : {})});
       layer.bindTooltip(U.el('span', text), moving || graph ? {className: 'analysis-transport-tooltip'} : {});
       layer.on('click', () => select(item.ref)); const owner = group(name); layer.addTo(owner);
       if (!moving) graphOrderDirty = true;
@@ -120,9 +153,11 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
       if (entry.coords[0] !== coords[0] || entry.coords[1] !== coords[1]) {entry.layer.setLatLng(coords); entry.coords = coords;}
       if (entry.title !== item.label) {entry.title = item.label; entry.layer.options.title = item.label; const element = entry.layer.getElement?.(); if (element) element.title = item.label;}
       if (moving) {if (entry.iconKey !== iconKey) {entry.iconKey = iconKey; entry.layer.setIcon(transportIcon(item, position, referenceAt, selected, className));}}
+      else if (symbol) {if (entry.iconKey !== iconKey) {entry.iconKey = iconKey; entry.layer.setIcon(symbolIcon(item, presentation.color, selected));}}
       else {style(entry, presentation); if (entry.radius !== radius) {entry.radius = radius; entry.layer.setRadius?.(radius);}}
       tooltip(entry, text);
     }
+    if (symbol) symbolAccessibility(entry, item, text, selected);
   }
   function area(records, name, key, feature, items, presentation, text = null, click = null) {
     let entry = records.get(key);
@@ -132,7 +167,7 @@ window.WiciWorkspaceMap = function ({map, geometries, select, narrow}) {
     const geometryKey = entry?.feature === feature ? entry.geometryKey : JSON.stringify(feature);
     if (entry && entry.geometryKey !== geometryKey) {entry.group.removeLayer(entry.layer); records.delete(key); entry = null;}
     if (!entry) {
-      const layer = L.geoJSON(feature, {style: presentation}); const owner = group(name);
+      const layer = L.geoJSON(feature, {style: presentation, ...(name === 'graph' ? graphPane() : {})}); const owner = group(name);
       entry = {layer, group: owner, geometryKey, feature, items, style: JSON.stringify(presentation)};
       if (text !== null) {layer.bindTooltip(U.el('span', text)); entry.tooltip = text;}
       else layer.bindPopup(popup(items));

@@ -1,4 +1,5 @@
 'use strict';
+const {revealControl, openFilters, closeFilters, openTools, history24h} = require('./helpers/explorer_controls.cjs');
 // Real dossiers APIs/SQLite on an isolated temporary server. No live database or external network.
 const test = require('node:test'), assert = require('node:assert/strict');
 const {spawn} = require('node:child_process'), {once} = require('node:events');
@@ -63,6 +64,7 @@ async function startAnalysis(page) {
   await settle(page);
 }
 async function types(page, selected) {
+  await openFilters(page);
   // Add desired types first: the UI deliberately never permits an empty type set.
   for (const desired of [true,false]) for (const button of await page.locator('[data-object-type]').all()) {
     const wanted = selected.includes(await button.getAttribute('data-object-type'));
@@ -70,6 +72,7 @@ async function types(page, selected) {
   }
   await settle(page);
   assert.deepEqual(await page.evaluate(() => [...WiciWorkspace.getState().query.types].sort()),[...selected].sort());
+  await closeFilters(page);
 }
 async function card(page, ref) {
   const label = await page.evaluate(ref => WiciWorkspace.getData().items.find(item => item.ref === ref)?.label, ref);
@@ -83,14 +86,15 @@ async function historyRange(env) {
   const history = await (await env.context.request.get(env.url+'/_test/history')).json();
   const range = {from:history.range.from,to:new Date(Date.parse(history.range.to)+60000).toISOString()};
   const fields = await env.page.evaluate(range => ({from:WiciWorkspaceTimeline.localValue(range.from),to:WiciWorkspaceTimeline.localValue(range.to)}), range);
-  await env.page.locator('#analysis-time-from').fill(fields.from);
-  await env.page.locator('#analysis-time-to').fill(fields.to);
+  await revealControl(env.page, '#analysis-time-from'); await env.page.locator('#analysis-time-from').fill(fields.from);
+  await revealControl(env.page, '#analysis-time-to'); await env.page.locator('#analysis-time-to').fill(fields.to);
   await env.page.getByRole('button',{name:'Ustaw przedział',exact:true}).click();
   await settle(env.page);
   return range;
 }
 
 async function openDossiers(page) {
+  await openTools(page);
   if (!(await page.locator('#analysis-dossiers').evaluate(element => element.open))) await page.locator('#analysis-dossiers > summary').click();
 }
 async function mutation(page, method, suffix, act) {
@@ -112,7 +116,7 @@ async function createDossier(page, name, description = '') {
 async function openDossier(page, id) {
   await openDossiers(page);
   await page.locator('#analysis-dossier-select').selectOption(id);
-  await page.locator('#analysis-dossier-open').click();
+  await revealControl(page, '#analysis-dossier-open'); await page.locator('#analysis-dossier-open').click();
   await page.locator('#analysis-dossier-dialog').waitFor({state:'visible'});
   await page.locator('#analysis-dossier-delete').waitFor({state:'visible'});
 }
@@ -125,7 +129,7 @@ async function confirmDelete(page) {
 }
 async function seek(page, at) {
   const value = await page.evaluate(at => WiciWorkspaceTimeline.localValue(at), at);
-  await page.locator('#analysis-cursor-date').fill(value);
+  await revealControl(page, '#analysis-cursor-date'); await page.locator('#analysis-cursor-date').fill(value);
   await page.locator('#analysis-cursor-date').dispatchEvent('change');
   await page.waitForFunction(at => Date.parse(WiciWorkspace.getState().cursorAt) === Date.parse(at), at);
 }
@@ -333,7 +337,7 @@ test('Teczki: delayed material reads cannot replace a closed or newly reopened e
       if (mode === 'reopened') {
         // Reopen the same selection without firing a select/change event: changing
         // dossiers already invalidates reads and would conceal this regression.
-        await page.locator('#analysis-dossier-open').click();
+        await revealControl(page, '#analysis-dossier-open'); await page.locator('#analysis-dossier-open').click();
         await page.locator('#analysis-dossier-manager').waitFor({state:'visible'});
         await page.locator('#analysis-dossier-note-body').fill('Szkic pisany po ponownym otwarciu');
         await page.locator('#analysis-dossier-note-body').focus();
@@ -350,7 +354,7 @@ test('Teczki: delayed material reads cannot replace a closed or newly reopened e
         assert.equal(await page.locator('#analysis-dossier-note-body').inputValue(),'Szkic pisany po ponownym otwarciu');
         assert.equal(await page.evaluate(()=>document.activeElement.id),'analysis-dossier-note-body','late material response must not steal focus from the note');
       } else if (mode === 'closed') {
-        await page.locator('#analysis-dossier-open').click();
+        await revealControl(page, '#analysis-dossier-open'); await page.locator('#analysis-dossier-open').click();
         await page.locator('#analysis-dossier-manager').waitFor({state:'visible'});
       }
       await page.unroute(materialURL);

@@ -44,14 +44,24 @@ function harness() {
   const requests = [], cardRenders = [], sourceCalls = [], sourceEffects = [], graphNodes = [], tableRenders = []; let tableActions, viewActions, timelineActions, dossierActions, graphActions, sourceListener; const timers = new Map(); let timerId = 0;
   function node(tag = 'div') {
     const classes = new Set();
-    return {tagName: tag.toUpperCase(), children: [], dataset: {}, value: '', hidden: false, isConnected: true,
-      style: {setProperty() {}}, classList: {add: value => classes.add(value), toggle(value, enabled) {enabled ? classes.add(value) : classes.delete(value);}, remove: value => classes.delete(value)},
-      replacements: 0, append(...children) {this.children.push(...children);}, replaceChildren(...children) {this.replacements++;this.children = children;},
+    const element = {tagName: tag.toUpperCase(), children: [], dataset: {}, value: '', hidden: false, isConnected: true, parentNode: null,
+      style: {setProperty() {}}, classList: {add: (...values) => values.forEach(value => classes.add(value)), toggle(value, enabled) {enabled ? classes.add(value) : classes.delete(value);}, remove: value => classes.delete(value), contains: value => classes.has(value) || element.className?.split(' ').includes(value)},
+      replacements: 0, append(...children) {for (const child of children.filter(Boolean)) {child.remove?.(); child.parentNode = this; this.children.push(child);}},
+      prepend(...children) {for (const child of children.filter(Boolean).reverse()) {child.remove?.(); child.parentNode = this; this.children.unshift(child);}},
+      replaceChildren(...children) {this.replacements++; for (const child of this.children) child.parentNode = null; this.children = []; this.append(...children);},
+      remove() {if (this.parentNode) {const siblings = this.parentNode.children; siblings.splice(siblings.indexOf(this), 1); this.parentNode = null;}},
+      matches(selector) {return selector.startsWith('.') ? this.classList.contains(selector.slice(1)) : selector.startsWith('#') ? this.id === selector.slice(1) : this.tagName === selector.toUpperCase();},
+      closest(selector) {return this.matches(selector) ? this : this.parentNode?.closest(selector) || null;},
+      querySelectorAll(selector) {const parts = selector.trim().split(/\s+/), result = []; const visit = current => {for (const child of current.children || []) {if (child.matches?.(parts.at(-1))) {let ancestor = child.parentNode, index = parts.length - 2; while (index >= 0 && ancestor) {if (ancestor.matches(parts[index])) index--; ancestor = ancestor.parentNode;} if (index < 0) result.push(child);} visit(child);}}; visit(this); return result;},
+      querySelector(selector) {return this.querySelectorAll(selector)[0] || null;},
       setAttribute(key, value) {this[key] = value;}, removeAttribute(key) {delete this[key];},
       addEventListener(event, handler) {this[event] = handler;}, focus() {document.activeElement = this;}, get firstChild() {return this.children[0];}};
+    return element;
   }
-  const shell = node(), host = node(); host.closest = () => shell;
-  const document = {hidden: false, activeElement: null, events: {}, createElement: node, getElementById: id => id === 'analysis-workspace' ? host : null, addEventListener(name, handler) {this.events[name] = handler;}};
+  const shell = node(), host = node(), mapPanel = node(), body = node(); shell.className = 'workspace'; mapPanel.className = 'map-panel'; shell.append(host, mapPanel); body.append(shell);
+  const document = {body, hidden: false, activeElement: null, events: {}, createElement: node,
+    getElementById: id => id === 'analysis-workspace' ? host : body.querySelector('#'+id), querySelector: selector => body.querySelector(selector),
+    addEventListener(name, handler) {const previous = this.events[name]; this.events[name] = event => {previous?.(event); handler(event);};}};
   const U = {el(tag, text, cls) {const item = node(tag); item.textContent = text; item.className = cls; return item;},
     button(text, click, cls) {const item = this.el('button', text, cls); item.click = click; return item;},
     field(label, control) {const item = this.el('label', label); item.append(control); return item;}, date: value => value || 'brak', typeNames: {}, statusNames: {}};

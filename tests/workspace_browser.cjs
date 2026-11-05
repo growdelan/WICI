@@ -1,4 +1,5 @@
 'use strict';
+const {revealControl, openFilters, closeFilters, openTools, closeTools, history24h} = require('./helpers/explorer_controls.cjs');
 const test = require('node:test'), assert = require('node:assert/strict');
 const {spawn} = require('node:child_process'), {once} = require('node:events');
 const net = require('node:net'), path = require('node:path');
@@ -95,9 +96,10 @@ test('Analiza: real cursor inputs do not regroup 999 communications sharing ten 
       const areas=Array.from({length:999},(_,i)=>({ref:`communication:${50000+i}`,type:'communication',label:`Syntetyczny komunikat ${i}`,metadata:{},areas:counties.map(admin_code=>({admin_code}))}));
       return route.fulfill({json:{...result,total:1000,next_cursor:null,items:[station,...areas.slice(0,99)],map:{mode:'objects',points:[station],areas,aggregates:[],total:1000,located_total:1000,unlocated_total:0}}});
     });
+    await openFilters(page);
     await page.locator('[data-object-type="hydro_station"]').click();await settle(page);
     await page.evaluate(()=>WiciWorkspace.selectObject('hydro_station:imgw:demo-wisla'));
-    await page.getByRole('button',{name:'Ostatnie 24 godziny',exact:true}).click();await settle(page);
+    await history24h(page);await settle(page);
     // Drain the source manager's already scheduled one-second catalogue refresh
     // before measuring repeated cursor inputs on an unchanged response.
     await page.waitForFunction(()=>WiciWorkspaceSources.pendingCount===0);
@@ -124,14 +126,16 @@ test('Analiza: real cursor inputs do not regroup 999 communications sharing ten 
 test('Analiza: cursor updates only the selected station row and preserves unrelated source coverage', {timeout:60000}, async () => {
   const env=await setup(), {page}=env;
   try {
+    await openFilters(page);
     await page.locator('[data-object-type="hydro_station"]').click();
+    await openFilters(page);
     await page.locator('[data-object-type="air_quality_station"]').click();await settle(page);
     const refs=await page.evaluate(()=>WiciWorkspace.getData().items.filter(item=>item.type.endsWith('_station')).map(item=>item.ref));
     assert.ok(refs.length>=2);
     assert.equal(await page.evaluate(()=>Object.hasOwn(WiciWorkspace.getData().map,'items')),false);
     const selected=refs.find(ref=>ref.startsWith('hydro_station:')), other=refs.find(ref=>ref!==selected);
     await page.evaluate(ref=>WiciWorkspace.selectObject(ref),selected);
-    await page.getByRole('button',{name:'Ostatnie 24 godziny',exact:true}).click();await settle(page);
+    await history24h(page);await settle(page);
     await page.waitForFunction(()=>!document.getElementById('analysis-cursor').disabled);
     await page.evaluate(({selected,other})=>{
       const row=ref=>[...document.querySelectorAll('#analysis-table tr[data-ref]')].find(item=>item.dataset.ref===ref);
@@ -152,6 +156,7 @@ test('Analiza: cursor updates only the selected station row and preserves unrela
 test('Analiza: a filter click preserves a pending search and restoring a view cancels it', {timeout:60000}, async () => {
   const env = await setup(), {page} = env;
   try {
+    await openTools(page);
     await page.locator('.analysis-saved-views summary').click();
     await page.locator('#analysis-view-name').fill('Wszystkie komunikaty');
     await page.getByRole('button', {name:'Zapisz nowe', exact:true}).click();
@@ -186,22 +191,25 @@ test('Analiza: shared selection, cursor, persistence, responsive themes and Atla
   try {
     assert.equal(await page.locator('#analysis-table tbody tr').count(), 2);
     const originalMap = await page.evaluate(() => state.map._leaflet_id);
+    await openFilters(page);
     await page.locator('[data-object-type="hydro_station"]').click(); await settle(page);
+    await openFilters(page);
     await page.locator('[data-object-type="communication"]').click(); await settle(page);
     await page.waitForFunction(() => WiciWorkspace.getData().total === 2);
     await page.locator('[data-ref="hydro_station:imgw:demo-wisla"] .analysis-object-link').click();
     await page.locator('#analysis-card-title').filter({hasText:'DEMO: wodowskaz Wisła'}).waitFor();
     assert.match(await page.locator('.analysis-reading').innerText(), /274/);
-    await page.getByRole('button', {name:'Ostatnie 24 godziny', exact:true}).click(); await settle(page);
+    await history24h(page); await settle(page);
     await page.waitForFunction(() => !document.getElementById('analysis-cursor').disabled);
     await page.locator('#analysis-cursor').evaluate(input => {input.value = '500'; input.dispatchEvent(new Event('input', {bubbles:true}));});
     await page.waitForFunction(() => WiciWorkspace.getState().cursorAt !== null);
     assert.match(await page.locator('[data-ref="hydro_station:imgw:demo-wisla"]').innerText(), /Według kursora/);
     const before = await page.evaluate(() => ({time:WiciWorkspace.getState().query.time, cursor:WiciWorkspace.getState().cursorAt, map:state.map.getCenter()}));
-    await page.locator('#analysis-refresh').click(); await settle(page);
+    await openTools(page); await page.locator('#analysis-refresh').click(); await page.locator('#analysis-tools > summary').click(); await settle(page);
     assert.deepEqual(await page.evaluate(() => ({time:WiciWorkspace.getState().query.time, cursor:WiciWorkspace.getState().cursorAt, map:state.map.getCenter()})), before);
     await page.keyboard.press('Escape'); await page.locator('#analysis-card').waitFor({state:'hidden'});
     assert.equal(await page.evaluate(() => document.activeElement.classList.contains('analysis-object-link')), true);
+    await openTools(page);
     await page.locator('.analysis-saved-views summary').click();
     await page.locator('#analysis-view-name').fill('Wisła — próba stanowiska');
     await page.getByRole('button', {name:'Zapisz nowe', exact:true}).click();
@@ -210,7 +218,12 @@ test('Analiza: shared selection, cursor, persistence, responsive themes and Atla
     await page.waitForFunction(() => WiciWorkspace.getData().total === 0);
     await page.getByRole('button', {name:'Otwórz', exact:true}).click();
     await page.waitForFunction(() => WiciWorkspace.getData().total === 2);
+    await openTools(page);
     await page.locator('.analysis-saved-views summary').click();
+    await closeTools(page); await closeFilters(page);
+    // Restoring a saved selection opens its inspector; close the mobile dialog
+    // before using controls on the work surface underneath it.
+    if (await page.locator('#analysis-card').isVisible()) await page.locator('#analysis-close-card').click();
     for (const width of [320, 390, 768, 1366, 1920]) {
       await page.setViewportSize({width, height:1000});
       if (width < 700) {
@@ -240,12 +253,15 @@ test('Analiza: shared selection, cursor, persistence, responsive themes and Atla
 test('Analiza: real map selection, GIOS sensor identity, local cursor and blocked storage', {timeout:90000}, async () => {
   const env = await setup({blockedStorage:true}), {page} = env;
   try {
+    await openFilters(page);
     await page.locator('[data-object-type="air_quality_station"]').click();
+    await openFilters(page);
     await page.locator('[data-object-type="communication"]').click();
     await page.waitForFunction(() => WiciWorkspace.getData().total === 1);
+    await closeFilters(page);
     await page.evaluate(() => {
       const target = [];
-      state.map.eachLayer(layer => {if (layer instanceof L.CircleMarker && layer.getTooltip()?.getContent()?.textContent.includes('DEMO: jakość powietrza')) target.push(layer);});
+      state.map.eachLayer(layer => {if ((layer instanceof L.CircleMarker || layer instanceof L.Marker) && layer.getTooltip()?.getContent()?.textContent.includes('DEMO: jakość powietrza')) target.push(layer);});
       if (target.length !== 1) throw new Error(`Expected one catalogue station, got ${target.length}`);
       target[0].fire('click');
     });
@@ -253,7 +269,7 @@ test('Analiza: real map selection, GIOS sensor identity, local cursor and blocke
     assert.equal(await page.locator('#analysis-sensor option').count(), 3);
     await page.locator('#analysis-sensor').selectOption('9000012');
     await page.waitForFunction(() => document.querySelector('.analysis-reading')?.textContent.includes('26'));
-    await page.getByRole('button', {name:'Ostatnie 24 godziny', exact:true}).click(); await settle(page);
+    await history24h(page); await settle(page);
     await page.waitForFunction(() => !document.getElementById('analysis-cursor').disabled);
     const sourceReads = () => env.reads.filter(path => ['/api/hydro','/api/gios'].includes(path)).length;
     const before = sourceReads();
