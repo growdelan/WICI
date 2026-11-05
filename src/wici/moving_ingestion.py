@@ -38,15 +38,19 @@ class MovingIngestion:
             return False
         if kind in self.pending:
             self.coalesced += 1
+        owned = None
         if getattr(self.moving, 'repo', None) is not None:
             if len(self.observations) < 128:
                 received = receipt(self.moving.repo)
-                self.observations.append((kind, stamp_payload(self.moving.repo, copy.deepcopy(snapshot), received)))
+                # Both consumers only read nested values. Retain one private
+                # copy, with separate top-level monitoring receipt metadata.
+                owned = copy.deepcopy(snapshot)
+                self.observations.append((kind, stamp_payload(self.moving.repo, owned, received)))
             else:
                 self.observation_overflow += 1
                 self.observation_gap_after.add(kind)
                 self.observation_errors[kind] = 'Przepełnienie kolejki obserwacji; ciągłość monitorowania niepotwierdzona.'
-        self.pending[kind] = copy.deepcopy(snapshot)
+        self.pending[kind] = owned if owned is not None else copy.deepcopy(snapshot)
         self.idle.clear()
         self.wake.set()
         if self.worker is None:

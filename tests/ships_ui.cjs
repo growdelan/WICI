@@ -13,7 +13,7 @@ const controls={'ships-enabled':new Element(),'ships-status':new Element(),'ship
 const doc={hidden:false,getElementById:id=>controls[id],createElement:()=>new Element(),addEventListener(){}};
 const map={fitBounds(bounds){this.bounds=bounds;},createPane:()=>({style:{}}),attributionControl:{addAttribution(){}},removeLayer(layer){layer.removed=true;}};
 const L={layerGroup:()=>({addTo(){return this;},removeLayer(marker){marker.removed=true;}}),divIcon:options=>options,
- marker:(coords,options)=>{const marker={coords,options,opened:false,iconChanges:0,bindPopup(fn){this.popup=fn;return this;},bindTooltip(fn){this.tooltip=fn;return this;},addTo(){return this;},setLatLng(value){this.coords=value;return this;},setIcon(value){this.iconChanges++;this.options.icon=value;return this;},isPopupOpen(){return this.opened;},setPopupContent(value){this.content=value;return this;}};created.push(marker);return marker;}};
+ marker:(coords,options)=>{const marker={coords,options,opened:false,iconChanges:0,positionChanges:0,element:{title:options.title},bindPopup(fn){this.popup=fn;return this;},bindTooltip(fn){this.tooltip=fn;return this;},setTooltipContent(fn){this.tooltip=fn;return this;},getElement(){return this.element;},addTo(){return this;},setLatLng(value){this.positionChanges++;this.coords=value;return this;},setIcon(value){this.iconChanges++;this.options.icon=value;return this;},isPopupOpen(){return this.opened;},setPopupContent(value){this.content=value;return this;}};created.push(marker);return marker;}};
 class ClockDate extends Date {static now(){return now;}}
 const context={window:{},document:doc,L,Date:ClockDate,Number,Math,Map,Set,Boolean,AbortController,
  setTimeout(fn,ms){const id=++nextId;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);},
@@ -35,6 +35,14 @@ const response={ok:true,json:async()=>({items:[item],stale:false,status:'ready',
  timers.delete(refresh[0]);refresh[1].fn();assert.equal(pending.length,1);
  pending.shift().resolve(response);await settle();
  assert.equal(created.length,1); // Refresh updates the existing marker.
+ assert.equal(created[0].iconChanges,0);assert.equal(created[0].positionChanges,0);assert.equal(created[0].popup(),popup);
+ const rename=[...timers.entries()].find(([,x])=>x.ms===10000);timers.delete(rename[0]);rename[1].fn();
+ pending.shift().resolve({ok:true,json:async()=>({items:[{...item,name:'NOWA NAZWA'}],stale:false,status:'ready'})});await settle();
+ assert.equal(created[0].element.title,'NOWA NAZWA');assert.match(created[0].tooltip().textContent,/NOWA NAZWA/);
+ assert.equal(created[0].iconChanges,0);assert.equal(created[0].positionChanges,0);
+ const turn=[...timers.entries()].find(([,x])=>x.ms===10000);timers.delete(turn[0]);turn[1].fn();
+ pending.shift().resolve({ok:true,json:async()=>({items:[{...item,heading:null,course:180}],stale:false,status:'ready'})});await settle();
+ assert.equal(created[0].iconChanges,1);assert.equal(created[0].positionChanges,0);assert.equal(created[0].options.icon.html.style.transform,'rotate(180deg)');
  const pausedRefresh=[...timers.values()].find(x=>x.ms===10000);
  ui.sync({visible:false});assert.equal(timers.size,0);assert.equal(intervals.size,0);assert.equal(controls['ships-map-legend'].hidden,true);
  pausedRefresh.fn();assert.equal(pending.length,0);

@@ -8,7 +8,7 @@ window.WiciAircraft = (() => {
   const shown = () => Boolean(map) && visible && !document.hidden && health.mode==='live' && $('enabled').checked;
   const age = item => {const time=Date.parse(item.position_at); return Number.isFinite(time)?Math.max(0,(Date.now()-time)/1000):Infinity;};
   const number = (value, unit) => Number.isFinite(value)?`${Math.round(value).toLocaleString('pl-PL')} ${unit}`:'Brak danych';
-  function status(message, warning=false){$('status').textContent=message; $('status').classList.toggle('notice',warning);}
+  function status(message, warning=false){if($('status').textContent!==message)$('status').textContent=message; $('status').classList.toggle('notice',warning);}
   const canFollow = item => !data?.stale && age(item)<=30 && Number.isFinite(item.altitude_m);
   function popup(marker){
     const item=marker.aircraft;
@@ -59,18 +59,26 @@ window.WiciAircraft = (() => {
       if(window.WiciRegion&&!window.WiciRegion.contains(item.latitude,item.longitude))continue;
       if(!Number.isFinite(item.latitude)||!Number.isFinite(item.longitude)||age(item)>120)continue;
       live.add(item.hex);
+      const title=item.id||item.registration||'Samolot',track=Number.isFinite(item.track)?item.track:null,military=item.military===true;
       let marker=markers.get(item.hex);
       if(!marker){
         marker=L.marker([item.latitude,item.longitude],{pane:'aircraftPositions',icon:icon(item),
-          title:item.id||item.registration||'Samolot',bubblingMouseEvents:false});
+          title,bubblingMouseEvents:false});
         marker.aircraft=item;
         marker.bindPopup(()=>popup(marker));
         marker.bindTooltip(()=>node('span',marker.aircraft.id||marker.aircraft.registration||'Samolot'));
         marker.addTo(layer); markers.set(item.hex,marker);
       }else{
         marker.aircraft=item;
-        marker.setLatLng([item.latitude,item.longitude]).setIcon(icon(item));
+        const previous=marker.aircraftPresentation;
+        if(previous.latitude!==item.latitude||previous.longitude!==item.longitude)marker.setLatLng([item.latitude,item.longitude]);
+        if(previous.track!==track||previous.military!==military)marker.setIcon(icon(item));
+        if(marker.options.title!==title){
+          marker.options.title=title;const element=marker.getElement?.();if(element)element.title=title;
+          marker.setTooltipContent?.(()=>node('span',marker.aircraft.id||marker.aircraft.registration||'Samolot'));
+        }
       }
+      marker.aircraftPresentation={latitude:item.latitude,longitude:item.longitude,track,military};
       // Keep popup nodes stable so periodic age/position updates retain button focus.
       if(marker.isPopupOpen())popup(marker);
     }

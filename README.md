@@ -16,6 +16,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Eksplorator Analizy (v0.37.0):** wyszukiwanie i filtry są nad listą wyników, centralną mapą i stałym panelem szczegółów. Karta obiektu pokazuje pomiar, historię oraz działania teczki i grafu, a dolna oś przedstawia historię wybranej stacji. Dostępne są też tabela, motyw nocny i układ mobilny. [Obsługa Eksploratora](docs/analysis-workspace.md#układ-eksploratora).
 
+**Szybsze przetwarzanie i odświeżanie (v0.37.1):** zoptymalizowano odczyty katalogu, komunikatów, grafu i teczek, monitoring, API oraz dokładne testy geometrii. Atlas i warstwy transportu zachowują niezmienione elementy mapy. Poprawiono też dostępność zamknięcia okienka IODA na telefonie. Zachowane są precyzja danych, geometria, historia i częstotliwość odczytów. [Pomiary i weryfikacja](docs/performance-audit.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
@@ -291,6 +293,7 @@ Dodatkowe narzędzia:
 - `uv run --locked python scripts/verify_system.py` — test CLI i restartu z własnymi procesami demo; wymaga portu 8765 i zgodnej konfiguracji, raport w `tmp/live-checks/`.
 - `uv run --locked python scripts/benchmark.py` — pomiar dla 10 000 rekordów.
 - `node scripts/benchmark_map.cjs` — pomiar aktualizacji autobusów i mapy Analizy na danych syntetycznych (Playwright/Chromium); [zakres zmian i wyniki](docs/map-performance.md).
+- [Audyt wydajności z 05.11.2026](docs/performance-audit.md) — usprawnienia SQL, API, geometrii, transportu i interfejsu, pomiary przed/po oraz polecenia odtworzenia benchmarków.
 - `uv run --locked python scripts/prepare_synthetic_fixtures.py` oraz `scripts/prepare_imgw_pdf_fixtures.py` — odtworzenie syntetycznych próbek offline.
 
 Opcjonalna grupa GIS (`geo`) służy odtwarzaniu geometrii. Granice mapy i biblioteka Leaflet są dołączone do projektu. Generator PDF korzysta z podstawowej zależności pypdf; grupa `pdf-check` została usunięta.

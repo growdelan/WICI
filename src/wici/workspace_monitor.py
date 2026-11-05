@@ -10,6 +10,7 @@ import json
 import logging
 import math
 import sqlite3
+from collections import OrderedDict
 from datetime import UTC, datetime, timedelta
 
 from wici.tracking import MAX_AGE, timestamp
@@ -401,6 +402,9 @@ class WorkspaceMonitor:
         from wici.monitor_epochs import accepts_receipt, rule_epoch
 
         processed = 0
+        # Rules often consume the same bounded stream window. Reuse decoding
+        # only in this transaction; divergent checkpoints cannot grow the cache.
+        decoded = OrderedDict()
         with self.repo.lock, self.db:
             overload = self.db.execute("SELECT value FROM workspace_monitor_meta WHERE key='overload'").fetchone()
             boundary = self.db.execute("SELECT value FROM workspace_monitor_meta WHERE key='overload_after_id'").fetchone()
@@ -418,14 +422,29 @@ class WorkspaceMonitor:
                 observations = self.db.execute('SELECT * FROM workspace_observations WHERE id>? ORDER BY id LIMIT ?',
                                                (rule['checkpoint_id'], BATCH)).fetchall()
                 for row in observations:
-                    observation = decode_observation(row)
+                    if row['id'] not in decoded:
+                        if len(decoded) == BATCH:
+                            decoded.popitem(last=False)
+                        decoded[row['id']] = decode_observation(row)
+                    else:
+                        decoded.move_to_end(row['id'])
+                    # Event creation adds a rule-specific trigger. Never put it
+                    # back into the shared decoded observation used by peers.
+                    observation = dict(decoded[row['id']])
                     if not accepts_receipt(observation, epoch):
                         self.db.execute('UPDATE workspace_rules SET checkpoint_id=? WHERE id=?', (row['id'], rule['id']))
                         processed += 1
                         continue
                     self._apply_overload_gap(rule, row['id']-1, overload, boundary)
                     ref = observation['object_ref']
-                    if observation['kind'] == 'gap' and _matches(rule, observation):
+                    if not _matches(rule, observation):
+                        # It is still a consumed stream entry: preserve the
+                        # checkpoint and overload boundary before moving on.
+                        self.db.execute('UPDATE workspace_rules SET checkpoint_id=? WHERE id=?', (row['id'], rule['id']))
+                        processed += 1
+                        self._apply_overload_gap(rule, row['id'], overload, boundary)
+                        continue
+                    if observation['kind'] == 'gap':
                         # Source failures break all identities; a track/session
                         # break belongs only to that object, never its peers.
                         if ref == '*':

@@ -1,9 +1,50 @@
 """Local PRG geometry identities and deterministic, hole-aware point assignment."""
 import json
+import math
+from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).with_name('static') / 'geo'
+EDGE_EPSILON = 1e-10
+EDGE_ROWS_PER_DEGREE = 20
+
+
+class RingIndex:
+    """Index exact edges of a bundled ring; no rounding or simplification.
+
+    A horizontal ray only meets edges spanning its latitude. Boundary checks
+    use the original tolerance, including horizontal and zero-length edges.
+    This index is built only for the finite bundled PRG dataset, not queries.
+    """
+
+    def __init__(self, ring):
+        self.bounds = (min(p[0] for p in ring), min(p[1] for p in ring),
+                       max(p[0] for p in ring), max(p[1] for p in ring))
+        rows = defaultdict(list)
+        for a, b in zip(ring, ring[1:] + ring[:1]):
+            ax, ay = a[:2]
+            bx, by = b[:2]
+            edge = (ax, ay, bx, by)
+            first = math.floor((min(ay, by)-EDGE_EPSILON)*EDGE_ROWS_PER_DEGREE)
+            last = math.floor((max(ay, by)+EDGE_EPSILON)*EDGE_ROWS_PER_DEGREE)
+            for row in range(first, last+1):
+                rows[row].append(edge)
+        self.rows = {row: tuple(edges) for row, edges in rows.items()}
+
+    def locate(self, longitude, latitude, *, boundary=True):
+        """Return the existing 0/1/2 classification, or plain ray parity."""
+        if not math.isfinite(latitude) or not math.isfinite(longitude):
+            return 0
+        inside = False
+        for ax, ay, bx, by in self.rows.get(math.floor(latitude*EDGE_ROWS_PER_DEGREE), ()):
+            if (boundary and abs((longitude-ax)*(by-ay)-(latitude-ay)*(bx-ax)) < EDGE_EPSILON
+                    and min(ax, bx)-EDGE_EPSILON <= longitude <= max(ax, bx)+EDGE_EPSILON
+                    and min(ay, by)-EDGE_EPSILON <= latitude <= max(ay, by)+EDGE_EPSILON):
+                return 2
+            if (ay > latitude) != (by > latitude) and longitude < (bx-ax)*(latitude-ay)/(by-ay)+ax:
+                inside = not inside
+        return int(inside)
 
 
 def on_segment(point, a, b):
@@ -60,14 +101,28 @@ def province_bounds():
     return result
 
 
+@lru_cache(maxsize=1)
+def indexed_provinces():
+    """Share one bounded, immutable edge index across the PRG consumers."""
+    result = []
+    bounds = province_bounds()
+    for feature in features():
+        geometry = feature['geometry']
+        polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
+        result.append((feature['properties'], tuple(tuple(RingIndex(ring) for ring in rings)
+                                                    for rings in polygons),
+                       bounds[feature['properties']['admin_code']]))
+    return tuple(result)
+
+
 def provinces_for_point(longitude, latitude):
     if longitude is None or latitude is None:
         return []
     result = []
-    bounds = province_bounds()
-    for feature in features():
-        code = feature['properties']['admin_code']
-        west, south, east, north = bounds[code]
-        if west <= longitude <= east and south <= latitude <= north and contains(feature['geometry'], longitude, latitude):
-            result.append(code)
+    for properties, polygons, (west, south, east, north) in indexed_provinces():
+        if west <= longitude <= east and south <= latitude <= north and any(
+                rings[0].locate(longitude, latitude)
+                and not any(hole.locate(longitude, latitude) == 1 for hole in rings[1:])
+                for rings in polygons):
+            result.append(properties['admin_code'])
     return sorted(result)

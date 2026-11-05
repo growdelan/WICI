@@ -2,31 +2,16 @@
 import csv
 import hashlib
 import io
-import json
 import math
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from functools import lru_cache
-from pathlib import Path
+
+from wici.geo import indexed_provinces
 
 PRODUCTS = ('VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'VIIRS_SNPP_NRT')
 PUBLIC_URL = 'https://firms.modaps.eosdis.nasa.gov/'
 BBOX = '14,49,24.2,55'
 REQUIRED = {'latitude', 'longitude', 'acq_date', 'acq_time', 'satellite', 'instrument', 'confidence', 'frp'}
-
-
-@lru_cache(maxsize=1)
-def provinces():
-    features = json.loads((Path(__file__).with_name('static') / 'geo/provinces.geojson').read_text())['features']
-    prepared = []
-    for feature in features:
-        geometry = feature['geometry']
-        polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
-        points = [p for polygon in polygons for ring in polygon for p in ring]
-        bounds = (min(p[0] for p in points), min(p[1] for p in points),
-                  max(p[0] for p in points), max(p[1] for p in points))
-        prepared.append((feature['properties'], polygons, bounds))
-    return prepared
 
 
 def in_ring(x, y, ring):
@@ -43,11 +28,11 @@ def in_ring(x, y, ring):
 
 
 def province_at(longitude, latitude):
-    for properties, polygons, (west, south, east, north) in provinces():
+    for properties, polygons, (west, south, east, north) in indexed_provinces():
         if not west <= longitude <= east or not south <= latitude <= north:
             continue
-        if any(in_ring(longitude, latitude, polygon[0])
-               and not any(in_ring(longitude, latitude, hole) for hole in polygon[1:]) for polygon in polygons):
+        if any(polygon[0].locate(longitude, latitude)
+               and not any(hole.locate(longitude, latitude) for hole in polygon[1:]) for polygon in polygons):
             return properties
     return None
 

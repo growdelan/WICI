@@ -81,12 +81,19 @@
   function sampleAt(samples, cursorAt, range, sensor, metric) {
     const limit = cursorAt ? Date.parse(cursorAt) : Infinity, lower = range ? Date.parse(range.from) : -Infinity,
       upper = range ? Date.parse(range.to) : Infinity;
-    return (samples || []).filter(sample => {
+    let selected = null, selectedAt = -Infinity;
+    // Cursor movement needs one latest correction, not a sorted copy of history.
+    // Keep the first item on an exact time/revision tie, as stable sort did.
+    for (const sample of samples || []) {
       const time = Date.parse(sample.observed_at || sample.at);
-      return Number.isFinite(time) && time >= lower && time < upper && time <= limit &&
+      if (Number.isFinite(time) && time >= lower && time < upper && time <= limit &&
         (!sensor || String(sample.sensor_id) === String(sensor)) && (!metric || sample.metric === metric) &&
-        !['future', 'unknown_time'].includes(sample.quality || sample.time_status);
-    }).sort((a, b) => Date.parse(b.observed_at || b.at) - Date.parse(a.observed_at || a.at) || (b.revision || 0) - (a.revision || 0))[0] || null;
+        !['future', 'unknown_time'].includes(sample.quality || sample.time_status) &&
+        (time > selectedAt || time === selectedAt && (sample.revision || 0) - (selected.revision || 0) > 0)) {
+        selected = sample; selectedAt = time;
+      }
+    }
+    return selected;
   }
   const exported = {TYPES, initialState, reducer, createStore, sampleAt, movingRef, regionRef, timezones};
   root.WiciWorkspaceStore = exported;

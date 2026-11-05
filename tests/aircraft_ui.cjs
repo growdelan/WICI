@@ -16,7 +16,7 @@ const controls={'aircraft-enabled':new Element(),'aircraft-status':new Element()
 const doc={hidden:false,getElementById:id=>controls[id],createElement:()=>new Element()};
 const map={createPane:()=>({style:{}}),attributionControl:{addAttribution(value){attribution=value;}},removeLayer(layer){layer.removed=true;}};
 const L={layerGroup:()=>({addTo(){return this;},removeLayer(marker){marker.removed=true;}}),divIcon:options=>options,
- marker:(coords,options)=>{const marker={coords,options,opened:false,overlay:{options:{autoPan:true}},bindPopup(fn){this.popup=fn;return this;},getPopup(){return this.overlay;},bindTooltip(){return this;},addTo(){return this;},setLatLng(value){this.coords=value;return this;},setIcon(value){this.options.icon=value;if(this.opened)this.content=this.popup();return this;},isPopupOpen(){return this.opened;},setPopupContent(value){this.content=value;return this;}};created.push(marker);return marker;}};
+ marker:(coords,options)=>{const marker={coords,options,opened:false,iconChanges:0,positionChanges:0,element:{title:options.title},overlay:{options:{autoPan:true}},bindPopup(fn){this.popup=fn;return this;},getPopup(){return this.overlay;},getElement(){return this.element;},bindTooltip(fn){this.tooltip=fn;return this;},setTooltipContent(fn){this.tooltip=fn;return this;},addTo(){return this;},setLatLng(value){this.positionChanges++;this.coords=value;return this;},setIcon(value){this.iconChanges++;this.options.icon=value;if(this.opened)this.content=this.popup();return this;},isPopupOpen(){return this.opened;},setPopupContent(value){this.content=value;return this;}};created.push(marker);return marker;}};
 class ClockDate extends Date {static now(){return now;}}
 const context={window:{WiciAircraft3D:followController},document:doc,L,Date:ClockDate,Number,Math,Map,Set,Boolean,AbortController,TypeError,SyntaxError,
  setTimeout(fn,ms){const id=++nextId;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);},
@@ -48,6 +48,11 @@ const response={ok:true,json:async()=>({items:[item],stale:false,status:'ready',
  follow.focus();[...intervals.values()][0].fn();assert.equal(doc.activeElement,follow);assert.equal(created[0].popup(),popup);
  follow.listeners.click();assert.equal(followCalls.open.length,1);assert.equal(followCalls.open[0][0],item);assert.equal(followCalls.open[0][1],followCalls.update[0][0]);assert.equal(followCalls.open[0][2],follow);
  assert.equal(followCalls.open[0][3],created[0].getPopup());
+ const identical=[...timers.entries()].find(([,x])=>x.ms===10000),originalIcon=created[0].options.icon;
+ timers.delete(identical[0]);identical[1].fn();
+ pending.shift().resolve({ok:true,json:async()=>({items:[{...item}],stale:false,status:'ready',message:''})});await settle();
+ assert.equal(created[0].iconChanges,0);assert.equal(created[0].positionChanges,0);assert.equal(created[0].options.icon,originalIcon);
+ assert.equal(doc.activeElement,follow);assert.equal(created[0].popup(),popup);
  const refresh=[...timers.entries()].find(([,x])=>x.ms===10000);
  assert.ok(refresh);
  timers.delete(refresh[0]);refresh[1].fn();assert.equal(pending.length,1);
@@ -56,6 +61,8 @@ const response={ok:true,json:async()=>({items:[item],stale:false,status:'ready',
  pending.shift().resolve({ok:true,json:async()=>latestSnapshot});await settle();
  assert.equal(created.length,1); // Refresh updates the existing marker.
  assert.equal(created[0].options.icon.html.className,'aircraft-symbol aircraft-military');
+ assert.equal(created[0].iconChanges,1);assert.equal(created[0].positionChanges,1);
+ assert.equal(created[0].element.title,'LOT9ZZ');assert.equal(created[0].tooltip().textContent,'LOT9ZZ');
  assert.equal(doc.activeElement,follow);assert.equal(created[0].content,popup);assert.equal(popup.children[3],follow);
  assert.equal(popup.children[0].textContent,'LOT9ZZ');
  follow.listeners.click();assert.equal(followCalls.open.at(-1)[0],latestItem);assert.equal(followCalls.open.at(-1)[1],latestSnapshot);

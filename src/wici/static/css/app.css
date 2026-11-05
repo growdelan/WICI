@@ -207,6 +207,9 @@ html,body{height:100%}body{display:flex;flex-direction:column;min-height:560px}.
 .ioda-popup th,.ioda-popup td {padding:3px;text-align:left;border-bottom:1px solid var(--line)}
 .ioda-popup p {margin:10px 0}
 .map-panel:has(.ioda-popup)>.map-legend {display:none}
+/* Keep IODA's status and close target reachable above the map controls. */
+.map-panel:has(.ioda-popup) .leaflet-control-zoom,
+.map-panel:has(.ioda-popup)>#atlas3d-toggle[aria-pressed="false"] {visibility:hidden}
 
 /* Position quality controls are independent of the live aircraft toggle. */
 .quality-controls{display:grid;gap:.65rem;padding-top:.5rem}

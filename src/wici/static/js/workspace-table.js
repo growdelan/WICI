@@ -6,14 +6,21 @@ window.WiciWorkspaceUI = (() => {
   const sourceNames = {imgw: 'IMGW', imgw_meteo: 'IMGW', gios: 'GIOŚ', rso: 'RSO', rcb: 'RCB', sg: 'Straż Graniczna', prg: 'PRG', aircraft: 'adsb.fi', ships: 'AISStream', ukraine_alerts: 'NEPTUN', local: 'Lokalnie'};
   const iconPaths = {hydro_station: 'M2 7c3-5 7 5 10 0s7 5 10 0M2 12c3-5 7 5 10 0s7 5 10 0M2 17c3-5 7 5 10 0s7 5 10 0', air_quality_station: 'M3 8h12a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M4 16h5', communication: 'M3 9v6h4l12 4V5L7 9H3Zm4 6 2 6h3l-2-5M19 8l3 2v4l-3 2', area: 'm4 4 16 2-2 14-15-3 1-13Z', custom_area: 'm4 4 16 2-2 14-15-3 1-13Z', aircraft: 'm12 2 2 7 8 5v3l-8-3v5l3 2v1l-5-1-5 1v-1l3-2v-5l-8 3v-3l8-5 2-7Z', ship: 'M7 12V5h10v7M10 5V2h4v3M3 13l9-3 9 3-4 7H7l-4-7ZM2 22c3-3 5 3 8 0s5 3 8 0h4', ua_region: 'm4 4 16 2-2 14-15-3 1-13Z', civil_alert: 'm12 3 10 18H2L12 3Zm0 6v5m0 3v1', list: 'M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1', table: 'M3 3h18v18H3V3Zm0 6h18M3 15h18M9 3v18M15 3v18'};
   function icon(type, cls = 'analysis-result-icon') {const node = el('span', null, cls); node.setAttribute('aria-hidden', 'true'); node.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${iconPaths[type] || iconPaths.area}"></path></svg>`; return node;}
-  function shortTime(value) {if (/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return `${value} · sama data`; const parsed = new Date(value); return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat('pl-PL', {timeZone: displayTimezone, hour: '2-digit', minute: '2-digit'}).format(parsed) : 'Brak czasu';}
+  const formatters = new Map();
+  function formatter(short) {
+    const key = `${displayTimezone}:${short ? 'time' : 'date'}`;
+    if (!formatters.has(key)) formatters.set(key, new Intl.DateTimeFormat('pl-PL', {timeZone: displayTimezone,
+      ...(short ? {hour: '2-digit', minute: '2-digit'} : {dateStyle: 'short', timeStyle: 'short'})}));
+    return formatters.get(key);
+  }
+  function shortTime(value) {if (/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return `${value} · sama data`; const parsed = new Date(value); return value && Number.isFinite(parsed.getTime()) ? formatter(true).format(parsed) : 'Brak czasu';}
   const metricNames = {water_level: 'Stan wody', discharge: 'Przepływ', temperature: 'Temperatura'};
   function el(tag, text, cls) {const node = document.createElement(tag); if (text != null) node.textContent = String(text); if (cls) node.className = cls; return node;}
   function button(text, onClick, cls) {const node = el('button', text, cls); node.type = 'button'; if (onClick) node.addEventListener('click', onClick); return node;}
   let displayTimezone = 'Europe/Warsaw';
   function setTimezone(value) {displayTimezone = ['Europe/Warsaw', 'Europe/Kyiv', 'UTC'].includes(value) ? value : 'Europe/Warsaw';}
   function date(value) {if (!value) return 'Brak czasu'; if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value} · sama data`;
-    const parsed = new Date(value); return Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat('pl-PL', {timeZone: displayTimezone, dateStyle: 'short', timeStyle: 'short'}).format(parsed) : 'Czas nieznany';}
+    const parsed = new Date(value); return Number.isFinite(parsed.getTime()) ? formatter(false).format(parsed) : 'Czas nieznany';}
   function measurement(item) {return item?.measurement || item?.latest || (Array.isArray(item?.measurements) ? item.measurements[0] : null);}
   function value(sample) {return sample?.value == null ? 'Brak pomiaru' : `${sample.value} ${sample.unit || ''}`.trim();}
   function field(label, control) {const node = el('label', label); node.append(control); return node;}
