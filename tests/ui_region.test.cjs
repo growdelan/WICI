@@ -1,17 +1,18 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const square=(x,y,size=2)=>[[x,y],[x+size,y],[x+size,y+size],[x,y+size],[x,y]];
-const provinces={features:[{properties:{admin_code:'02',name:'dolnośląskie'},geometry:{type:'Polygon',coordinates:[square(15,50),square(15.5,50.5,.2)]}},{properties:{admin_code:'14',name:'mazowieckie'},geometry:{type:'MultiPolygon',coordinates:[[square(20,52)],[square(23,53,.2)]]}}]};
+const provinces={features:[{properties:{admin_code:'02',name:'dolnośląskie'},geometry:{type:'Polygon',coordinates:[square(15,50),square(15.5,50.5,.2)]}},{properties:{admin_code:'14',name:'mazowieckie'},geometry:{type:'MultiPolygon',coordinates:[[square(20,52)],[square(23,53,.2)]]}},{properties:{admin_code:'06',name:'wklęsły test'},geometry:{type:'Polygon',coordinates:[[[20,50],[24,50],[24,54],[23,54],[23,51],[21,51],[21,54],[20,54],[20,50]]]}}]};
 function harness(saved='',blocked=false){
+ let geometryBuilds=0;
  const elements=new Map(),events={},frames=[],requests=[],storage=new Map([['wici.region.v1',saved]]);
  const element=()=>({children:[],style:{},dataset:{},textContent:'',checked:false,hidden:false,value:'',append(...els){this.children.push(...els);},setAttribute(){},addEventListener(k,fn){this[k]=fn;}});
  const document={hidden:false,getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},createElement:element,addEventListener(k,fn){(events[k]??=[]).push(fn);},dispatchEvent(e){events[e.type]?.forEach(fn=>fn(e));}};
  const panes={mapPane:element(),tilePane:element(),popupPane:element(),osmBase:element(),data:element()};
  const map={events:{},fits:[],layers:new Set(),removeLayer(layer){this.layers.delete(layer);},hasLayer(layer){return this.layers.has(layer);},createPane(name){return panes[name]=element();},getPanes:()=>panes,latLngToLayerPoint:([lat,lon])=>({x:lon*10,y:lat*10}),on(names,fn){for(const n of names.split(' '))this.events[n]=fn;},fitBounds(b){this.fits.push(b);},closePopup(){this.closed=true;}};
- const L={geoJSON(f,options){const points=f?.geometry?.coordinates.flat(Infinity)||[14,49,24,55],xs=points.filter((_,i)=>i%2===0),ys=points.filter((_,i)=>i%2===1);return {feature:f,options,getBounds:()=>({getWest:()=>Math.min(...xs),getSouth:()=>Math.min(...ys),getEast:()=>Math.max(...xs),getNorth:()=>Math.max(...ys),isValid:()=>true}),addTo(owner){this.owner=owner;owner.layers.add(this);return this;},remove(){this.owner?.removeLayer(this);}};}};
+ const L={geoJSON(f,options){geometryBuilds++;const points=f?.geometry?.coordinates.flat(Infinity)||[14,49,24,55],xs=points.filter((_,i)=>i%2===0),ys=points.filter((_,i)=>i%2===1);return {feature:f,options,getBounds:()=>({getWest:()=>Math.min(...xs),getSouth:()=>Math.min(...ys),getEast:()=>Math.max(...xs),getNorth:()=>Math.max(...ys),isValid:()=>true}),addTo(owner){this.owner=owner;owner.layers.add(this);return this;},remove(){this.owner?.removeLayer(this);}};}};
  const window={};vm.runInNewContext(fs.readFileSync('src/wici/static/js/region.js','utf8'),{window,document,L,Event,localStorage:{getItem(k){if(blocked)throw Error();return storage.get(k);},setItem(k,v){if(blocked)throw Error();storage.set(k,v);}},requestAnimationFrame(fn){frames.push(fn);return frames.length;},fetch:(url)=>new Promise((resolve,reject)=>requests.push({url,resolve,reject}))});
  window.WiciRegion.init({map,provinces,select:document.getElementById('province'),country:{}});
- return {ui:window.WiciRegion,document,map,panes,storage,frames,requests,control:id=>document.getElementById(id)};
+ return {ui:window.WiciRegion,document,map,panes,storage,frames,requests,control:id=>document.getElementById(id),get geometryBuilds(){return geometryBuilds;}};
 }
 const box=(w,s,e,n)=>({getWest:()=>w,getSouth:()=>s,getEast:()=>e,getNorth:()=>n});
 test('saved scope, holes, boundary, multipolygon, country and blocked storage',()=>{
@@ -39,6 +40,25 @@ test('viewport intersection remains small, skips outside and touching views, cou
  const h=harness('02');assert.deepEqual([...h.ui.viewBox(box(16,51,16.2,51.2))],[16,51,16.2,51.2]);assert.deepEqual([...h.ui.viewBox(box(14,49,16,51))],[15,50,16,51]);
  assert.equal(h.ui.viewBox(box(18,50,19,51)),null);assert.equal(h.ui.viewBox(box(17,50,18,51)),null);
  h.ui.select('');assert.deepEqual([...h.ui.viewBox(box(14,49,24,55))],[14,49,24,55]);
+});
+test('regional envelopes retain concavities, holes, boundary tolerance and region changes',()=>{
+ const h=harness('06');
+ for(let repeat=0;repeat<3;repeat++){
+  assert.ok(h.ui.contains(53,20.5));assert.ok(!h.ui.contains(53,22),'The bounding box is not the polygon');
+  assert.ok(h.ui.contains(50,22));assert.ok(h.ui.contains(50.5,24+1e-12),'Keep existing boundary tolerance');
+  assert.ok(!h.ui.contains(50.5,24+1e-7));assert.ok(!h.ui.contains(Infinity,22));
+  h.ui.select('02',{fit:false});assert.ok(!h.ui.contains(50.6,15.6));assert.ok(!h.ui.contains(50.5,15.6),'Hole boundary remains excluded');
+  h.ui.select('14',{fit:false});assert.ok(h.ui.contains(53.1,23.1));assert.ok(!h.ui.contains(53.1,22.5));
+  h.ui.select('06',{fit:false});
+ }
+});
+test('repeated regional viewport checks reuse bounds without constructing Leaflet polygons',()=>{
+ const h=harness('02'),before=h.geometryBuilds;
+ for(let i=0;i<100;i++)assert.deepEqual([...h.ui.viewBox(box(14,49,16,51))],[15,50,16,51]);
+ assert.equal(h.geometryBuilds,before);
+ h.ui.select('14',{fit:false});assert.deepEqual([...h.ui.viewBox(box(19,51,24,55))],[20,52,23.2,54]);
+ h.ui.select('02',{fit:false});const changed=h.geometryBuilds;
+ assert.deepEqual([...h.ui.viewBox(box(14,49,16,51))],[15,50,16,51]);assert.equal(h.geometryBuilds,changed);
 });
 function progressHarness(){const h=harness('02');h.ui.initProgress({'gios-enabled':'GIOŚ','hydro-stations':'Hydro','buses-enabled':'Autobusy'});for(const id of ['gios-enabled','hydro-stations','buses-enabled'])h.control(id).checked=true;return h;}
 const row=(h,id)=>h.control('layer-progress').children.find(el=>el.dataset.layer===id);

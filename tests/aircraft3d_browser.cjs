@@ -242,7 +242,13 @@ test('aircraft 3D: POV follows the displayed course and unlocks when playback re
     const repeatedFrom=observations.aircraftTimestamps.length;
     await page.evaluate(()=>{window.__testRealNow=Date.now;Date.now=()=>window.__testRealNow()+14000;});
     await page.waitForFunction(()=>!document.querySelector('#aircraft3d-pov').disabled);
-    await page.waitForTimeout(600);
+    // The 400 ms fixture poll is scheduled after the previous response finishes.
+    // Wait for that observable poll, including an in-flight response, rather
+    // than assuming it must finish within 600 ms of a playback-clock change.
+    const pollDeadline=Date.now()+5000;
+    while(observations.aircraftTimestamps.length===repeatedFrom&&Date.now()<pollDeadline){
+      await new Promise(resolve=>setTimeout(resolve,20));
+    }
     assert.ok(observations.aircraftTimestamps.length>repeatedFrom,'The ordinary poller must continue while the playback clock advances');
     assert.ok(observations.aircraftTimestamps.slice(repeatedFrom).every(timestamp=>timestamp===known.position_at),'POV must unlock with no newer observation');
     await page.locator('#aircraft3d-pov').click();

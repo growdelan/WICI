@@ -53,8 +53,11 @@ class WorkspaceDossiers:
 
     def list(self):
         with self.repo.lock:
-            return {'items': [self._summary(row) for row in self.db.execute(
-                'SELECT * FROM workspace_dossiers ORDER BY updated_at DESC,id')]}
+            return {'items': [dict(row) for row in self.db.execute('''SELECT d.*,
+                (SELECT count(*) FROM workspace_dossier_pins p WHERE p.dossier_id=d.id) pin_count,
+                (SELECT count(*) FROM workspace_dossier_notes n WHERE n.dossier_id=d.id) note_count,
+                (SELECT count(*) FROM workspace_dossier_materials m WHERE m.dossier_id=d.id) material_count
+                FROM workspace_dossiers d ORDER BY d.updated_at DESC,d.id''')]}
 
     def detail(self, dossier_id):
         with self.repo.lock:

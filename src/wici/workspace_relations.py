@@ -31,8 +31,18 @@ class WorkspaceRelations:
 
     def _begin_read(self):
         self._raw_cache, self._node_cache, self._out_cache = {}, {}, {}
+        self._document_cache = {}
         self._moving_status = None
-        self._custom_areas = self.workspace.areas.list()['items']
+        self._custom_areas = None
+
+    def _prefetch_raw(self, refs):
+        missing = list(dict.fromkeys(ref for ref in refs if ref not in self._raw_cache))
+        for offset in range(0, len(missing), 500):
+            batch = missing[offset:offset+500]
+            rows = self.db.execute(f'SELECT * FROM catalog_objects WHERE ref IN '
+                                   f'({",".join("?" for _ in batch)})', batch).fetchall()
+            self._raw_cache.update((ref, None) for ref in batch)
+            self._raw_cache.update((item['ref'], item) for item in self.workspace.catalog.decode_many(rows))
 
     def _raw(self, ref):
         if ref not in self._raw_cache:
@@ -108,6 +118,11 @@ class WorkspaceRelations:
         return query, now, revision
 
     def _document(self, item, query, now):
+        if item['ref'] not in self._document_cache:
+            self._document_cache[item['ref']] = self._read_document(item, query, now)
+        return self._document_cache[item['ref']]
+
+    def _read_document(self, item, query, now):
         version_id = query.version_ids.get(item['ref'], item['document_version_id'])
         row = self.db.execute('''SELECT v.*,d.url,d.source_id,d.first_seen_at,d.last_checked_at,s.name source_name
             FROM document_versions v JOIN documents d ON d.id=v.document_id JOIN sources s ON s.id=d.source_id
@@ -193,7 +208,7 @@ class WorkspaceRelations:
         edges = []
         if item:
             typ = item['type']
-            if typ == 'communication':
+            if typ == 'communication' and self._allowed(query, 'communication_area', 'source'):
                 document, version_id = self._document(item, query, now)
                 for loc in document['locations']:
                     role = loc['role']
@@ -204,7 +219,7 @@ class WorkspaceRelations:
                         {'kind': 'source_version', 'valid_from': document.get('valid_from'),
                          'valid_until': document.get('valid_until'), 'source_published_at': document.get('source_published_at'),
                          'source_published_date': document.get('source_published_date')}))
-            elif typ.endswith('_station'):
+            elif typ.endswith('_station') and self._allowed(query, 'station_area'):
                 for area in item['areas']:
                     basis = area['basis']
                     derived = 'Położenie punktu' in basis
@@ -213,16 +228,17 @@ class WorkspaceRelations:
                         {'source_id': item['source_id'], 'basis': basis, 'role': area['role'],
                          'method': 'point_in_prg' if derived else 'source_administrative_code',
                          'source_url': item['metadata'].get('source_url'), 'geometry_context': 'current'}))
-            elif typ == 'area' and len(item['native_id']) == 4 and item['native_id'][:2] in units():
+            elif (typ == 'area' and self._allowed(query, 'administrative_parent', 'source')
+                  and len(item['native_id']) == 4 and item['native_id'][:2] in units()):
                 edges.append(self._edge(ref, 'area:prg:'+item['native_id'][:2], 'administrative_parent',
                     'Należy do województwa', 'source', {'source_id': 'prg', 'basis': 'Hierarchia kodów lokalnego zbioru PRG'}))
-            elif typ == 'ua_region':
+            elif typ == 'ua_region' and self._allowed(query, 'region_parent', 'source'):
                 parent = item['metadata'].get('parent_ref')
                 if parent:
                     edges.append(self._edge(ref, parent, 'region_parent', 'Należy do obwodu', 'source',
                         {'source_id': 'ukraine_alerts', 'source_url': 'https://neptun.in.ua/',
                          'basis': item['metadata'].get('parent_basis'), 'geometry_context': 'current'}))
-            elif typ == 'civil_alert':
+            elif typ == 'civil_alert' and self._allowed(query, 'alert_region', 'source'):
                 meta = item['metadata']
                 start, end = self._interval(query, now)
                 active = True
@@ -237,7 +253,7 @@ class WorkspaceRelations:
                         {'source_id': 'ukraine_alerts', 'source_url': 'https://neptun.in.ua/', 'basis': 'Identyfikator regionu zapisanego epizodu'},
                         dict(kind='interval', **{key: meta.get(key) for key in ('first_seen_at', 'last_seen_at',
                             'source_since', 'ended_after', 'ended_before')})))
-            elif typ in ('aircraft', 'ship'):
+            elif typ in ('aircraft', 'ship') and self._allowed(query, 'reported_in_area', 'derived'):
                 point = self._position(item, query, now)
                 if point:
                     for code in provinces_for_point(point['longitude'], point['latitude']):
@@ -275,6 +291,8 @@ class WorkspaceRelations:
         if not point:
             return []
         edges = []
+        if self._custom_areas is None:
+            self._custom_areas = self.workspace.areas.list()['items']
         for area in self._custom_areas:
             if contains(area, point.get('longitude'), point.get('latitude')):
                 edges.append(self._edge(item['ref'], area['ref'], 'custom_area_member',
@@ -381,6 +399,7 @@ class WorkspaceRelations:
                 rows = self.db.execute("SELECT ref FROM catalog_objects WHERE type IN ('hydro_station','air_quality_station','aircraft','ship') LIMIT ?", (MAX_CANDIDATES+1,)).fetchall()
                 if len(rows) > MAX_CANDIDATES:
                     raise ValueError('Otoczenie przekracza 5000 kandydatów. Wybierz bardziej szczegółowy obiekt.')
+                self._prefetch_raw(row['ref'] for row in rows)
                 for row in rows:
                     edges.extend(edge for edge in self._outgoing(row['ref'], query, now) if edge['target_ref'] == ref)
             return list({edge['id']: edge for edge in edges}.values())
@@ -409,6 +428,7 @@ class WorkspaceRelations:
         with self.repo.lock:
             self._begin_read()
             query, now, revision = self._prepare(raw)
+            self._prefetch_raw(query.node_refs)
             nodes = [self._node(ref, query, now) for ref in query.node_refs]
             visible, edges, counts = set(query.node_refs), {}, {}
             for ref in query.node_refs:
@@ -449,6 +469,7 @@ class WorkspaceRelations:
                     raise QueryChanged('Strony otoczenia zmieniły się; odśwież graf')
                 offset = cursor['offset']
             selected = refs[offset:offset+body.limit]
+            self._prefetch_raw(selected)
             next_cursor = self.workspace._encode_cursor({'graph_revision': revision, 'fingerprint': fingerprint,
                 'offset': offset+body.limit}) if offset+body.limit < len(refs) else None
             return {'items': [{'node': self._node(ref, query, now), 'edges': grouped[ref]} for ref in selected],

@@ -376,6 +376,8 @@ test('IODA mobile popup stays inside the map with a reachable close button', {ti
   await page.locator('#ioda-list > details').first().waitFor();await page.locator('#ioda-level').selectOption('region');
   await page.waitForFunction(()=>document.querySelectorAll('#ioda-list > details').length===1);
   await page.locator('#layer-panel > summary').click();await page.locator('#map').scrollIntoViewIfNeeded();
+  const zoom=page.locator('#map .leaflet-control-zoom'),view3d=page.locator('#atlas3d-toggle');
+  assert.equal(await zoom.isVisible(),true);assert.equal(await view3d.isVisible(),true);
   // Let the initial fitBounds zoom settle before explicitly positioning the map.
   await page.waitForFunction(()=>!state.map._animatingZoom&&!state.map._panAnim?._inProgress);
   await page.evaluate(()=>{
@@ -396,10 +398,13 @@ test('IODA mobile popup stays inside the map with a reachable close button', {ti
   assert.equal(await close.isVisible(),true);
   assert.equal(await close.evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true);
   assert.equal(await page.locator('#ioda-map-legend').isVisible(),false,'legend must not obscure popup content');
+  assert.equal(await zoom.isVisible(),false,'zoom controls must not obscure the popup');
+  assert.equal(await view3d.isVisible(),false,'3D control must not obscure the close button');
   assert.equal(await popup.locator('.ioda-state').evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),true,'zoom controls must not obscure the status');
   await page.screenshot({path:path.join(root,'tmp/ioda-popup-mobile.png'),fullPage:true});
   await close.tap();await popup.waitFor({state:'detached'});assert.equal(await popup.count(),0);
   assert.equal(await page.locator('#ioda-map-legend').isVisible(),true);
+  assert.equal(await zoom.isVisible(),true);assert.equal(await view3d.isVisible(),true);
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
  }finally{if(browser)await browser.close();await app.stop();}
 });

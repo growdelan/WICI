@@ -131,10 +131,24 @@ class WorkspaceRepository:
         row = self.db.execute('SELECT * FROM catalog_objects WHERE ref=?', (ref,)).fetchone()
         return self.decode(row) if row else None
 
-    def decode(self, row):
+    def decode_many(self, rows):
+        """Hydrate a bounded result without one area query per object."""
+        rows = list(rows)
+        areas = {row['ref']: [] for row in rows}
+        refs = list(areas)
+        for offset in range(0, len(refs), 500):
+            batch = refs[offset:offset+500]
+            for area in self.db.execute(
+                f'SELECT ref,admin_code,role,basis FROM catalog_object_areas '
+                f'WHERE ref IN ({",".join("?" for _ in batch)}) ORDER BY ref,admin_code,role', batch
+            ):
+                areas[area['ref']].append({key: area[key] for key in ('admin_code', 'role', 'basis')})
+        return [self.decode(row, areas[row['ref']]) for row in rows]
+
+    def decode(self, row, areas=None):
         item = dict(row)
         item['metadata'] = json.loads(item.pop('metadata_json'))
         item.pop('search_text', None)
-        item['areas'] = [dict(r) for r in self.db.execute(
+        item['areas'] = areas if areas is not None else [dict(r) for r in self.db.execute(
             'SELECT admin_code,role,basis FROM catalog_object_areas WHERE ref=? ORDER BY admin_code,role', (item['ref'],))]
         return item

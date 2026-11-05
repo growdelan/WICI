@@ -323,7 +323,39 @@ class WorkspaceService:
         item['at'] = item.get('observed_at')
         return item
 
-    def _present(self, item, now, interval, query=None):
+    def _station_observations(self, items, start, end):
+        """Use indexed latest-row lookups within a few bounded SQL statements."""
+        refs = [item['ref'] for item in items if item['type'].endswith('_station')]
+        observations = {ref: [None, None] for ref in refs}
+        groups = (
+            ('station_measurements', [ref for ref in refs if ref.startswith('hydro_station:')],
+             " AND metric='water_level'", ',id DESC', 0),
+            ('station_measurements', [ref for ref in refs if not ref.startswith('hydro_station:')],
+             '', ',id DESC', 0),
+            ('station_index_observations', refs, '', '', 1),
+        )
+        for table, selected, metric_clause, tie_order, position in groups:
+            for offset in range(0, len(selected), 500):
+                batch = selected[offset:offset+500]
+                rows = self.db.execute(f'''SELECT m.* FROM catalog_objects o JOIN {table} m ON m.id=(
+                    SELECT id FROM {table} WHERE object_ref=o.ref AND quality='valid'
+                    AND observed_at>=? AND observed_at<?{metric_clause}
+                    ORDER BY observed_at DESC,revision DESC{tie_order} LIMIT 1)
+                    WHERE o.ref IN ({",".join("?" for _ in batch)})''', [iso(start), iso(end)]+batch)
+                for row in rows:
+                    observations[row['object_ref']][position] = self._observation(row)
+        return observations
+
+    def _present_many(self, rows, now, interval, query, presented):
+        rows = list(rows)
+        items = self.catalog.decode_many(row for row in rows if row['ref'] not in presented)
+        start, end = (now-timedelta(days=14), now+timedelta(microseconds=1)) if query.time.mode == 'live' else interval
+        observations = self._station_observations(items, start, end)
+        for item in items:
+            presented[item['ref']] = self._present(item, now, interval, query, observations.get(item['ref']))
+        return [presented[row['ref']] for row in rows]
+
+    def _present(self, item, now, interval, query=None, station_observations=None):
         item = dict(item)
         if item['type'] == 'communication':
             meta = item['metadata']
@@ -336,11 +368,14 @@ class WorkspaceService:
             start, end = interval
             if query is None or query.time.mode == 'live':
                 start, end = now-timedelta(days=14), now+timedelta(microseconds=1)
-            item['measurement'] = self._sample(item['ref'], start, end)
-            index = self.db.execute('''SELECT * FROM station_index_observations WHERE object_ref=?
-                AND quality='valid' AND observed_at>=? AND observed_at<? ORDER BY observed_at DESC,revision DESC LIMIT 1''',
-                (item['ref'], iso(start), iso(end))).fetchone()
-            item['official_index'] = self._observation(index) if index else None
+            if station_observations is None:
+                item['measurement'] = self._sample(item['ref'], start, end)
+                index = self.db.execute('''SELECT * FROM station_index_observations WHERE object_ref=?
+                    AND quality='valid' AND observed_at>=? AND observed_at<? ORDER BY observed_at DESC,revision DESC LIMIT 1''',
+                    (item['ref'], iso(start), iso(end))).fetchone()
+                item['official_index'] = self._observation(index) if index else None
+            else:
+                item['measurement'], item['official_index'] = station_observations
             observed = (item['measurement'] or item['official_index'] or {}).get('observed_at')
             item['freshness'] = ('unknown_time' if not observed else 'future' if parse_time(observed) > now
                                  else 'stale' if (now-parse_time(observed)).total_seconds() > 10800 else 'fresh')
@@ -377,8 +412,11 @@ class WorkspaceService:
             rows = self.db.execute(f'SELECT o.* FROM catalog_objects o WHERE {selected_where} '
                                   f'ORDER BY o.{order} {query.sort.direction},o.ref ASC LIMIT ? OFFSET ?',
                                   selected_params+[query.page_size, offset]).fetchall()
-            items = [self._present(self.catalog.decode(row), now, interval, query) for row in rows]
-            map_data = self._map(selected_where, selected_params, now, interval, query, total)
+            # Table and map share one request snapshot; reuse presentation only
+            # within this locked query so subsequent source changes stay visible.
+            presented = {}
+            items = self._present_many(rows, now, interval, query, presented)
+            map_data = self._map(selected_where, selected_params, now, interval, query, total, presented)
             histogram_key = revision+encode([iso(x) for x in overview])
             timeline = self.histograms.get(histogram_key)
             if timeline is None:
@@ -405,7 +443,7 @@ class WorkspaceService:
                         'total': total, 'next_cursor': next_cursor, 'map': map_data, 'timeline_summary': timeline,
                         'coverage': self._coverage(), 'warnings': warnings}
 
-    def _map(self, where, params, now, interval, query, total):
+    def _map(self, where, params, now, interval, query, total, presented=None):
         located, location_params = self._located(query, interval, now)
         located = '('+located+')'
         map_params = params+location_params
@@ -416,8 +454,7 @@ class WorkspaceService:
         if count <= 1000 or movers:
             result['truncated'] = count > 1000
             rows = self.db.execute(f'SELECT o.* FROM catalog_objects o WHERE {where} AND {located} ORDER BY o.ref LIMIT 1000', map_params).fetchall()
-            for row in rows:
-                item = self._present(self.catalog.decode(row), now, interval, query)
+            for item in self._present_many(rows, now, interval, query, presented if presented is not None else {}):
                 result['points' if item.get('latitude') is not None and item.get('longitude') is not None else 'areas'].append(item)
         else:
             result['mode'] = 'aggregates'

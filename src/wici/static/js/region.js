@@ -3,9 +3,19 @@
 window.WiciRegion = (() => {
   const storageKey='wici.region.v1',features=new Map(),rows=new Map(),jobs=new Map(),outcomes=new Map(),explicit=new Map();
   let map,control,country,current='',initialized=false,outline,clipFrame=null,scopeRevision=0,analysisOutsidePoland=false;
+  // Local PRG geometry is immutable. Reuse its envelopes without simplifying
+  // rings or changing the precise boundary/hole membership check below.
+  const ringBounds=new WeakMap(),featureBounds=new WeakMap();
   const feature=()=>features.get(current);
   const polygons=geometry=>geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;
   function ringContains(lat,lon,ring){
+    let box=ringBounds.get(ring);
+    if(!box){
+      box=[Infinity,Infinity,-Infinity,-Infinity];
+      for(const [x,y] of ring){box[0]=Math.min(box[0],x);box[1]=Math.min(box[1],y);box[2]=Math.max(box[2],x);box[3]=Math.max(box[3],y);}
+      ringBounds.set(ring,box);
+    }
+    if(lon<box[0]-1e-10||lat<box[1]-1e-10||lon>box[2]+1e-10||lat>box[3]+1e-10)return false;
     let inside=false;
     for(let i=0,j=ring.length-1;i<ring.length;j=i++){
       const [x,y]=ring[i],[u,v]=ring[j],cross=(lon-x)*(v-y)-(lat-y)*(u-x);
@@ -23,7 +33,8 @@ window.WiciRegion = (() => {
     const normalize=value=>String(value||'').toLocaleLowerCase('pl').replace(/^woj(?:ewództwo)?[.\s]+/,'').trim();
     return !current||normalize(name)===normalize(feature().properties.name);
   }
-  function bounds(){return current?L.geoJSON(feature()).getBounds():null;}
+  function cachedBounds(value){if(!featureBounds.has(value))featureBounds.set(value,L.geoJSON(value).getBounds());return featureBounds.get(value);}
+  function bounds(){return current?cachedBounds(feature()):null;}
   function viewBox(view){
     const region=bounds();
     const box=region?[Math.max(view.getWest(),region.getWest()),Math.max(view.getSouth(),region.getSouth()),Math.min(view.getEast(),region.getEast()),Math.min(view.getNorth(),region.getNorth())]:[view.getWest(),view.getSouth(),view.getEast(),view.getNorth()];
@@ -44,8 +55,7 @@ window.WiciRegion = (() => {
       outline=L.geoJSON(feature(),{pane:'regionBoundary',interactive:false,style:{color:'#db8524',weight:3,fill:false,interactive:false}});
       if(!analysisOutsidePoland)outline.addTo(map);
     }
-    const target=L.geoJSON(current?feature():country).getBounds();
-    if(fit&&target.isValid())map.fitBounds(target,{padding:[35,55],maxZoom:current?9:6,animate:false});
+    if(fit){const target=cachedBounds(current?feature():country);if(target.isValid())map.fitBounds(target,{padding:[35,55],maxZoom:current?9:6,animate:false});}
     clip();const note=document.getElementById('region-note');
     if(note)note.textContent=current?`Warstwy i komunikaty dla województwa: ${feature().properties.name}.`:'Cała Polska. Region zapamiętujemy w tej przeglądarce.';
     if(changed&&notify){map.closePopup();explicit.clear();document.dispatchEvent(new Event('wici:regionchange'));}

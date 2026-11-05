@@ -12,6 +12,8 @@ from pathlib import Path
 
 import httpx
 
+from wici.geo import features, indexed_provinces
+
 IMGW_URL = 'https://danepubliczne.imgw.pl/api/data/meteo/'
 FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
 VARIABLES = ('wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m', 'precipitation')
@@ -70,17 +72,15 @@ def forecast_grid():
 
 GRID = forecast_grid()
 # A finite set of bundled PRG regions keeps cache cardinality bounded (17 scopes).
-PROVINCES = {str(f['properties']['admin_code']): f['geometry'] for f in json.loads(
-    (Path(__file__).parent/'static/geo/provinces.geojson').read_text())['features']}
+PROVINCES = {str(f['properties']['admin_code']): f['geometry'] for f in features()}
+REGION_POLYGONS = {properties['admin_code']: polygons for properties, polygons, _ in indexed_provinces()}
 
 
 def in_region(lat, lon, code):
     if not code:
         return True
-    geometry = PROVINCES[code]
-    polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
-    return any(inside_ring(lat, lon, polygon[0]) and not any(
-        inside_ring(lat, lon, hole) for hole in polygon[1:]) for polygon in polygons)
+    return any(polygon[0].locate(lon, lat, boundary=False) and not any(
+        hole.locate(lon, lat, boundary=False) for hole in polygon[1:]) for polygon in REGION_POLYGONS[code])
 
 
 REGION_GRIDS = {code: tuple(p for p in GRID if in_region(*p, code)) for code in PROVINCES}

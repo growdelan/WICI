@@ -3,6 +3,7 @@ import asyncio
 import sqlite3
 import threading
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -10,6 +11,47 @@ import pytest
 from wici.aircraft import AircraftService
 from wici.moving_ingestion import MovingIngestion
 from wici.ships import ShipService
+
+
+@pytest.mark.asyncio
+async def test_raw_observations_and_latest_projection_share_owned_data_without_losing_receipts():
+    observed, projected = [], []
+    repo = SimpleNamespace()
+
+    class Reader(MovingIngestion):
+        def _observe(self, kind, snapshot):
+            observed.append((kind, snapshot))
+
+        def _write(self, kind, snapshot):
+            projected.append((kind, snapshot))
+
+    writer = Reader(SimpleNamespace(repo=repo))
+    first = {'status': 'ready', 'items': [{'hex': '48abcd', 'metadata': {'label': 'original'}}]}
+    second = {'status': 'ready', 'items': [{'hex': '48abcd', 'metadata': {'label': 'new'}}]}
+    try:
+        writer.enqueue('aircraft', first)
+        raw_first = writer.observations[0][1]
+        latest_first = writer.pending['aircraft']
+        assert raw_first is not latest_first
+        assert raw_first['items'] is latest_first['items']
+        assert '_monitor_receipt' not in latest_first
+        first['items'][0]['metadata']['label'] = 'caller mutation'
+        # The same source data received on each side of an epoch boundary must
+        # still be retained separately; copying less must never deduplicate it.
+        repo._monitor_receipt_state['generation'] += 1
+        writer.enqueue('aircraft', second)
+        second['items'].clear()
+        assert writer.status()['monitor_pending'] == 2
+        assert writer.status()['coalesced_snapshots'] == 1
+        await asyncio.wait_for(writer.flush(), 3)
+        assert [snapshot['items'][0]['metadata']['label'] for _, snapshot in observed] == ['original', 'new']
+        assert observed[0][1]['_monitor_receipt'][1] == 0
+        assert observed[1][1]['_monitor_receipt'][1] == 1
+        assert len(projected) == 1 and projected[0][1]['items'][0]['metadata']['label'] == 'new'
+        assert '_monitor_receipt' not in projected[0][1]
+        assert writer.status()['monitor_overflow'] == 0
+    finally:
+        await writer.close()
 
 
 @pytest.mark.asyncio

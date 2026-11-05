@@ -6,7 +6,7 @@ from functools import wraps
 from pathlib import Path
 from threading import RLock
 
-from wici.daily import WARSAW, civil_day
+from wici.daily import WARSAW, civil_day, publication_day
 from wici.db import connect
 from wici.models import Document
 from wici.processing.normalize import clean_text
@@ -301,22 +301,46 @@ class Repository:
     def list_communications(self, filters=None, limit=1000):
         from wici.communications import SOURCES, communication, matches
         results=[]
+        total = 0
+        filters = filters or {}
+        now = self.clock()
+        selected = filters.get('date')
+        include_active = filters.get('include_active') and selected == civil_day(now)
+        presentation_filters = any(filters.get(key) for key in ('communication_type', 'category', 'voivodeship'))
         for row in self.db.execute('''SELECT d.id,d.source_id,d.url,d.first_seen_at,d.last_checked_at,
             dv.id document_version_id,dv.version_number,dv.title,dv.text,dv.fields_json,
             dv.source_published_at,dv.source_updated_at,dv.redaction_note,s.name source_name
             FROM documents d JOIN document_versions dv ON dv.document_id=d.id AND dv.version_number=d.current_version
             JOIN sources s ON s.id=d.source_id ORDER BY COALESCE(dv.source_published_at,dv.source_updated_at,d.first_seen_at) DESC,d.id DESC'''):
-            fields=json.loads(row['fields_json'])
-            if row['source_id'] not in SOURCES or fields.get('contract_validated') is not True or fields.get('access_allowed') is not True:
+            if row['source_id'] not in SOURCES or filters.get('source_id') and row['source_id'] != filters['source_id']:
                 continue
-            item=communication({k:v for k,v in dict(row).items() if k!='fields_json'},fields,self.clock())
-            if matches(item,filters or {},self.clock()):
-                selected=(filters or {}).get('date')
+            fields=json.loads(row['fields_json'])
+            if fields.get('contract_validated') is not True or fields.get('access_allowed') is not True:
+                continue
+            date_match = True
+            if selected:
+                published, _ = publication_day({
+                    'source_published_at': row['source_published_at'],
+                    'source_published_date': fields.get('source_published_date'),
+                    'source_updated_at': row['source_updated_at'],
+                }, row['first_seen_at'])
+                date_match = published == selected or civil_day(row['source_updated_at']) == selected
+                if not date_match and not (include_active and row['source_id'] in ('rso', 'imgw_meteo')):
+                    continue
+            # Filtering by civil day/source needs no topic regexes or location
+            # presentation. Beyond the response limit, only keep the exact count.
+            if not presentation_filters and date_match and 0 <= limit <= len(results):
+                total += 1
+                continue
+            item=communication({k:v for k,v in dict(row).items() if k!='fields_json'},fields,now)
+            if matches(item,filters,now):
+                total += 1
                 item['selection_basis']='publication_day'
                 if selected and item['publication_day']!=selected:
                     item['selection_basis']='source_updated_at' if civil_day(item['source_updated_at'])==selected else 'display_window' if item['source_id']=='rso' else 'warning_validity'
-                results.append(item)
-        return {'items':results[:limit],'total':len(results),'limited':len(results)>limit}
+                if limit < 0 or len(results) < limit:
+                    results.append(item)
+        return {'items':results[:limit],'total':total,'limited':total>limit}
 
     @serialized_query
     def communication_detail(self, document_id):

@@ -5,11 +5,11 @@ import logging
 import re
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from pathlib import Path
 
 import httpx
 
-from wici.weather import inside_ring, number
+from wici.geo import indexed_provinces
+from wici.weather import number
 
 AIRCRAFT_URL = 'https://opendata.adsb.fi/api/v3/lat/52.05/lon/19.2/dist/250'
 REFRESH_SECONDS = 10
@@ -17,27 +17,14 @@ MAX_POSITION_AGE = 120
 MAX_BYTES = 4 * 1024 * 1024
 
 
-def poland_polygons():
-    features = json.loads((Path(__file__).parent/'static/geo/provinces.geojson').read_text())['features']
-    polygons = []
-    for feature in features:
-        geometry = feature['geometry']
-        for rings in ([geometry['coordinates']] if geometry['type'] == 'Polygon'
-                      else geometry['coordinates']):
-            outer = rings[0]
-            bounds = (min(p[0] for p in outer), min(p[1] for p in outer),
-                      max(p[0] for p in outer), max(p[1] for p in outer))
-            polygons.append((bounds, rings))
-    return polygons
-
-
-POLYGONS = poland_polygons()
+POLYGONS = tuple((rings[0].bounds, rings) for _, polygons, _ in indexed_provinces()
+                 for rings in polygons)
 
 
 def in_poland(lat, lon):
     return any(left <= lon <= right and bottom <= lat <= top
-               and inside_ring(lat, lon, rings[0])
-               and not any(inside_ring(lat, lon, hole) for hole in rings[1:])
+               and rings[0].locate(lon, lat, boundary=False)
+               and not any(hole.locate(lon, lat, boundary=False) for hole in rings[1:])
                for (left, bottom, right, top), rings in POLYGONS)
 
 

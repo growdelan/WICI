@@ -6,7 +6,7 @@ window.WiciShips = (() => {
   let map, health={}, visible=false, layer, data, timer=null, ageTimer=null, request=null, generation=0;
   const markers=new Map();
   const shown=()=>Boolean(map)&&visible&&!document.hidden&&health.mode==='live'&&$('enabled').checked;
-  const age=item=>{const time=Date.parse(item.position_at);return Number.isFinite(time)?Math.max(0,(Date.now()-time)/1000):Infinity;};
+  const age=(item,now=Date.now())=>{const time=Date.parse(item.position_at);return Number.isFinite(time)?Math.max(0,(now-time)/1000):Infinity;};
   const number=(value,unit)=>Number.isFinite(value)?`${Math.round(value*10)/10} ${unit}`:'Brak danych';
   const bearing=value=>Number.isFinite(value)&&value>=0&&value<360;
   const AIS_WARNING='Brak kodu 35 nie oznacza, że jednostka jest cywilna. Klasyfikacja opiera się na deklarowanym typie AIS, nie na potwierdzonej przynależności.';
@@ -18,7 +18,7 @@ window.WiciShips = (() => {
     if(Number.isInteger(code)&&CIVIL_TYPES.has(code))return {key:'civilian',label:'Typ cywilny według AIS'};
     return {key:'unclassified',label:'Nieustalone'};
   }
-  function status(message,warning=false){$('status').textContent=message;$('status').classList.toggle('notice',warning);}
+  function status(message,warning=false){if($('status').textContent!==message)$('status').textContent=message;$('status').classList.toggle('notice',warning);}
   function renderStatus(){
     if(!data)return;
     const old=[...markers.values()].filter(marker=>age(marker.ship)>OLD_AGE).length;
@@ -62,19 +62,30 @@ window.WiciShips = (() => {
   function render(){
     if(!shown())return;
     if(!layer){layer=L.layerGroup();layer.addTo(map);}
-    const live=new Set();
+    const live=new Set(),now=Date.now();
     for(const item of data?.items||[]){
       if(window.WiciRegion&&!window.WiciRegion.contains(item.latitude,item.longitude))continue;
-      if(!item.mmsi||!Number.isFinite(item.latitude)||!Number.isFinite(item.longitude)||age(item)>MAX_AGE)continue;
+      if(!item.mmsi||!Number.isFinite(item.latitude)||!Number.isFinite(item.longitude)||age(item,now)>MAX_AGE)continue;
       const key=String(item.mmsi);live.add(key);
+      const title=item.name||`Statek ${key}`,category=classification(item).key,
+        direction=bearing(item.heading)?item.heading:bearing(item.course)?item.course:null,old=age(item,now)>OLD_AGE;
       let marker=markers.get(key);
       if(!marker){
-        marker=L.marker([item.latitude,item.longitude],{pane:'shipPositions',icon:icon(item),title:item.name||`Statek ${key}`,bubblingMouseEvents:false});
+        marker=L.marker([item.latitude,item.longitude],{pane:'shipPositions',icon:icon(item,{referenceAt:now}),title,bubblingMouseEvents:false});
         marker.bindPopup(()=>popup(marker));
         marker.bindTooltip(()=>node('span',`${marker.ship.name||`Statek ${marker.ship.mmsi}`} · ${classification(marker.ship).label}`));
         marker.addTo(layer);markers.set(key,marker);
-      }else marker.setLatLng([item.latitude,item.longitude]).setIcon(icon(item));
-      marker.ship=item;marker.shipOld=age(item)>OLD_AGE;
+      }else{
+        marker.ship=item;
+        const previous=marker.shipPresentation;
+        if(previous.latitude!==item.latitude||previous.longitude!==item.longitude)marker.setLatLng([item.latitude,item.longitude]);
+        if(previous.category!==category||previous.direction!==direction||marker.shipOld!==old)marker.setIcon(icon(item,{referenceAt:now}));
+        if(marker.options.title!==title||previous.category!==category){
+          marker.options.title=title;const element=marker.getElement?.();if(element)element.title=title;
+          marker.setTooltipContent?.(()=>node('span',`${marker.ship.name||`Statek ${marker.ship.mmsi}`} · ${classification(marker.ship).label}`));
+        }
+      }
+      marker.ship=item;marker.shipOld=old;marker.shipPresentation={latitude:item.latitude,longitude:item.longitude,category,direction};
       if(marker.isPopupOpen())popup(marker);
     }
     for(const [key,marker]of markers)if(!live.has(key)){layer.removeLayer(marker);markers.delete(key);}

@@ -236,21 +236,21 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.scene3d.terrain(x, y, level)
+        return JSONResponse(await app.state.scene3d.terrain(x, y, level))
 
     @app.get('/api/scene3d/trees/{x}/{y}')
     async def scene3d_trees(request: Request, x: int, y: int):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.scene3d.trees(x, y)
+        return JSONResponse(await app.state.scene3d.trees(x, y))
 
     @app.get('/api/scene3d/buildings/{x}/{y}')
     async def scene3d_buildings(request: Request, x: int, y: int):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.scene3d.buildings(x, y)
+        return JSONResponse(await app.state.scene3d.buildings(x, y))
 
     @app.post('/api/sources/{source_id}/refresh')
     async def refresh(source_id:str):
@@ -259,19 +259,21 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     def communications(date:CivilDate|None=None,voivodeship:str|None=None,source_id:str|None=None,
                        communication_type:str|None=None,category:str|None=None,
                        include_active:bool=False,limit:int=1000):
-        return app.state.repo.list_communications(dict(locals(),date=date.isoformat() if date else None),
-                                                  limit=max(1,min(limit,1000)))
+        # Normalized read payloads already contain JSON-native values. Avoid
+        # FastAPI's additional recursive copy for the large map/history APIs.
+        return JSONResponse(app.state.repo.list_communications(dict(locals(),date=date.isoformat() if date else None),
+                                                  limit=max(1,min(limit,1000))))
     @app.get('/api/communications/{document_id}')
     def communication(document_id:int):
-        return app.state.repo.communication_detail(document_id)
+        return JSONResponse(app.state.repo.communication_detail(document_id))
     @app.get('/api/ioda')
     def ioda(hours:int=24,date:CivilDate|None=None,level:Literal['country','region','asn']|None=None,
              voivodeship:str|None=None,limit:int=500):
-        return app.state.repo.list_ioda(hours,date.isoformat() if date else None,level,voivodeship,limit)
+        return JSONResponse(app.state.repo.list_ioda(hours,date.isoformat() if date else None,level,voivodeship,limit))
 
     @app.get('/api/fires')
     def fires(hours:int=24,date:CivilDate|None=None,voivodeship:str|None=None,limit:int=2000):
-        return app.state.repo.list_fires(hours,date.isoformat() if date else None,voivodeship,limit)
+        return JSONResponse(app.state.repo.list_fires(hours,date.isoformat() if date else None,voivodeship,limit))
     @app.get('/api/effis')
     async def effis(day:CivilDate|None=None):
         return await app.state.effis.metadata(day)
@@ -324,7 +326,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     async def imagery(request:Request, lat:float, lon:float):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.imagery.search(lat, lon)
+        return JSONResponse(await app.state.imagery.search(lat, lon))
     @app.get('/api/imagery/preview/{image_id}')
     async def imagery_preview(image_id:str, request:Request):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':
@@ -344,7 +346,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             return JSONResponse({'detail':'Wymagany poprawny identyfikator GIOŚ'}, status_code=422)
         result = await app.state.gios.fetch(kind, id if kind != 'stations' else None)
         await app.state.station_history.flush()
-        return result
+        return JSONResponse(result)
     @app.get('/api/sentinel2/status')
     @app.get('/api/sentinel2/search')
     @app.get('/api/sentinel2/render')
@@ -359,8 +361,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             if request.url.path.endswith('/status'):
                 return svc.status()
             if request.url.path.endswith('/search'):
-                return await svc.search(lat, lon, size, start, end, cloud, full_only=full_only)
-            return await svc.render(lat, lon, size, identifier)
+                return JSONResponse(await svc.search(lat, lon, size, start, end, cloud, full_only=full_only))
+            return JSONResponse(await svc.render(lat, lon, size, identifier))
         except SentinelError as exc:
             return JSONResponse({'detail': str(exc)}, status_code=exc.code,
                                 headers={'Retry-After': str(exc.retry)} if exc.retry else {})
@@ -378,8 +380,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             if request.url.path.endswith('/status'):
                 return svc.status()
             if request.url.path.endswith('/search'):
-                return await svc.search(parameter, day)
-            return await svc.render(parameter, day, identifier)
+                return JSONResponse(await svc.search(parameter, day))
+            return JSONResponse(await svc.render(parameter, day, identifier))
         except Sentinel5PError as exc:
             return JSONResponse({'detail': str(exc), 'status': exc.status}, status_code=exc.code,
                                 headers={'Retry-After': str(exc.retry)} if exc.retry else {})
@@ -390,7 +392,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
         try:
-            return await app.state.gfm.search(bbox.split(','), start, end)
+            return JSONResponse(await app.state.gfm.search(bbox.split(','), start, end))
         except ValueError as exc:
             return JSONResponse({'detail':str(exc)}, status_code=422)
         except (GFMUnavailable, TimeoutError, httpx.HTTPError, KeyError, TypeError) as exc:
@@ -402,7 +404,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
         try:
-            return await app.state.gfm_monitor.snapshot(view_bbox(bbox))
+            return JSONResponse(await app.state.gfm_monitor.snapshot(view_bbox(bbox)))
         except ValueError as exc:
             return JSONResponse({'detail':str(exc)}, status_code=422)
 
@@ -412,7 +414,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
         try:
-            return await app.state.gfm.render(identifier, bbox.split(','))
+            return JSONResponse(await app.state.gfm.render(identifier, bbox.split(',')))
         except ValueError as exc:
             return JSONResponse({'detail':str(exc)}, status_code=422)
         except KeyError:
@@ -427,17 +429,17 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
         result = await app.state.hydro.fetch(kind)
         await app.state.station_history.flush()
-        return result
+        return JSONResponse(result)
     @app.get('/api/weather')
     async def weather(request:Request, mode:str='measurement', voivodeship:str=''):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.weather.fetch(mode, voivodeship)
+        return JSONResponse(await app.state.weather.fetch(mode, voivodeship))
     @app.get('/api/gddkia')
     async def gddkia(request:Request):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':
             return JSONResponse({'detail':'Niedozwolone pochodzenie'}, status_code=403)
-        return await app.state.gddkia.fetch()
+        return JSONResponse(await app.state.gddkia.fetch())
     @app.get('/api/position-quality')
     async def position_quality(request: Request, date: CivilDate | None = None,
                                hours: Literal['24', '48'] = '24', voivodeship: str | None = None):
@@ -445,7 +447,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
         from wici.daily import WARSAW
         day = date or app.state.repo.clock().astimezone(WARSAW).date()
-        return await asyncio.to_thread(app.state.position_quality.history, day, int(hours), voivodeship)
+        return JSONResponse(await asyncio.to_thread(app.state.position_quality.history, day, int(hours), voivodeship))
 
     @app.get('/api/aircraft')
     async def aircraft(request:Request):
@@ -454,31 +456,31 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         snapshot = await app.state.aircraft.fetch()
         app.state.moving_ingestion.enqueue('aircraft', snapshot)
         await app.state.moving_ingestion.flush(timeout=0.1)
-        return snapshot
+        return JSONResponse(snapshot)
     @app.get('/api/ukraine')
     async def ukraine(request:Request):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.ukraine.fetch()
+        return JSONResponse(await app.state.ukraine.fetch())
     @app.get('/api/ukraine/alerts')
     async def ukraine_alerts(request:Request):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.ukraine.fetch_alerts()
+        return JSONResponse(await app.state.ukraine.fetch_alerts())
     @app.get('/api/ukraine/geometry')
     async def ukraine_geometry(request:Request):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.ukraine.geometry()
+        return JSONResponse(await app.state.ukraine.geometry())
     @app.get('/api/buses')
     async def buses(request:Request, city:Literal['szczecin', 'krakow', 'poznan', 'warszawa']='szczecin'):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
                 or request.headers.get('origin', origin) != origin):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.buses.fetch(city)
+        return JSONResponse(await app.state.buses.fetch(city))
     @app.get('/api/ships')
     async def ships(request:Request):
         if (request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin'
@@ -487,7 +489,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         snapshot = await app.state.ships.fetch()
         app.state.moving_ingestion.enqueue('ship', snapshot)
         await app.state.moving_ingestion.flush(timeout=0.1)
-        return snapshot
+        return JSONResponse(snapshot)
 
     def tracking_origin_allowed(request):
         return (request.headers.get('sec-fetch-site', 'same-origin') == 'same-origin'
@@ -497,7 +499,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     async def tracks(request: Request):
         if not tracking_origin_allowed(request):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
-        return await asyncio.to_thread(app.state.tracking.listing)
+        return JSONResponse(await asyncio.to_thread(app.state.tracking.listing))
 
     @app.post('/api/tracks')
     async def start_track(request: Request, body: TrackRequest):
@@ -509,7 +511,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     async def track_history(track_id: str, request: Request):
         if not tracking_origin_allowed(request):
             return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
-        return await asyncio.to_thread(app.state.tracking.detail, track_id)
+        return JSONResponse(await asyncio.to_thread(app.state.tracking.detail, track_id))
 
     @app.post('/api/tracks/{track_id}/stop')
     async def stop_track(track_id: str, request: Request):
@@ -525,13 +527,13 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
     async def train_stations(request:Request):
         if not train_origin_allowed(request):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.trains.stations()
+        return JSONResponse(await app.state.trains.stations())
 
     @app.get('/api/trains/positions')
     async def train_positions(request:Request):
         if not train_origin_allowed(request):
             return JSONResponse({'detail':'Niedozwolone pochodzenie'},status_code=403)
-        return await app.state.trains.positions()
+        return JSONResponse(await app.state.trains.positions())
 
     @app.get('/api/trains/stations/{station_id}')
     async def train_station(station_id:str, request:Request):

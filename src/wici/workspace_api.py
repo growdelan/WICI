@@ -2,6 +2,7 @@
 import inspect
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
 from wici.area_models import AreaInput
 from wici.dossier_models import DossierInput, DossierNote, DossierPin, MaterialCapture
@@ -23,12 +24,18 @@ def _call(fn, *args, **kwargs):
         raise HTTPException(422, detail=str(error)) from error
 
 
+def _json_call(fn, *args, **kwargs):
+    # Read services already return JSON-native snapshots. Serialize once, in the
+    # route's worker, instead of recursively copying large histories on the API loop.
+    return JSONResponse(_call(fn, *args, **kwargs))
+
+
 def create_workspace_router():
     router = APIRouter(prefix='/api/workspace')
 
     @router.post('/query')
     def query(request: Request, body: WorkspaceQuery):
-        return _call(request.app.state.workspace.query, body)
+        return _json_call(request.app.state.workspace.query, body)
 
     @router.get('/status')
     def status(request: Request):
@@ -58,15 +65,15 @@ def create_workspace_router():
 
     @router.post('/moving/replay')
     def replay(request: Request, body: MovingReplay):
-        return _call(request.app.state.workspace.moving.replay, body)
+        return _json_call(request.app.state.workspace.moving.replay, body)
 
     @router.get('/ukraine/regions')
     def ukraine_regions(request: Request):
-        return request.app.state.workspace.ukraine_regions()
+        return _json_call(request.app.state.workspace.ukraine_regions)
 
     @router.post('/ukraine/replay')
     def ukraine_replay(request: Request, body: UkraineReplay):
-        return _call(request.app.state.workspace.ukraine_replay, body)
+        return _json_call(request.app.state.workspace.ukraine_replay, body)
 
     @router.get('/ukraine/recording')
     def ukraine_recording(request: Request):
@@ -90,7 +97,7 @@ def create_workspace_router():
     def detail(request: Request, ref: str, as_of: str | None = None, data_revision: str | None = None,
                cursor_at: str | None = None, sensor_id: str | None = None, metric: str | None = None,
                version_id: int | None = None):
-        return _call(request.app.state.workspace.detail, ref, as_of, data_revision, cursor_at,
+        return _json_call(request.app.state.workspace.detail, ref, as_of, data_revision, cursor_at,
                      sensor_id, metric, version_id)
 
     @router.get('/objects/{ref}/timeline')
@@ -99,7 +106,7 @@ def create_workspace_router():
                  metric: str | None = None, cursor: str | None = None,
                  limit: int = Query(2000, ge=1, le=2000), as_of: str | None = None,
                  data_revision: str | None = None, index_cursor: str | None = None):
-        return _call(request.app.state.workspace.timeline, ref, start, end, sensor_id,
+        return _json_call(request.app.state.workspace.timeline, ref, start, end, sensor_id,
                      metric, cursor, limit, as_of, data_revision, index_cursor)
 
     @router.get('/views')
@@ -160,7 +167,7 @@ def create_workspace_router():
 
     @router.post('/rules/preview')
     def preview_rule(request: Request, body: RulePreview):
-        return _call(request.app.state.workspace.rules.preview, body)
+        return _json_call(request.app.state.workspace.rules.preview, body)
 
     @router.get('/rules/{rule_id}')
     def rule(request: Request, rule_id: str):
@@ -184,7 +191,7 @@ def create_workspace_router():
                start: str | None = Query(None, alias='from'), end: str | None = Query(None, alias='to'),
                status: str | None = None, condition_state: str | None = None,
                limit: int = Query(100, ge=1, le=200), offset: int = Query(0, ge=0)):
-        return _call(request.app.state.workspace.events.list, rule_id=rule_id, area_id=area_id,
+        return _json_call(request.app.state.workspace.events.list, rule_id=rule_id, area_id=area_id,
                      object_type=object_type, priority=priority, start=start, end=end,
                      status=status, condition_state=condition_state, limit=limit, offset=offset)
 
@@ -206,11 +213,11 @@ def create_workspace_router():
 
     @router.post('/graph/query')
     def graph_query(request: Request, body: GraphQuery):
-        return _call(request.app.state.workspace.relations.query, body)
+        return _json_call(request.app.state.workspace.relations.query, body)
 
     @router.post('/graph/neighbors')
     def graph_neighbors(request: Request, body: GraphNeighbors):
-        return _call(request.app.state.workspace.relations.neighbors, body)
+        return _json_call(request.app.state.workspace.relations.neighbors, body)
 
     @router.get('/dossiers/{dossier_id}/relations')
     def relations(request: Request, dossier_id: str, include_deleted: bool = False):
@@ -282,7 +289,7 @@ def create_workspace_router():
 
     @router.get('/dossiers/{dossier_id}/materials/{material_id}')
     def material(request: Request, dossier_id: str, material_id: str):
-        return _call(request.app.state.workspace.dossiers.material, dossier_id, material_id)
+        return _json_call(request.app.state.workspace.dossiers.material, dossier_id, material_id)
 
     @router.delete('/dossiers/{dossier_id}/materials/{material_id}')
     def delete_material(request: Request, dossier_id: str, material_id: str):
