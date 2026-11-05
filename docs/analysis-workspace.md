@@ -1,6 +1,6 @@
-# Stanowisko analityczne — etap 1
+# Analiza — Eksplorator
 
-Zakładka **Analiza** otwiera katalog obiektów, tabelę, mapę i oś czasu. Korzysta z tej samej mapy Leaflet i tej samej lokalnej bazy co widok Sytuacja. Szczegółowy projekt: [plan etapu 1](plan-stanowisko-analityczne-etap-1.md).
+Zakładka **Analiza** otwiera Eksplorator: listę lub tabelę wyników, mapę, stały panel szczegółów i oś czasu. Korzysta z tej samej mapy Leaflet i tej samej lokalnej bazy co widok Sytuacja. Szczegółowy projekt: [plan etapu 1](plan-stanowisko-analityczne-etap-1.md).
 
 Kolejne rozszerzenie dodaje [samoloty, statki, obserwowane i wspólne odtwarzanie tras](analysis-moving-objects.md). Poniższy opis czasu stacji i pomiarów dotyczy nadal pierwszego etapu; zasady czasu obiektów ruchomych opisano osobno.
 
@@ -10,16 +10,27 @@ Wersja 0.33.0 dodaje [teczki analiz](analysis-dossiers.md): notatki, przypięte 
 
 Wersja 0.34.0 dodaje [relacje i graf powiązań](analysis-relations.md): eksplorację sąsiadów, jawne pochodzenie połączeń, ręczne relacje w teczkach oraz robocze i niezmienne grafy.
 
+## Układ Eksploratora
+
+- Górny pasek zawiera wyszukiwanie, obszar danych, zakres czasu oraz **Zapisz widok**. Aktywne typy są pokazane jako usuwalne etykiety. Przycisk **Filtry** otwiera wybór typów, kraju, źródła i dodatkowych warunków.
+- **Lista / Tabela** zmienia prezentację tych samych wyników. Lista pokazuje nazwę, typ, źródło, czas i stan; tabela zachowuje sortowanie i wybór kolumn. Dane bez geometrii pozostają dostępne.
+- Na szerokim ekranie mapa i szczegóły zajmują oddzielne kolumny. Wybranie wyniku na liście dopasowuje mapę, o ile obiekt ma odpowiednią geometrię. Zamknięcie karty zostawia pusty panel, więc mapa nie zmienia szerokości.
+- Karta ma zakładki **Szczegóły / Historia**. Pomiar i jego czas są widoczne u góry; przyciski **Dodaj do teczki** i **Pokaż powiązania** pozostają pod ręką. Kopię karty, odczyt źródła, dane techniczne i pozostałe działania znajdziesz w **Więcej działań**.
+- **Narzędzia** udostępniają zapisane stanowiska, teczki, obserwowane, obszary, reguły, zdarzenia i aktualność źródeł. Mapa, graf oraz widok łączony są nadal dostępne.
+- Dolny panel pokazuje historię wybranej stacji albo histogram zdarzeń katalogu — to różne zestawy danych. Dokładny zakres i strefa czasu są w **Przedział i strefa czasu**. Odtwarzanie transportu i alarmów pozostaje dostępne przy wybranym przedziale.
+
+Przy szerokości do 700 px przełącznik wybiera listę, mapę lub graf, a szczegóły otwierają się w osobnej karcie. Na ekranie pośrednim szczegóły mogą znaleźć się poniżej mapy. Motyw nocny i tryb offline zachowują dotychczasowe zasady; demo nie pobiera kafelków OpenStreetMap.
+
 ## Praca z katalogiem
 
-1. Wybierz typy: komunikaty czterech oficjalnych źródeł, wodowskazy IMGW, stacje jakości powietrza GIOŚ lub obszary PRG. Możesz połączyć kilka typów.
+1. Otwórz **Filtry** i wybierz typy: komunikaty czterech oficjalnych źródeł, wodowskazy IMGW, stacje jakości powietrza GIOŚ lub obszary PRG. Możesz połączyć kilka typów.
 2. Zawęź nazwę lub identyfikator, źródło i województwo. Wyszukiwanie obsługuje polskie znaki także w zapisie bez znaków diakrytycznych. Powiat jest obiektem katalogu; zakres danych w tym etapie obejmuje kraj albo województwo.
 3. Kliknij wiersz lub punkt mapy. Wspólny wybór otworzy kartę z identyfikatorem, danymi, pochodzeniem i historią. Dla nakładających się obszarów wybierz obiekt z listy w dymku.
-4. Przycisk **Pokaż na mapie** dopasowuje kamerę. Odświeżenia danych i przesuwanie kursora czasu zachowują położenie mapy.
+4. Przycisk **Więcej działań → Pokaż na mapie** dopasowuje kamerę. Odświeżenia danych i przesuwanie kursora czasu zachowują położenie mapy.
 
 Tabela stronicuje wynik; mapa przedstawia cały wynik zapytania. Przy ponad 1000 obiektów z geometrią przechodzi do grup według typu i województwa. Wybór grupy zawęża katalog. Rekord bez geometrii nadal jest dostępny w tabeli i karcie; nie otrzymuje umownego punktu. Zliczenia histogramu oznaczają zdarzenia/pomiary, a tabeli — obiekty.
 
-Na małym ekranie użyj przełącznika **Tabela / Mapa**. W „Zakres i układ” zmienisz szerokość tabeli, widoczne kolumny i uwzględnianie rekordów bez geometrii lub pomiarów. Motywy dzienny i nocny są wspólne z resztą aplikacji. Escape zamyka kartę i przywraca fokus do wyboru obiektu.
+Na małym ekranie użyj przełącznika **Tabela / Mapa**. W „Filtry → Zakres i układ” zmienisz szerokość tabeli, widoczne kolumny i uwzględnianie rekordów bez geometrii lub pomiarów. Motywy dzienny i nocny są wspólne z resztą aplikacji. Escape zamyka kartę i przywraca fokus do wyboru obiektu.
 
 ## Znaczenie czasu
 
@@ -43,7 +54,7 @@ Demo zawiera wyraźnie oznaczone syntetyczne stacje, lukę i dwa czujniki PM10. 
 
 ## Zapisane stanowiska
 
-„Zapisane stanowiska” zapisują nazwę, filtry, sortowanie, kolumny, układ, kamerę i opcjonalny wybrany obiekt. Zakres można zapisać jako bezwzględny albo względny wobec czasu otwarcia. Dane pomiarowe pozostają w swoim archiwum; konfiguracja nie jest kopią danych.
+„Narzędzia → Zapisane stanowiska” zapisują nazwę, filtry, sortowanie, kolumny, układ, kamerę i opcjonalny wybrany obiekt. Zakres można zapisać jako bezwzględny albo względny wobec czasu otwarcia. Dane pomiarowe pozostają w swoim archiwum; konfiguracja nie jest kopią danych.
 
 Otwarcie stanowiska przywraca jego region i kamerę. Samo przywrócenie wybranego obiektu nie włącza dodatkowych dostawców. Aktualizacja sprawdza rewizję konfiguracji; po równoczesnej zmianie w innym oknie trzeba wczytać nową wersję. Automatyczne zapamiętanie układu w przeglądarce jest oddzielne od nazwanych konfiguracji w SQLite.
 

@@ -1,4 +1,5 @@
 'use strict';
+const {revealControl, openFilters, closeFilters, openTools, history24h} = require('./helpers/explorer_controls.cjs');
 // Real workspace/tracking APIs and SQLite, synthetic transport feeds, no external network.
 const test = require('node:test'), assert = require('node:assert/strict');
 const {spawn} = require('node:child_process'), {once} = require('node:events');
@@ -55,6 +56,7 @@ async function settle(page) {
   await page.waitForFunction(() => window.WiciWorkspace?.getData() && !WiciWorkspace.getState().loading && !WiciWorkspace.getState().error);
 }
 async function types(page, selected) {
+  await openFilters(page);
   // Add the desired types first so normal setup never tries to leave zero selected.
   for (const desired of [true,false]) for (const button of await page.locator('[data-object-type]').all()) {
     const wanted = selected.includes(await button.getAttribute('data-object-type'));
@@ -62,6 +64,7 @@ async function types(page, selected) {
   }
   await settle(page);
   assert.deepEqual(await page.evaluate(() => [...WiciWorkspace.getState().query.types].sort()),[...selected].sort());
+  await closeFilters(page);
 }
 async function darkCatalogueContrast(page) {
   return page.locator('#analysis-table .analysis-object-link, #analysis-table thead th button').evaluateAll(elements => {
@@ -84,6 +87,7 @@ async function closeCard(page) {
   await page.keyboard.press('Escape'); await page.locator('#analysis-card').waitFor({state:'hidden'});
 }
 async function watchedOnly(page, enabled) {
+  await openFilters(page);
   if (!(await page.locator('.analysis-query-options').evaluate(element => element.open))) {
     await page.locator('.analysis-query-options > summary').click();
   }
@@ -109,7 +113,7 @@ test('Analiza transport: main-map icons, classification colors, labels and selec
     await page.locator('#analysis-card-title').filter({hasText:'ANALIZA LOT 2'}).waitFor();
     assert.equal(await page.locator('.analysis-transport-selected .aircraft-military').count(),1);
     await closeCard(page);
-    await page.locator('#analysis-transport-legend summary').click();
+    await revealControl(page, '#analysis-transport-legend summary'); await page.locator('#analysis-transport-legend summary').click();
     assert.match(await page.locator('#analysis-transport-legend').innerText(),/Kolory ikon.*kolory tras/);
     const colors = await page.locator('.analysis-transport-marker .ship-symbol').evaluateAll(items => items.map(item => getComputedStyle(item).backgroundColor).sort());
     assert.deepEqual(colors,['rgb(101, 113, 126)','rgb(132, 59, 167)','rgb(18, 107, 120)'].sort());
@@ -139,7 +143,7 @@ test('Analiza transport: catalogue identities, persistent watchlist, recording a
   const env = await setup(), {page, context, url, headers} = env;
   try {
     const originalMap = await page.evaluate(() => state.map._leaflet_id);
-    await page.locator('[data-object-type="communication"]').click();
+    await openFilters(page); await page.locator('[data-object-type="communication"]').click(); await closeFilters(page);
     assert.match(await page.locator('#analysis-message').innerText(),/Wybierz co najmniej jeden typ obiektu/);
     await types(page, ['aircraft','ship']);
     await page.waitForFunction(() => WiciWorkspace.getData().total === 6);
@@ -163,7 +167,7 @@ test('Analiza transport: catalogue identities, persistent watchlist, recording a
     const watched = await (await context.request.get(url+'/api/workspace/watchlist')).json();
     assert.ok(watched.items.some(item => item.ref === aircraft));
     await page.locator('#analysis-start-recording').click();
-    await page.locator('[data-stop-track]').waitFor();
+    await page.locator('#analysis-card-tab-history').click(); await page.locator('[data-stop-track]').waitFor();
     let tracks = await (await context.request.get(url+'/api/tracks')).json();
     const active = tracks.items.find(item => item.kind === 'aircraft' && item.object_id === '48abc0' && item.active);
     assert.ok(active, 'start control creates a genuine durable tracking session');
@@ -214,8 +218,8 @@ test('Analiza transport: synchronized comparison leaves observation gaps and see
     const rangeInputs = await page.evaluate(range => ({
       from:WiciWorkspaceTimeline.localValue(range.from), to:WiciWorkspaceTimeline.localValue(range.to)
     }), {from:history.range.from,to:new Date(end+60000).toISOString()});
-    await page.locator('#analysis-time-from').fill(rangeInputs.from);
-    await page.locator('#analysis-time-to').fill(rangeInputs.to);
+    await revealControl(page, '#analysis-time-from'); await page.locator('#analysis-time-from').fill(rangeInputs.from);
+    await revealControl(page, '#analysis-time-to'); await page.locator('#analysis-time-to').fill(rangeInputs.to);
     await page.getByRole('button',{name:'Ustaw przedział',exact:true}).click();
     await settle(page);
     await page.waitForFunction(() => document.querySelectorAll('#analysis-comparison-table tbody tr').length === 2);
@@ -224,7 +228,7 @@ test('Analiza transport: synchronized comparison leaves observation gaps and see
     const before = sourceReads();
     async function seek(at) {
       const value = await page.evaluate(at => WiciWorkspaceTimeline.localValue(new Date(at).toISOString()),at);
-      await page.locator('#analysis-cursor-date').fill(value);
+      await revealControl(page, '#analysis-cursor-date'); await page.locator('#analysis-cursor-date').fill(value);
       await page.locator('#analysis-cursor-date').dispatchEvent('change');
       await page.waitForFunction(at => Date.parse(WiciWorkspace.getState().cursorAt) === at,at);
     }
@@ -286,7 +290,7 @@ test('Analiza transport: failed or absent source reports preserve identities wit
     const stale = await context.request.post(url+'/_test/feed/stale',{headers});
     assert.equal(stale.status(),200);
     await Promise.all(['/api/aircraft','/api/ships'].map(path => context.request.get(url+path)));
-    await page.locator('#analysis-refresh').click();
+    await revealControl(page, '#analysis-refresh'); await page.locator('#analysis-refresh').click();
     await page.waitForFunction(() => !WiciWorkspace.getState().loading && WiciWorkspace.getData().items.every(item => item.freshness === 'stale' && item.position === null));
     assert.equal(await page.locator('#analysis-table tbody tr').count(),6,'durable object identities remain discoverable');
     assert.equal(await page.evaluate(() => WiciWorkspace.getData().map.located_total),0,'stale positions are excluded from the current map');
@@ -295,12 +299,12 @@ test('Analiza transport: failed or absent source reports preserve identities wit
     assert.equal(await page.locator(`#analysis-table [data-ref="${aircraft}"]`).count(),1,'watchlist keeps an unavailable object');
     await context.request.post(url+'/_test/feed/fresh',{headers});
     await Promise.all(['/api/aircraft','/api/ships'].map(path => context.request.get(url+path)));
-    await page.locator('#analysis-refresh').click();
+    await revealControl(page, '#analysis-refresh'); await page.locator('#analysis-refresh').click();
     await page.waitForFunction(() => !WiciWorkspace.getState().loading && WiciWorkspace.getData().items[0]?.freshness === 'fresh');
     assert.equal(await page.evaluate(() => WiciWorkspace.getData().items[0].position.speed_kmh),620,'a new source snapshot reaches the catalogue');
     await context.request.post(url+'/_test/feed/empty',{headers});
     await Promise.all(['/api/aircraft','/api/ships'].map(path => context.request.get(url+path)));
-    await page.locator('#analysis-refresh').click();
+    await revealControl(page, '#analysis-refresh'); await page.locator('#analysis-refresh').click();
     await page.waitForFunction(() => !WiciWorkspace.getState().loading && WiciWorkspace.getData().items[0]?.position === null);
     assert.equal(await page.evaluate(() => WiciWorkspace.getData().total),1,'an absent report does not remove a watched identity');
     assert.deepEqual(env.errors,[]); assert.deepEqual(env.external,[]);
@@ -320,7 +324,7 @@ test('Analiza transport: persistence failure remains visible across query warnin
     await page.locator('[data-view="analysis"]').click();
     await page.waitForFunction(() => document.getElementById('analysis-persistence-status').textContent.includes('Nie udało się zapisać'));
     assert.equal(await page.locator('#analysis-persistence-status').isVisible(),true);
-    await page.getByRole('button',{name:'Ostatnie 24 godziny',exact:true}).click();
+    await history24h(page);
     await settle(page);
     await page.waitForFunction(() => document.getElementById('analysis-message').textContent.includes('Metadane'));
     assert.match(await page.locator('#analysis-persistence-status').innerText(),/Nie udało się zapisać/,'a catalogue query warning cannot overwrite a persistence failure');

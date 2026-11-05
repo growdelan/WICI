@@ -1,4 +1,5 @@
 'use strict';
+const {revealControl, openFilters, closeFilters, openTools, history24h} = require('./helpers/explorer_controls.cjs');
 // Real local SQLite/API, synthetic provider fixtures, every external browser request rejected.
 const test=require('node:test'),assert=require('node:assert/strict'),{spawn}=require('node:child_process'),{once}=require('node:events'),net=require('node:net'),path=require('node:path'),fs=require('node:fs');
 const {chromium}=require('playwright'),root=path.resolve(__dirname,'..'),evidence=path.join(root,'tmp/monitor-workspace-evidence');fs.mkdirSync(evidence,{recursive:true});
@@ -7,7 +8,7 @@ try{for(let index=0;index<300;index++){if(child.exitCode!==null)throw Error(logs
 async function settle(page){await page.waitForFunction(()=>WiciWorkspace.getData()&&!WiciWorkspace.getState().loading&&!WiciWorkspace.getState().error);}
 const areaInput=(name='TEST obszar')=>({name,description:'Obszar syntetyczny',color:'#217c83',shape:'polygon',geometry:{type:'Polygon',coordinates:[[[20.9,52.1],[21.2,52.1],[21.2,52.4],[20.9,52.4],[20.9,52.1]]]}});
 async function createArea(env,name){return env.api('POST','/areas',areaInput(name));}
-async function openPanel(page,name){await page.locator(`#analysis-${name}-open`).click();await page.locator(`#analysis-${name}-dialog`).waitFor({state:'visible'});}
+async function openPanel(page,name){await openTools(page);await page.locator(`#analysis-${name}-open`).click();await page.locator(`#analysis-${name}-dialog`).waitFor({state:'visible'});}
 async function clickAndWait(page,selector,method,path){const pending=page.waitForResponse(response=>response.request().method()===method&&new URL(response.url()).pathname===path);await page.locator(selector).click();const result=await pending;assert.ok(result.ok(),`${result.status()} ${await result.text()}`);return result.json();}
 async function noErrors(env){assert.deepEqual(env.errors,[]);assert.deepEqual(env.external,[]);}
 

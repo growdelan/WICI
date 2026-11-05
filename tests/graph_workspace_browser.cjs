@@ -1,4 +1,5 @@
 'use strict';
+const {revealControl, openFilters, closeFilters, openTools, history24h} = require('./helpers/explorer_controls.cjs');
 // Real local graph/dossier APIs and SQLite; every provider is synthetic and all external traffic is blocked.
 const test = require('node:test'), assert = require('node:assert/strict');
 const {spawn} = require('node:child_process'), {once} = require('node:events');
@@ -61,11 +62,13 @@ async function startAnalysis(page) {
   await settle(page);
 }
 async function types(page, selected) {
+  await openFilters(page);
   for (const desired of [true,false]) for (const button of await page.locator('[data-object-type]').all()) {
     const wanted = selected.includes(await button.getAttribute('data-object-type'));
     if (wanted === desired && (await button.getAttribute('aria-pressed') === 'true') !== wanted) await button.click();
   }
   await settle(page);
+  await closeFilters(page);
 }
 async function card(page, ref) {
   await page.locator(`#analysis-table [data-ref="${ref}"] .analysis-object-link`).click();
@@ -91,8 +94,9 @@ async function mutation(page, method, suffix, act) {
   return response.json();
 }
 async function openDossier(page,id) {
+  await openTools(page);
   if (!(await page.locator('#analysis-dossiers').evaluate(element=>element.open))) await page.locator('#analysis-dossiers > summary').click();
-  await page.locator('#analysis-dossier-select').selectOption(id); await page.locator('#analysis-dossier-open').click();
+  await page.locator('#analysis-dossier-select').selectOption(id); await revealControl(page, '#analysis-dossier-open'); await page.locator('#analysis-dossier-open').click();
   await page.locator('#analysis-dossier-dialog').waitFor({state:'visible'});
   await page.waitForFunction(() => document.getElementById('analysis-dossier-dialog').getAttribute('aria-busy') !== 'true');
 }
@@ -240,7 +244,7 @@ test('Graph UI: GIOS card expands actual area links and synchronizes graph, tabl
     assert.deepEqual(await page.evaluate(()=>WiciWorkspace.getState().query.types),['air_quality_station']);
     assert.match(await page.locator('#analysis-outside-range').innerText(),/Poza bieżącym zakresem/);
     if (await page.locator('#analysis-card').isVisible()) await page.locator('#analysis-close-card').click();
-    await page.locator('#analysis-table-scope').selectOption('graph');
+    await revealControl(page, '#analysis-table-scope'); await page.locator('#analysis-table-scope').selectOption('graph');
     await page.locator(`#analysis-table [data-ref="${province}"]`).waitFor();
     await page.locator('#analysis-view-both').click();
     assert.equal(await page.locator('#analysis-graph-canvas').isVisible(),true);
@@ -453,7 +457,7 @@ test('Graph UI: Ukraine graph follows the shared cursor gap and saves the visibl
     if (await page.locator('#analysis-card').isVisible()) await page.locator('#analysis-close-card').click();
     const cursor=new Date(Date.parse(env.fixture.range.from)+1500*1000).toISOString();
     const value=await page.evaluate(at=>WiciWorkspaceTimeline.localValue(at),cursor);
-    await page.locator('#analysis-cursor-date').fill(value);
+    await revealControl(page, '#analysis-cursor-date'); await page.locator('#analysis-cursor-date').fill(value);
     await page.locator('#analysis-cursor-date').dispatchEvent('change');
     await page.waitForFunction(ref=>WiciWorkspace.getGraphData()?.nodes.find(node=>node.ref===ref)?.state==='unknown',raion);
     const dossier=await env.api('POST','/dossiers',{name:'Zachowany graf Ukrainy'});
@@ -505,7 +509,7 @@ test('Graph regression: showing a graph card on the map reveals and resizes the 
     await openGraph(page,{seed_refs:[station]});
     assert.equal(await page.locator('#map').isVisible(),false);
     await page.locator(`[data-graph-ref="${station}"] .analysis-graph-select`).click();
-    await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
+    await revealControl(page, '.analysis-card-secondary-actions button'); await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
     assert.equal(await page.evaluate(()=>WiciWorkspace.getState().graphMode),'map');
     assert.equal(await page.evaluate(()=>WiciWorkspace.getState().layout.mobilePanel),'map');
     assert.equal(await page.locator('#map').isVisible(),true);
@@ -536,7 +540,7 @@ test('Graph regression: obsolete saved-layout responses cannot close a reopened 
       await page.locator('#analysis-dossier-close').click();
       if (mode!=='closed') {
         // Keep the same selection: select/change would independently invalidate the request.
-        await page.locator('#analysis-dossier-open').click();
+        await revealControl(page, '#analysis-dossier-open'); await page.locator('#analysis-dossier-open').click();
         await page.locator('#analysis-dossier-dialog').waitFor({state:'visible'});
         await page.locator('#analysis-dossier-note-body').fill('Szkic po ponownym otwarciu');
         await page.locator('#analysis-dossier-note-body').focus();
@@ -551,7 +555,7 @@ test('Graph regression: obsolete saved-layout responses cannot close a reopened 
       }
       assert.doesNotMatch(await page.locator('#analysis-dossier-dialog').innerText().catch(()=>''),/Obsolete test error/);
       await page.unroute(endpoint,handler);
-      if (mode==='closed') await page.locator('#analysis-dossier-open').click();
+      if (mode==='closed') {await revealControl(page, '#analysis-dossier-open'); await page.locator('#analysis-dossier-open').click();}
     }
     // A newly requested layout still loads normally after the obsolete requests finish.
     await page.locator('#analysis-dossier-graph-load').click();
@@ -614,7 +618,7 @@ test('Graph regression: returning to an interrupted refresh reloads the current 
     };
     await page.route('**/api/workspace/graph/query',handler);
     const value=await page.evaluate(at=>WiciWorkspaceTimeline.localValue(at),gap);
-    await page.locator('#analysis-cursor-date').fill(value); await page.locator('#analysis-cursor-date').dispatchEvent('change');
+    await revealControl(page, '#analysis-cursor-date'); await page.locator('#analysis-cursor-date').fill(value); await page.locator('#analysis-cursor-date').dispatchEvent('change');
     await first;
     await page.locator('#analysis-view-map').click();
     assert.equal(await page.evaluate(()=>WiciWorkspace.getGraphCapture()),null,'an interrupted result must not be capturable even while hidden');
@@ -769,7 +773,7 @@ test('Graph regression: historical transport without comparison can be shown on 
       await page.locator(`[data-graph-ref="${ref}"] .analysis-graph-select`).click();
       await page.waitForFunction(()=>document.getElementById('analysis-card-title').textContent!=='Wczytywanie obiektu…');
       await page.evaluate(()=>state.map.setView([49,15],6,{animate:false}));
-      await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
+      await revealControl(page, '.analysis-card-secondary-actions button'); await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
       await page.waitForFunction(point=>state.map.project(state.map.getCenter()).distanceTo(state.map.project([point.latitude,point.longitude]))<1.5,point);
       assert.equal(await page.locator('#map').isVisible(),true);
       assert.ok(await page.evaluate(()=>state.map.getZoom()>=10));
@@ -781,17 +785,17 @@ test('Graph regression: historical transport without comparison can be shown on 
     await openGraph(page,{config:{graph:selector(env,[ref],timed(env,300)),positions:{},hidden_refs:[]}});
     await page.locator(`[data-graph-ref="${ref}"] .analysis-graph-select`).click();
     await page.waitForFunction(()=>document.getElementById('analysis-card-title').textContent!=='Wczytywanie obiektu…');
-    await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
+    await revealControl(page, '.analysis-card-secondary-actions button'); await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
     const readsBefore=env.reads.filter(path=>path==='/api/workspace/graph/query').length;
     const gap=timed(env,1800).cursor_at;
     const input=await page.evaluate(at=>WiciWorkspaceTimeline.localValue(at),gap);
-    await page.locator('#analysis-cursor-date').fill(input);await page.locator('#analysis-cursor-date').dispatchEvent('change');
+    await revealControl(page, '#analysis-cursor-date'); await page.locator('#analysis-cursor-date').fill(input);await page.locator('#analysis-cursor-date').dispatchEvent('change');
     await page.waitForFunction(at=>Date.parse(WiciWorkspace.getState().cursorAt)===Date.parse(at),gap);
     assert.equal(await page.evaluate(()=>WiciWorkspace.getGraphData()),null,'changing time on the map must invalidate the former graph point');
     assert.equal(await page.locator('.analysis-graph-map-marker').count(),0,'the former cursor marker disappears immediately');
     assert.equal(env.reads.filter(path=>path==='/api/workspace/graph/query').length,readsBefore,'a hidden graph is not fetched in the background');
     await page.evaluate(()=>state.map.setView([49,15],6,{animate:false}));
-    await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
+    await revealControl(page, '.analysis-card-secondary-actions button'); await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
     assert.match(await page.locator('#analysis-message').innerText(),/Brak zapisanej pozycji przy kursorze/);
     assert.ok(await page.evaluate(()=>state.map.project(state.map.getCenter()).distanceTo(state.map.project([49,15]))<1.5),'an outdated graph point must not move the map');
     await page.locator('#analysis-close-card').click();await page.locator('#analysis-view-graph').click();await graphReady(page);
@@ -800,7 +804,7 @@ test('Graph regression: historical transport without comparison can be shown on 
     await page.locator(`[data-graph-ref="${ref}"] .analysis-graph-select`).click();
     await page.waitForFunction(()=>document.getElementById('analysis-card-title').textContent!=='Wczytywanie obiektu…');
     await page.evaluate(()=>state.map.setView([49,15],6,{animate:false}));
-    await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
+    await revealControl(page, '.analysis-card-secondary-actions button'); await page.getByRole('button',{name:'Pokaż na mapie',exact:true}).click();
     assert.match(await page.locator('#analysis-message').innerText(),/Brak zapisanej pozycji przy kursorze/);
     const center=await page.evaluate(()=>({pixels:state.map.project(state.map.getCenter()).distanceTo(state.map.project([49,15])),zoom:state.map.getZoom()}));
     assert.ok(center.pixels<1.5);

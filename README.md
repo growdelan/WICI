@@ -14,11 +14,13 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Płynniejsza mapa i Analiza (v0.36.1):** odświeżanie autobusów i przesuwanie czasu aktualizuje istniejące elementy mapy i tabeli. Odpowiedź API Analizy nie powiela obiektów mapy. Poprawiono też kolory stacji pokazywanych przez obszary, klikanie znaczników grafu i odtwarzanie obrysu regionu. [Pomiary wydajności i weryfikacja](docs/map-performance.md).
 
+**Eksplorator Analizy (v0.37.0):** wyszukiwanie i filtry są nad listą wyników, centralną mapą i stałym panelem szczegółów. Karta obiektu pokazuje pomiar, historię oraz działania teczki i grafu, a dolna oś przedstawia historię wybranej stacji. Dostępne są też tabela, motyw nocny i układ mobilny. [Obsługa Eksploratora](docs/analysis-workspace.md#układ-eksploratora).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
 
-W **Analizie → Kraj: Ukraina** dostępne są regiony, karty alarmów oraz porównanie do pięciu regionów na wspólnej mapie i osi czasu. Osobny przełącznik **Rejestruj historię alarmów Ukrainy** buduje lokalne archiwum od chwili włączenia; luki w odczytach pozostają widoczne. [Historia alarmów i porównanie regionów](docs/ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320).
+W **Analizie → Filtry → Kraj: Ukraina** dostępne są regiony, karty alarmów oraz porównanie do pięciu regionów na wspólnej mapie i osi czasu. Osobny przełącznik **Rejestruj historię alarmów Ukrainy** buduje lokalne archiwum od chwili włączenia; luki w odczytach pozostają widoczne. [Historia alarmów i porównanie regionów](docs/ukraine.md#analiza-historia-alarmów-i-porównanie-regionów-v0320).
 
 Pozwala sprawdzić informacje dla wybranego dnia i województwa, otworzyć pełną zapisaną treść oraz przejrzeć historię zmian komunikatu. Dane i historia pozostają na Twoim komputerze. Aplikacja nie wymaga konta WICI ani klucza do modelu AI.
 

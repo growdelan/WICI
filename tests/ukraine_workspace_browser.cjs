@@ -1,4 +1,5 @@
 'use strict';
+const {revealControl, openFilters, closeFilters, openTools, history24h} = require('./helpers/explorer_controls.cjs');
 // Real Chromium + SQLite, isolated synthetic history. No user database or desktop.
 const test = require('node:test'), assert = require('node:assert/strict');
 const {spawn} = require('node:child_process'), {once} = require('node:events');
@@ -36,7 +37,7 @@ async function setup({empty = false} = {}) {
     await page.goto(url);
     await page.waitForFunction(() => typeof state !== 'undefined' && state.map && !document.getElementById('refresh').disabled);
     await page.locator('[data-view="analysis"]').click();
-    await page.locator('#analysis-country').selectOption('UA');
+    await revealControl(page, '#analysis-country'); await page.locator('#analysis-country').selectOption('UA');
     await page.waitForFunction(() => WiciWorkspace.getState().query.country === 'UA' && !WiciWorkspace.getState().loading && WiciWorkspace.getData()?.total >= 3);
     return {page,url,errors,external,reads,async close(){await browser.close();const done=once(process,'exit');process.kill('SIGTERM');await done;}};
   } catch (error) {if(browser)await browser.close();process.kill('SIGTERM');throw error;}
@@ -50,14 +51,14 @@ test('Ukraine Analysis: restoring a Polish workspace preserves a hidden region o
   const env=await setup(),{page}=env;
   try {
     await page.locator(`[data-ref="${A}"] .analysis-compare-toggle`).check();
-    await page.locator('#analysis-country').selectOption('PL');await settle(page);
+    await revealControl(page, '#analysis-country'); await page.locator('#analysis-country').selectOption('PL');await settle(page);
     await page.locator('#analysis-province').selectOption('14');await settle(page);
-    await page.locator('.analysis-saved-views summary').click();
-    await page.locator('#analysis-view-name').fill('Polska z porównaniem Ukrainy');
+    await revealControl(page, '.analysis-saved-views summary'); await page.locator('.analysis-saved-views summary').click();
+    await revealControl(page, '#analysis-view-name'); await page.locator('#analysis-view-name').fill('Polska z porównaniem Ukrainy');
     await page.getByRole('button',{name:'Zapisz nowe',exact:true}).click();
     await page.waitForFunction(()=>document.getElementById('analysis-saved-view').options.length===2);
-    await page.locator('#analysis-country').selectOption('UA');await settle(page);
-    await page.locator('.analysis-saved-views').getByRole('button',{name:'Otwórz',exact:true}).click();
+    await revealControl(page, '#analysis-country'); await page.locator('#analysis-country').selectOption('UA');await settle(page);
+    await revealControl(page, '.analysis-saved-views'); await page.locator('.analysis-saved-views').getByRole('button',{name:'Otwórz',exact:true}).click();
     await page.waitForFunction(()=>{const value=WiciWorkspace.getState();return value.query.country==='PL'&&value.query.province==='14'&&value.comparedRegionRefs.length===1&&!value.loading;});
     assert.equal(await page.evaluate(()=>WiciRegion.code()),'14');
     assert.deepEqual(await page.evaluate(()=>WiciWorkspace.getState().comparedRegionRefs),[A]);
@@ -80,11 +81,11 @@ test('Ukraine Analysis: synchronized comparison, gaps, timezone and saved view w
     await page.locator(`[data-ref="${A}"] .analysis-watch-toggle`).click();
     await page.waitForFunction(() => document.getElementById('analysis-watchlist-items').textContent.includes('TEST Obwód A'));
     assert.equal((await (await page.request.get(env.url+'/api/workspace/ukraine/recording')).json()).enabled,false);
-    await page.locator('#analysis-timezone').selectOption('UTC');
+    await revealControl(page, '#analysis-timezone'); await page.locator('#analysis-timezone').selectOption('UTC');
     const now = new Date((await (await page.request.get(env.url+'/api/health')).json()).now);
     now.setUTCSeconds(0,0); const from = new Date(now.getTime()-3600000);
-    await page.locator('#analysis-time-from').fill(from.toISOString().slice(0,16));
-    await page.locator('#analysis-time-to').fill(now.toISOString().slice(0,16));
+    await revealControl(page, '#analysis-time-from'); await page.locator('#analysis-time-from').fill(from.toISOString().slice(0,16));
+    await revealControl(page, '#analysis-time-to'); await page.locator('#analysis-time-to').fill(now.toISOString().slice(0,16));
     await page.getByRole('button',{name:'Ustaw przedział',exact:true}).click();
     await page.waitForFunction(() => document.querySelectorAll('.analysis-alert-segment').length > 5 && !document.getElementById('analysis-cursor').disabled);
     await settle(page);
@@ -103,20 +104,20 @@ test('Ukraine Analysis: synchronized comparison, gaps, timezone and saved view w
     await page.locator('#analysis-fit-regions').click();
     assert.ok(await page.evaluate(() => state.map.getBounds().contains([49.5,26.5]) && state.map.getBounds().contains([49.5,30.5])));
     const cursor = await page.evaluate(() => WiciWorkspace.getState().cursorAt);
-    await page.locator('#analysis-timezone').selectOption('Europe/Kyiv');
+    await revealControl(page, '#analysis-timezone'); await page.locator('#analysis-timezone').selectOption('Europe/Kyiv');
     assert.equal(await page.evaluate(() => WiciWorkspace.getState().cursorAt),cursor);
-    await page.locator('.analysis-saved-views summary').click();
-    await page.locator('#analysis-view-name').fill('TEST porównanie Ukrainy');
+    await revealControl(page, '.analysis-saved-views summary'); await page.locator('.analysis-saved-views summary').click();
+    await revealControl(page, '#analysis-view-name'); await page.locator('#analysis-view-name').fill('TEST porównanie Ukrainy');
     await page.getByRole('button',{name:'Zapisz nowe',exact:true}).click();
     await page.waitForFunction(() => document.getElementById('analysis-saved-view').options.length === 2);
     const saved = (await (await page.request.get(env.url+'/api/workspace/views')).json()).items[0];
     assert.deepEqual(saved.config.comparedRegionRefs,[A,B]);
     assert.equal(saved.config.displayTimezone,'Europe/Kyiv');
-    await page.locator('#analysis-timezone').selectOption('UTC');
+    await revealControl(page, '#analysis-timezone'); await page.locator('#analysis-timezone').selectOption('UTC');
     await page.getByRole('button',{name:'Wyczyść regiony',exact:true}).click();
     const providerReads = () => env.reads.filter(read => read.path.startsWith('/api/ukraine')).length;
     const before = providerReads();
-    await page.getByRole('button',{name:'Otwórz',exact:true}).click();
+    await revealControl(page, '#analysis-saved-view'); await page.getByRole('button',{name:'Otwórz',exact:true}).click();
     await page.waitForFunction(() => WiciWorkspace.getState().comparedRegionRefs.length === 2 && !WiciWorkspace.getState().loading);
     assert.equal(await page.locator('#analysis-timezone').inputValue(),'Europe/Kyiv');
     await page.waitForTimeout(1200);
@@ -134,15 +135,15 @@ test('Ukraine Analysis: synchronized comparison, gaps, timezone and saved view w
 test('Ukraine Analysis: region hierarchy and recording toggle remain independent from observation', {timeout:60000}, async () => {
   const env = await setup(), {page} = env;
   try {
-    await page.locator('#analysis-ua-oblast').selectOption(A); await settle(page);
+    await revealControl(page, '#analysis-ua-oblast'); await page.locator('#analysis-ua-oblast').selectOption(A); await settle(page);
     assert.ok((await page.locator('#analysis-ua-raion option').allTextContents()).includes('TEST Rejon A'));
-    await page.locator('#analysis-ua-raion').selectOption('ua_region:neptun:raion:rejon-a'); await settle(page);
+    await revealControl(page, '#analysis-ua-raion'); await page.locator('#analysis-ua-raion').selectOption('ua_region:neptun:raion:rejon-a'); await settle(page);
     assert.equal(await page.evaluate(() => WiciWorkspace.getState().query.region_ref),'ua_region:neptun:raion:rejon-a');
-    await page.locator('#analysis-ukraine-recording summary').click();
-    await page.locator('#analysis-ukraine-record-enabled').click();
+    await revealControl(page, '#analysis-ukraine-recording summary'); await page.locator('#analysis-ukraine-recording summary').click();
+    await revealControl(page, '#analysis-ukraine-record-enabled'); await page.locator('#analysis-ukraine-record-enabled').click();
     await page.waitForFunction(() => document.getElementById('analysis-ukraine-record-status').textContent.includes('Rejestracja włączona'));
     assert.equal((await (await page.request.get(env.url+'/api/workspace/ukraine/recording')).json()).enabled,true);
-    await page.locator('#analysis-ukraine-record-enabled').click();
+    await revealControl(page, '#analysis-ukraine-record-enabled'); await page.locator('#analysis-ukraine-record-enabled').click();
     await page.waitForFunction(() => !document.getElementById('analysis-ukraine-record-enabled').disabled);
     assert.equal((await (await page.request.get(env.url+'/api/workspace/ukraine/recording')).json()).enabled,false);
     await page.locator('[data-view="situation"]').click();

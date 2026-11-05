@@ -3,6 +3,7 @@ window.WiciWorkspace = (() => {
   const U = window.WiciWorkspaceUI, S = window.WiciWorkspaceStore, M = window.WiciWorkspaceMotion, A = window.WiciWorkspaceAlerts;
   let initialized = false, active = false, visible = true, options, store, sourceManager, mapView, tableView, timelineView, cardView, views, motionView, alertsView, dossiers, graphView, areasView, rulesView, eventsView, eventLayer, eventCaption, eventNavigation = 0;
   let host, shell, toolbar, catalog, timelineHost, cardHost, graphHost, graphTableScope, search, province, message, status, split, sourceSelect, sourceCoverage, persistenceNotice, country, oblast, raion, provinceField, oblastField, raionField, recordingControl, recordingStatus, regionHint;
+  let explorerFilters, explorerChips, explorerTime, explorerTools, explorerFilterSummary, explorerMapLegend, explorerBaseMap;
   const columnControls = new Map();
   let data = null, detail = null, timeline = null, detailError = null, detailLoading = false;
   let queryAbort, detailAbort, queryRun = 0, detailRun = 0, pageCursor = null, searchTimer, refreshTimer, sourceRefreshTimer;
@@ -178,8 +179,14 @@ window.WiciWorkspace = (() => {
       comparisonReady: !replayLoading && !replayError && !alertLoading && !alertError &&
         (!state.comparedRefs.length || Boolean(replayData)) && (!(state.comparedRegionRefs || []).length || Boolean(alertReplay))};
   }
+  function syncInspectorAccessibility() {
+    const modal = active && store.getState().detailOpen && window.matchMedia?.('(max-width:700px)')?.matches;
+    if (modal) {cardHost.setAttribute('role', 'dialog'); cardHost.setAttribute('aria-modal', 'true');}
+    else {cardHost.removeAttribute('role'); cardHost.removeAttribute('aria-modal');}
+  }
   function positionCard() {
-    cardFrame = null;
+    cardFrame = null; syncInspectorAccessibility();
+    if (active) options.map?.invalidateSize?.({pan: false});
     const mapPanel = shell?.querySelector?.('.map-panel');
     if (mapPanel) {const top = mapPanel.offsetTop + 10, height = Math.max(260, mapPanel.offsetHeight - 20), key = `${top}:${height}`;
       if (key !== lastCardPosition) {lastCardPosition = key; shell.style.setProperty('--analysis-card-top', `${top}px`); shell.style.setProperty('--analysis-card-height', `${height}px`);}}
@@ -200,7 +207,7 @@ window.WiciWorkspace = (() => {
   function render() {
     if (!initialized) return;
     const state = store.getState(), sample = currentSample(), index = currentIndex(), motion = motionContext(), alerts = alertContext();
-    U.setTimezone?.(state.displayTimezone); renderRegions(); syncMapScope();
+    U.setTimezone?.(state.displayTimezone); renderRegions(); syncMapScope(); renderExplorer(state);
     transportLegend.hidden = !state.query.types.some(type => ['aircraft', 'ship'].includes(type)) && !state.comparedRefs.length;
     shell.classList.toggle('analysis-card-open', active && state.detailOpen);
     shell.dataset.analysisPanel = state.layout.mobilePanel; shell.dataset.analysisView = state.graphMode;
@@ -216,15 +223,18 @@ window.WiciWorkspace = (() => {
     }
     if (lastLayout !== state.layout) {
       lastLayout = state.layout; split.value = state.layout.tablePercent;
+      const resultShare = Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42)) / 1.2;
+      shell.style.setProperty('--explorer-results', `${resultShare}fr`); shell.style.setProperty('--explorer-map', `${100 - resultShare}fr`);
       shell.style.setProperty('--analysis-table-width', `${Math.max(25, Math.min(65, Number(state.layout.tablePercent) || 42))}%`);
       try {localStorage.setItem(localKey, JSON.stringify(state.layout));} catch { /* The workspace remains usable when browser storage is blocked. */ }
       options.map?.invalidateSize?.();
     }
     if (lastColumns !== state.columns) {lastColumns = state.columns; for (const [column, control] of columnControls) control.checked = state.columns.includes(column);}
     const graphNodes = graphView?.getVisibleData?.()?.nodes || [], graphRows = state.tableScope === 'graph' ? sortedGraphTable(graphNodes, state.query.sort) : data;
-    tableView.render(graphRows, state, sample, motion, alerts); timelineView.render(data, state, {historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion, alerts, graph: {temporal: graphView?.hasTemporalNodes?.()}}); mapView.render(data, state, sample, index, motion, alerts, graphView?.getVisibleData?.()); motionView?.render(state, motion); alertsView?.render(state, alerts); renderWatchlist();
+    tableView.render(graphRows, state, sample, motion, alerts); timelineView.render(data, state, {detail, timeline, selectedSample: sample, historyIncomplete: Boolean(timeline?.next_cursor || timeline?.official_indices_next_cursor), detailLoading, motion, alerts, graph: {temporal: graphView?.hasTemporalNodes?.()}}); mapView.render(data, state, sample, index, motion, alerts, graphView?.getVisibleData?.()); motionView?.render(state, motion); alertsView?.render(state, alerts); renderWatchlist();
     const inScope = detail?.in_scope ?? (!data || [data.items, data.map?.points, data.map?.areas].some(items => items?.some(item => item.ref === state.selectedRef)));
     cardView.render(detail, timeline, state, sample, {inScope, loading: detailLoading, error: detailError, selectedIndex: index, motion, alerts});
+    syncInspectorAccessibility();
     graphView?.sync?.(state); dossiers?.update();
     renderSourceCoverage(state.displayTimezone);
     const regionStatus = state.query.time.mode === 'range' && state.query.types.some(type => ['ua_region', 'civil_alert'].includes(type)) ? ` · mapa alarmów przy kursorze: ${(alertReplay?.series || []).filter(item => item.geometry).length} z ${state.comparedRegionRefs.length} porównywanych regionów` : '';
@@ -286,6 +296,7 @@ window.WiciWorkspace = (() => {
   function selectObject(ref, origin, version = null, {fetchSensors = true} = {}) {
     trigger = origin || document.activeElement; wantsFocus = true;
     dispatch({type: 'SELECT_OBJECT', ref, version});
+    if (origin && store.getState().graphMode !== 'graph') {const object = data?.items?.find(item => item.ref === ref); if (object && (!M?.isMoving(object) || store.getState().query.time.mode === 'live')) mapView.show(object);}
     if (fetchSensors && sourceEnabled && store.getState().query.time.mode === 'live' && ref.startsWith('air_quality_station:')) sourceManager?.loadSensors?.(ref.split(':').at(-1)).catch(error => notify(error.message));
   }
   function closeCard() {
@@ -357,12 +368,12 @@ window.WiciWorkspace = (() => {
     const visualModes = U.el('div', null, 'analysis-view-switch'); visualModes.setAttribute('role', 'group'); visualModes.setAttribute('aria-label', 'Widok Analizy');
     for (const [mode, label] of [['map', 'Mapa'], ['graph', 'Graf'], ['both', 'Mapa + graf']]) {const control = U.button(label, () => {dispatch({type: 'SET_GRAPH_MODE', mode}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: mode === 'graph' ? 'graph' : 'map'}}); graphView?.setActive?.(active && mode !== 'map'); graphView?.resize?.(); options.map?.invalidateSize?.();}); control.id = `analysis-view-${mode}`; graphModeControls.set(mode, control); visualModes.append(control);}
     top.append(visualModes);
-    const fields = U.el('div', null, 'analysis-query-fields'); search = U.el('input'); search.type = 'search'; search.maxLength = 200; search.id = 'analysis-search'; search.placeholder = 'Nazwa, tytuł lub identyfikator…';
+    const fields = U.el('div', null, 'analysis-query-fields'); search = U.el('input'); search.type = 'search'; search.maxLength = 200; search.id = 'analysis-search'; search.placeholder = 'Szukaj miejsca lub obiektu';
     search.addEventListener('input', () => {
       clearTimeout(searchTimer); const value = search.value;
       searchTimer = setTimeout(() => {searchTimer = null; dispatch({type: 'SET_QUERY', patch: {q: value}});}, 250);
     });
-    province = U.el('select'); province.id = 'analysis-province'; const all = U.el('option', 'Wszystkie obszary'); all.value = ''; province.append(all);
+    province = U.el('select'); province.id = 'analysis-province'; const all = U.el('option', 'Cała Polska'); all.value = ''; province.append(all);
     const regions = [...(options.geometries || new Map())].filter(([key]) => /^\d{2}$/.test(key)).sort((a, b) => a[1].properties.name.localeCompare(b[1].properties.name, 'pl'));
     for (const [code, feature] of regions) {const option = U.el('option', feature.properties.name); option.value = code; province.append(option);}
     province.addEventListener('change', () => chooseRegion(province.value)); provinceField = U.field('Obszar danych', province);
@@ -427,6 +438,84 @@ window.WiciWorkspace = (() => {
     dossiers = window.WiciWorkspaceDossiers?.(toolbar, {request, getContext: dossierContext, status: notify,
       openObject(ref) {selectObject(ref, undefined, null, {fetchSensors: false});}});
   }
+  // Explorer composes the existing tools without changing their data/lifecycle contracts.
+  function createExplorer() {
+    const heading = U.el('div', null, 'analysis-page-heading'), title = U.el('h1', 'Analiza');
+    const actions = U.el('div', null, 'analysis-page-actions');
+    heading.append(title, actions); host.prepend(heading);
+    explorerTools = U.el('details', null, 'analysis-explorer-tools'); explorerTools.id = 'analysis-tools';
+    explorerTools.append(U.el('summary', 'Narzędzia'));
+    const toolsBody = U.el('div', null, 'analysis-tools-body'); explorerTools.append(toolsBody);
+    actions.append(toolbar.querySelector('.analysis-view-switch'), explorerTools);
+    const primary = U.el('div', null, 'analysis-explorer-primary');
+    const searchField = search.closest('label'); searchField.classList.add('analysis-explorer-search');
+    search.setAttribute('aria-label', 'Szukaj miejsca lub obiektu');
+    explorerTime = U.el('select'); explorerTime.id = 'analysis-time-preset'; explorerTime.setAttribute('aria-label', 'Zakres czasu');
+    for (const [value, label] of [['live', 'Bieżące dane'], ['24h', 'Ostatnie 24 h'], ['custom', 'Własny przedział…']]) {const option = U.el('option', label); option.value = value; explorerTime.append(option);}
+    explorerTime.addEventListener('change', () => {
+      if (explorerTime.value === 'live') dispatch({type: 'RETURN_TO_LIVE'});
+      else if (explorerTime.value === '24h') {const end = Date.parse(now()); dispatch({type: 'SET_TIME_RANGE', range: {from: new Date(end - 86400000).toISOString(), to: new Date(end).toISOString()}});}
+      else {const details = timelineHost.querySelector('.analysis-time-options'); if (details) details.open = true; document.getElementById('analysis-time-from')?.focus();}
+    });
+    const save = U.button('Zapisz widok', () => {explorerTools.open = true; const saved = toolsBody.querySelector('.analysis-saved-views'); saved.open = true; document.getElementById('analysis-view-name')?.focus();}, 'analysis-primary-button'); save.id = 'analysis-save-view';
+    primary.append(U.el('strong', 'Eksplorator'), searchField, provinceField, U.field('Zakres czasu', explorerTime), save);
+    explorerFilters = U.el('details', null, 'analysis-explorer-filters'); explorerFilters.id = 'analysis-filter-panel';
+    explorerFilterSummary = U.el('summary', 'Filtry'); explorerFilters.append(explorerFilterSummary);
+    const filtersBody = U.el('div', null, 'analysis-filter-body');
+    const filtersHeading = U.el('div', null, 'analysis-filter-heading'); filtersHeading.append(U.el('h2', 'Filtry danych'), U.button('Zamknij ×', () => {explorerFilters.open = false; explorerFilterSummary.focus();}));
+    filtersBody.append(filtersHeading, toolbar.querySelector('.analysis-type-filters'), toolbar.querySelector('.analysis-query-fields'), toolbar.querySelector('.analysis-query-options'));
+    const baseMap = document.getElementById('osm-enabled');
+    if (baseMap) {
+      explorerBaseMap = U.el('input'); explorerBaseMap.type = 'checkbox'; explorerBaseMap.id = 'analysis-base-map';
+      explorerBaseMap.checked = baseMap.checked; explorerBaseMap.disabled = health().mode === 'demo';
+      explorerBaseMap.addEventListener('change', () => {baseMap.checked = explorerBaseMap.checked; baseMap.dispatchEvent(new Event('change', {bubbles: true}));});
+      const mapOptions = U.el('div', null, 'analysis-base-options');
+      const label = U.field('Podkład OpenStreetMap', explorerBaseMap); label.className = 'analysis-checkbox';
+      mapOptions.append(label, U.el('small', health().mode === 'demo' ? 'Demo jest offline: mapa korzysta z lokalnych granic PRG.' : 'Ulice i miejscowości. Podkład wymaga połączenia z internetem.', 'muted')); filtersBody.append(mapOptions);
+    }
+    explorerFilters.append(filtersBody);
+    const secondary = U.el('div', null, 'analysis-explorer-secondary');
+    explorerChips = U.el('div', null, 'analysis-active-filters'); explorerChips.setAttribute('aria-label', 'Aktywne filtry');
+    secondary.append(explorerChips, explorerFilters);
+    for (const selector of ['#analysis-refresh', '.analysis-saved-views', '#analysis-dossiers', '#analysis-watchlist', '#analysis-monitoring', '.analysis-source-coverage', '#analysis-ukraine-recording', '#analysis-transport-legend']) {
+      const node = toolbar.querySelector(selector); if (node) toolsBody.append(node);
+    }
+    const oldHeading = toolbar.querySelector('.analysis-toolbar-heading'), mobileSwitch = oldHeading.querySelector('.analysis-mobile-switch');
+    heading.append(mobileSwitch); oldHeading.remove();
+    toolbar.prepend(primary, secondary);
+    const tableScope = graphTableScope.closest('label'); tableScope.classList.add('analysis-table-scope-field');
+    toolsBody.append(tableScope);
+    const mapPanel = shell.querySelector('.map-panel');
+    const layers = U.button('Warstwy', () => {explorerFilters.open = true; explorerFilterSummary.focus();}, 'analysis-map-layers'); layers.id = 'analysis-map-layers'; mapPanel.append(layers);
+    explorerMapLegend = U.el('div', null, 'analysis-map-key'); explorerMapLegend.id = 'analysis-map-key'; mapPanel.append(explorerMapLegend);
+    for (const disclosure of [explorerFilters, explorerTools]) disclosure.addEventListener('toggle', () => {
+      if (disclosure.open) {const other = disclosure === explorerFilters ? explorerTools : explorerFilters; other.open = false;}
+    });
+    document.addEventListener('keydown', event => {if (active && event.key === 'Escape' && !document.querySelector('dialog[open]') && (explorerFilters.open || explorerTools.open)) {event.preventDefault(); event.stopImmediatePropagation(); const disclosure = explorerFilters.open ? explorerFilters : explorerTools; disclosure.open = false; disclosure.querySelector('summary').focus();}}, true);
+    document.addEventListener('pointerdown', event => {if (!active) return; for (const disclosure of [explorerFilters, explorerTools]) if (disclosure.open && !disclosure.contains(event.target) && !event.target.closest?.('#analysis-map-layers,#analysis-save-view')) disclosure.open = false;});
+  }
+  function renderExplorer(state) {
+    if (!explorerChips) return;
+    status.dataset.error = String(Boolean(state.error));
+    if (explorerBaseMap) explorerBaseMap.checked = document.getElementById('osm-enabled').checked;
+    if (changed('explorer-filters', [state.query.types, state.query.source_ids, state.query.country, state.query.watched_only])) {
+      explorerChips.replaceChildren(U.el('span', 'Aktywne:', 'analysis-active-label'));
+      for (const type of state.query.types) {
+        const chip = U.button('', () => controls.get(type)?.click(), 'analysis-filter-chip');
+        if (U.icon) chip.append(U.icon(type));
+        const filterNames = {communication: 'Komunikaty', hydro_station: 'Wodowskazy', air_quality_station: 'Stacje GIOŚ', area: 'Obszary', custom_area: 'Własne obszary', aircraft: 'Samoloty', ship: 'Statki', ua_region: 'Regiony Ukrainy', civil_alert: 'Alarmy Ukrainy'};
+        chip.append(U.el('span', filterNames[type] || U.typeNames[type]), U.el('span', '×', 'analysis-chip-remove'));
+        chip.setAttribute('aria-label', `Usuń filtr: ${U.typeNames[type]}`); explorerChips.append(chip);
+      }
+      if (state.query.source_ids.length) explorerChips.append(U.button(`Źródło: ${state.query.source_ids.map(id => U.sourceNames?.[id] || id).join(', ')} ×`, () => dispatch({type: 'SET_QUERY', patch: {source_ids: []}}), 'analysis-filter-chip'));
+      explorerFilterSummary.textContent = `Filtry · ${state.query.types.length + state.query.source_ids.length + (state.query.watched_only ? 1 : 0)}`;
+      explorerMapLegend.replaceChildren();
+      for (const type of state.query.types.slice(0, 4)) {const line = U.el('span'); if (U.icon) line.append(U.icon(type)); line.append(U.el('span', U.typeNames[type])); explorerMapLegend.append(line);}
+      explorerMapLegend.append(U.el('small', 'Kolor: stan danych źródłowych'));
+    }
+    explorerTime.value = state.query.time.mode === 'live' ? 'live' : state.query.time.filter_range && Date.parse(state.query.time.filter_range.to) - Date.parse(state.query.time.filter_range.from) === 86400000 && Math.abs(Date.parse(state.query.time.filter_range.to) - Date.parse(now())) < 120000 ? '24h' : 'custom';
+    for (const button of host.querySelectorAll('.analysis-mobile-switch button')) button.setAttribute('aria-pressed', String(button.dataset.panel === state.layout.mobilePanel));
+  }
   function init(settings) {
     if (initialized) return; options = settings; host = document.getElementById('analysis-workspace'); if (!host) return;
     shell = host.closest('.workspace'); store = S.createStore(); sourceManager = settings.sources || window.WiciWorkspaceSources;
@@ -445,7 +534,7 @@ window.WiciWorkspace = (() => {
     timelineView = window.WiciWorkspaceTimeline.create(timelineHost, {dispatch, getState: store.getState, now});
     motionView = M?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_COMPARE'}), select: selectObject, range: compareDay, fit: () => mapView.fitTracks?.(replayData)});
     alertsView = A?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_REGION_COMPARE'}), select: selectObject, range: compareDay, cursor: at => dispatch({type: 'SET_CURSOR', at}), fit: () => mapView.fitRegions?.(alertContext())});
-    mapView = window.WiciWorkspaceMap({map: settings.map, geometries: settings.geometries, select: ref => selectObject(ref, undefined, graphView?.getVersion?.(ref), {fetchSensors: !graphView?.getVisibleData?.().nodes.some(node => node.ref === ref)}), narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
+    mapView = window.WiciWorkspaceMap({markerStyle: 'symbol', map: settings.map, geometries: settings.geometries, select: ref => selectObject(ref, undefined, graphView?.getVersion?.(ref), {fetchSensors: !graphView?.getVisibleData?.().nodes.some(node => node.ref === ref)}), narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
     cardView = window.WiciObjectCard(cardHost, {rule: object => rulesView?.open({object}), editArea: id => areasView?.open(id), graph: object => openGraph({seed_refs: [object.ref]}), pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
       const lower = Date.parse(session.first_position_at || session.started_at), upper = Date.parse(session.last_position_at || session.stopped_at || now());
       if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
@@ -455,6 +544,7 @@ window.WiciWorkspace = (() => {
     }, show(object) {dispatch({type: 'SET_GRAPH_MODE', mode: 'map'}); dispatch({type: 'SET_LAYOUT', patch: {mobilePanel: 'map'}}); options.map?.invalidateSize?.();
       if (M?.isMoving(object) && store.getState().query.time.mode === 'range') {const frames = motionContext().frames, point = frames.has(object.ref) ? frames.get(object.ref)?.point : graphPositionAtCursor(object.ref); if (!point) {notify('Brak zapisanej pozycji przy kursorze. Dodaj obiekt do porównania i wybierz czas raportu.'); return;} object = {...object, latitude: point.latitude, longitude: point.longitude};}
       if (!mapView.show(object)) notify('Ten obiekt nie ma geometrii do pokazania.');}, version: version => {graphView?.setVersion?.(store.getState().selectedRef, version); selectObject(store.getState().selectedRef, document.activeElement, version);}, region(code) {chooseRegion(code); dispatch({type: 'SET_QUERY', patch: {types: ['communication']}});}, sensor(sensor, metric) {dispatch({type: 'SELECT_SENSOR', sensor, metric}); if (store.getState().query.time.mode === 'live' && sensor) sourceManager?.loadSensor?.(sensor).catch(error => notify(error.message));}, fetchSource, sample: sampleSelected, moreHistory: () => loadDetail(true)});
+    createExplorer();
     store.subscribe((state, previous, action) => {
       if (['SET_QUERY','SET_REGION','SET_TIME_RANGE','RETURN_TO_LIVE','SET_CURSOR','SELECT_OBJECT','SELECT_SENSOR','APPLY_VIEW','SET_GRAPH_MODE'].includes(action.type)) clearEventEvidence();
       if (action.type === 'SET_LAYOUT' || action.type === 'SET_GRAPH_MODE') graphView?.setActive?.(active && (state.graphMode !== 'map' || state.layout.mobilePanel === 'graph'));
@@ -470,13 +560,25 @@ window.WiciWorkspace = (() => {
     sourceManager?.subscribe?.(sourceChanged);
     window.addEventListener?.('resize', () => {scheduleCardPosition(); graphView?.resize?.();});
     if (window.ResizeObserver) {const observer = new window.ResizeObserver(() => {if (active) scheduleCardPosition();}); observer.observe(toolbar); const panel = shell.querySelector?.('.map-panel'); if (panel) observer.observe(panel);}
-    document.addEventListener('keydown', event => {if (active && event.key === 'Escape' && store.getState().detailOpen) {event.preventDefault(); closeCard();}});
+    document.addEventListener('keydown', event => {if (active && event.key === 'Escape' && store.getState().detailOpen && !document.querySelector('dialog[open]')) {event.preventDefault(); closeCard();}});
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Tab' || cardHost.getAttribute('aria-modal') !== 'true' || document.querySelector('dialog[open]')) return;
+      const focusable = [...cardHost.querySelectorAll('button, input, select, textarea, a[href], summary, [tabindex="0"]')].filter(node => !node.disabled && node.getClientRects().length);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable.at(-1), focused = document.activeElement;
+      if (event.shiftKey && (focused === first || !cardHost.contains(focused) || focused === document.getElementById('analysis-card-title'))) {event.preventDefault(); last.focus();}
+      else if (!event.shiftKey && (focused === last || !cardHost.contains(focused))) {event.preventDefault(); first.focus();}
+    });
     document.addEventListener('visibilitychange', () => {syncSources(); if (document.hidden) timelineView.pause?.(); if (!document.hidden && active && visible) {loadQuery(pageCursor); loadReplay(true); loadAlertReplay(true);}});
     for (const disclosure of toolbar.querySelectorAll?.('details') || []) disclosure.addEventListener('toggle', scheduleCardPosition);
     initialized = true; render(); host.hidden = true;
   }
   function setActive(value) {
     if (!initialized || active === Boolean(value)) return; active = Boolean(value); host.hidden = !active; shell.classList.toggle('analysis-active', active); mapView.setActive(active); syncSources();
+    document.body.classList.toggle('analysis-explorer', active);
+    const navigation = document.querySelector('.side-rail');
+    if (navigation) {if (active) document.querySelector('.topbar').insertBefore(navigation, document.querySelector('.topbar-actions')); else document.querySelector('.app-shell').prepend(navigation);}
+    options.map?.zoomControl?.setPosition(active ? 'topright' : 'topleft');
     clearInterval(refreshTimer); refreshTimer = null;
     graphView?.setActive?.(active && (store.getState().graphMode !== 'map' || store.getState().layout.mobilePanel === 'graph'));
     if (active) {setRegion(window.WiciRegion?.code ? window.WiciRegion.code() : store.getState().query.province); loadQuery(); views.load(); dossiers?.load(); refreshSourceStatus(); loadWatchlist(); loadReplay(true); loadRegions(); loadRecording(); loadAlertReplay(true); refreshTimer = setInterval(() => {if (visible && !document.hidden) {if (store.getState().query.time.mode === 'live') loadQuery(pageCursor); loadRecording();}}, 60000);}

@@ -68,7 +68,7 @@ test('historical map suppresses live moving coordinates and removes markers when
 });
 
 test('live moving card renders positions without comparison, distinguishes pending refresh and labels active recording', () => {
-  function node(tag, text) {return {tagName: tag, textContent: text, children: [], dataset: {}, append(...items) {this.children.push(...items);}, replaceChildren(...items) {this.children = items;}, setAttribute(name, value) {this[name] = value;}, focus() {}};}
+  function node(tag, text) {return {tagName: tag, textContent: text, children: [], dataset: {}, append(...items) {this.children.push(...items);}, replaceChildren(...items) {this.children = items;}, setAttribute(name, value) {this[name] = value;}, addEventListener(name, listener) {this[name] = listener;}, classList: {add() {}}, focus() {}};}
   const U = {el: node, button: (text, action) => Object.assign(node('button', text), {click: action}), typeNames: {aircraft: 'Samolot'}, statusNames: {fresh: 'Aktualne', ready: 'Dostępne'}, date: value => value || 'Brak czasu', safeLink: () => null};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceMotion: Motion};
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/object-card.js', 'utf8'), {window, Date, Number});
