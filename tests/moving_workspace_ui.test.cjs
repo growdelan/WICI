@@ -72,11 +72,16 @@ test('live moving card renders positions without comparison, distinguishes pendi
   const U = {el: node, button: (text, action) => Object.assign(node('button', text), {click: action}), typeNames: {aircraft: 'Samolot'}, statusNames: {fresh: 'Aktualne', ready: 'Dostępne'}, date: value => value || 'Brak czasu', safeLink: () => null};
   const window = {WiciWorkspaceUI: U, WiciWorkspaceMotion: Motion};
   vm.runInNewContext(fs.readFileSync('src/wici/static/js/object-card.js', 'utf8'), {window, Date, Number});
-  const host = node('aside'), card = window.WiciObjectCard(host, {}), ref = 'aircraft:icao:502d47';
+  const ref = 'aircraft:icao:502d47', host = node('aside');
+  let replayArgs;
+  const card = window.WiciObjectCard(host, {replayAircraft: (...args) => {replayArgs = args;}});
   const state = {...Store.initialState(), selectedRef: ref, detailOpen: true, detailRevision: 1, queryRevision: 2};
-  const detail = {object: {ref, type: 'aircraft', label: 'BTI695', source_id: 'aircraft', latitude: 54, longitude: 22, freshness: 'fresh', source_status: 'ready', position: point('10:00:00', {speed_kmh: 785.2})}, track_sessions: [{id: 1, active: true, point_count: 1}], _detailRevision: 1, _queryRevision: 2};
+  const detail = {object: {ref, type: 'aircraft', label: 'BTI695', metadata: {callsign: 'BTI695'}, source_id: 'aircraft', latitude: 54, longitude: 22, freshness: 'fresh', source_status: 'ready', position: point('10:00:00', {speed_kmh: 785.2})}, track_sessions: [{id: 1, active: true, point_count: 1}], _detailRevision: 1, _queryRevision: 2};
   const flatten = value => [value, ...value.children.flatMap(flatten)], texts = () => flatten(host).map(value => value.textContent || '').join('|');
   card.render(detail, null, state, null);
+  const replayButton = () => flatten(host).find(value => value.id === 'analysis-aircraft-replay');
+  assert.equal(replayButton().hidden, false); replayButton().click();
+  assert.deepEqual(replayArgs, ['502d47', 'BTI695', replayButton()]);
   assert.match(texts(), /785\.2 km\/h/); assert.match(texts(), /52\.00000/); assert.deepEqual(state.comparedRefs, []);
   const start = flatten(host).find(value => value.id === 'analysis-start-recording'); assert.equal(start.textContent, 'Zapis trwa'); assert.equal(start.disabled, true);
   card.render(detail, null, {...state, queryRevision: 3}, null, {loading: true});
@@ -84,5 +89,6 @@ test('live moving card renders positions without comparison, distinguishes pendi
   card.render({...detail, _queryRevision: 3, track_sessions: [{id: 1, active: false, point_count: 1}]}, null, {...state, queryRevision: 3}, null);
   assert.match(texts(), /785\.2 km\/h/); const restart = flatten(host).find(value => value.id === 'analysis-start-recording'); assert.equal(restart.textContent, 'Rozpocznij zapis trasy'); assert.equal(restart.disabled, false);
   card.render(detail, null, {...state, query: {...state.query, time: {mode: 'range', filter_range: range}}}, null, {motion: {frames: new Map()}});
+  assert.equal(replayButton().hidden, true);
   assert.match(texts(), /Brak pozycji/); assert.doesNotMatch(texts(), /785\.2 km\/h/);
 });

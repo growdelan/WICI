@@ -161,6 +161,13 @@ window.WiciObjectCard = function (host, actions) {
         const compare = U.button('Dodaj do porównania', () => actions.compare(object.ref)); compare.id = 'analysis-compare-object';
         const start = U.button('Rozpocznij zapis trasy', () => actions.record(object)); start.id = 'analysis-start-recording';
         const actionsRow = U.el('div', null, 'analysis-moving-actions'); actionsRow.append(watch, compare, start); data.append(actionsRow);
+        let replayAircraft;
+        if (object.type === 'aircraft' && actions.replayAircraft) {
+          const icao = object.native_id || object.ref.split(':').at(-1);
+          replayAircraft = U.button('Odtwórz ostatni odcinek w 3D', () => actions.replayAircraft(icao, metadata.callsign, replayAircraft));
+          replayAircraft.id = 'analysis-aircraft-replay';
+          actionsRow.append(replayAircraft);
+        }
         dl(data, object.type === 'aircraft' ? [['ICAO', object.native_id || object.ref.split(':').at(-1)], ['Rejestracja', metadata.registration], ['Znak wywoławczy', metadata.callsign], ['Typ samolotu', metadata.type_code], ['Klasyfikacja źródła', metadata.military == null ? 'Nie podano' : metadata.military ? 'Wojskowy według źródła' : 'Pozostałe według źródła']] : [['MMSI', object.native_id || object.ref.split(':').at(-1)], ['IMO', metadata.imo], ['Typ jednostki AIS', metadata.type_code], ['Deklarowany cel', metadata.destination]]);
         data.append(U.el('p', 'Identyfikatory i metadane pochodzą z ostatniego odczytu źródła. Historia pozycji nie odtwarza dawnych metadanych ani nie potwierdza tożsamości operatora.', 'muted'));
         const position = section(body, 'Pozycja i ruch'), values = U.el('div'), quality = U.el('p', '', 'muted'); position.append(values, quality);
@@ -175,7 +182,7 @@ window.WiciObjectCard = function (host, actions) {
           history.append(entry);
         }
         if (!sessions.length) history.append(U.el('p', 'Nie ma zapisanych sesji tego obiektu. Rozpocznij zapis, aby zbudować historię.', 'muted'));
-        movingNodes = {watch, compare, start, values, quality, active: sessions.some(session => session.active), stops};
+        movingNodes = {watch, compare, start, replayAircraft, values, quality, active: sessions.some(session => session.active), stops};
       } else {
         if (object.type === 'hydro_station') {
           const metric = U.el('select'); metric.id = 'analysis-metric';
@@ -228,6 +235,7 @@ window.WiciObjectCard = function (host, actions) {
       movingNodes.start.disabled = Boolean(busy || movingNodes.active); for (const stop of movingNodes.stops) stop.disabled = Boolean(busy);
       const historical = state.query.time.mode === 'range', frame = motion?.frames?.get(object.ref), current = detail._detailRevision === state.detailRevision && detail._queryRevision === state.queryRevision;
       const position = historical ? frame?.point : current ? object.position : null;
+      if (movingNodes.replayAircraft) movingNodes.replayAircraft.hidden = historical || !position;
       movingNodes.values.replaceChildren();
       if (!historical && !current) movingNodes.values.append(U.el('p', loading || !error ? 'Odświeżanie pozycji dla aktualnego zestawu…' : 'Pozycja wymaga ponownego odczytu spójnego zestawu. Użyj „Odśwież zestaw”.', 'muted'));
       else dl(movingNodes.values, [['Czas raportu', U.date(position?.position_at || position?.at)], ['Szerokość', Number.isFinite(position?.latitude) ? position.latitude.toFixed(5) : 'Brak pozycji'], ['Długość', Number.isFinite(position?.longitude) ? position.longitude.toFixed(5) : 'Brak pozycji'], ['Prędkość', M.number(position?.speed_kmh, 'km/h')], ...(object.type === 'aircraft' ? [['Wysokość', M.number(position?.altitude_m, 'm')]] : []), ['Kurs', M.number(position?.heading, '°')]]);

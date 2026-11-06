@@ -28,6 +28,7 @@ from wici.lightning import LightningService, LightningUnavailable
 from wici.moving_ingestion import MovingIngestion
 from wici.position_quality import PositionQuality
 from wici.radar import RadarService, RadarUnavailable
+from wici.replay_requests import ReplayRequests
 from wici.repository import Repository
 from wici.runtime import InstanceLock, configure_logs
 from wici.scene3d import Scene3DService
@@ -63,6 +64,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
         ships = None
         quality = None
         tracking = None
+        replay_requests = None
         station_history = None
         moving_ingestion = None
         ukraine_collector = None
@@ -98,6 +100,11 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             tracking.start()
             app.state.lightning = LightningService(network, repo.clock, config.timeout_seconds, enabled=config.enabled('lightning'), demo=demo)
             app.state.radar = RadarService(network, repo.clock, config.timeout_seconds, enabled=config.enabled('radar'), demo=demo)
+            if not demo:
+                replay_requests = ReplayRequests(directory / 'flight-replay', network, app.state.aircraft,
+                                                 app.state.radar, repo.clock)
+                app.state.replay_requests = replay_requests
+                await replay_requests.resume()
             app.state.imagery = ImageryService(network, repo.clock, config.timeout_seconds,
                 enabled=config.enabled('imagery'), demo=demo)
             app.state.gios = GiosService(network, repo.clock, config.timeout_seconds,
@@ -143,6 +150,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             workspace_monitor.start()
             yield
         finally:
+            if replay_requests:
+                await replay_requests.close()
             if workspace_monitor:
                 await workspace_monitor.stop_polling()
             if ukraine_collector:

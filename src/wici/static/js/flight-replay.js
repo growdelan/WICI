@@ -34,7 +34,8 @@ window.WiciFlightReplay = (() => {
     active = null;
     release(run);
     if ($('dialog').open) $('dialog').close();
-    if (run.trigger?.isConnected) run.trigger.focus({preventScroll: true});
+    const target = run.trigger?.isConnected && run.trigger.getClientRects().length ? run.trigger : document.getElementById('map');
+    target?.focus({preventScroll: true});
   }
   function fail(run, message) {
     if (active !== run || run.failed) return;
@@ -311,7 +312,7 @@ window.WiciFlightReplay = (() => {
       if (active === run && !controller.signal.aborted) setText('radar-time', `${prefix} · kafle niedostępne`);
     }
   }
-  async function open(trigger = document.activeElement) {
+  async function open(trigger = document.activeElement, episodeUrl = '/api/flight-replay') {
     if (active) return;
     const run = active = {trigger, abort:new AbortController(), radarLayers:[], radar:undefined,
       playing:false, emptyTile:document.createElement('canvas')};
@@ -329,7 +330,7 @@ window.WiciFlightReplay = (() => {
     $('overview').setAttribute('aria-pressed','true'); $('follow').setAttribute('aria-pressed','false');
     dialog.showModal(); $('close').focus({preventScroll:true});
     try {
-      const res = await fetch('/api/flight-replay', {signal:run.abort.signal});
+      const res = await fetch(episodeUrl, {signal:run.abort.signal});
       if (res.status === 404) {
         const message = (await res.json().catch(() => ({}))).detail;
         throw Error(typeof message === 'string' ? message : 'Brak lokalnego zapisu lotu z radarem.');

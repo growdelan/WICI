@@ -1,21 +1,11 @@
 """Validate acquisition boundaries and the atomic switch of local episodes."""
-import importlib.util
 import struct
 import zlib
-from pathlib import Path
 
+import httpx
 import pytest
 
-
-def load_script():
-    path = Path(__file__).resolve().parents[1] / 'scripts/capture_flight_replay.py'
-    spec = importlib.util.spec_from_file_location('capture_flight_replay', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-capture = load_script()
+from wici import replay_capture as capture
 
 
 def fix(time, *, flight=None, course=180, alt_geom=5000, flag=0, alt_baro=4900):
@@ -64,3 +54,81 @@ def test_failed_import_or_bad_tile_preserves_previously_published_material(tmp_p
     with pytest.raises(ValueError, match='64 MiB'):
         capture.read_saved(tmp_path)
     assert (tmp_path / 'episode.json').read_bytes() == original
+
+
+def trace_of(rows):
+    return {'timestamp': 1200, 'icao': 'abcdef', 'trace': rows}
+
+
+def test_newest_matching_flight_supersedes_longer_leg_even_with_same_callsign():
+    older = [fix(t, flight='TEST1' if t == 0 else None) for t in range(0, 851, 100)]
+    newer = [fix(900, flag=2, flight='TEST1'), *(fix(t) for t in range(1000, 1301, 100))]
+    times = [1200, 1800, 2400]
+    _, points, frames = capture.select_leg(trace_of(older + newer), times, 'TEST1', current=True)
+    assert points[0]['time'] == 2100
+    assert frames == [1800, 2400]
+
+    for latest in (fix(1400, flag=2, flight='TEST1'), fix(1400, flight='DIFF2')):
+        history = trace_of(older + newer + [latest])
+        assert capture.select_leg(history, times, 'TEST1', current=True) is None
+    # Anonymous manual ICAO selection can choose the latest qualifying segment.
+    _, points, _ = capture.select_leg(history, times, current=True)
+    assert points[0]['time'] == 2100
+    # Explicit historic CLI callsign still works after another flight takes off.
+    _, points, _ = capture.select_leg(history, times, 'TEST1')
+    assert points[0]['time'] == 2100
+
+
+def test_trace_without_callsign_is_addressed_by_icao_and_never_attached_to_named_leg():
+    anonymous = [fix(t) for t in range(200, 701, 100)]
+    rows = anonymous + [fix(800, flight='TEST2')]
+    times = [1200, 1800]
+    name, points, _ = capture.select_leg(trace_of(rows), times)
+    assert name == '' and points[-1]['time'] == 1900
+    assert capture.select_leg(trace_of(rows), times, 'TEST2', current=True) is None
+    meta = capture.describe(name, 'ABCDEF', points)
+    assert meta['label'] == 'ABCDEF' and meta['icao'] == 'abcdef' and 'callsign' not in meta
+
+
+class SharedRadar:
+    def __init__(self, status='success'):
+        self.status = status
+        self.requests = []
+
+    async def metadata(self):
+        return {'status': self.status, 'frames': [{'timestamp': t} for t in (1200, 1800)]}
+
+    async def tile(self, stamp, z, x, y):
+        self.requests.append((stamp, z, x, y))
+        return b'tile'
+
+
+async def test_manual_capture_uses_one_aircraft_and_only_matching_shared_radar_frames():
+    requests = []
+    history = trace_of([fix(t, flight='TEST1' if t == 300 else None) for t in range(300, 701, 100)])
+    def handle(request):
+        requests.append(str(request.url))
+        return httpx.Response(200, json=history)
+    radar = SharedRadar()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+        meta, images = await capture.capture_recent(client, radar, 'ABCDEF', 'test1')
+    assert requests == ['https://adsb.lol/data/traces/ef/trace_full_abcdef.json']
+    assert meta['icao'] == 'abcdef' and meta['callsign'] == 'TEST1'
+    assert set(images) == set(radar.requests)
+    assert len(images) == 2 * len(capture.TILES)
+
+
+@pytest.mark.parametrize(('http_status', 'radar_status', 'rows', 'expected'), [
+    (404, 'success', [], capture.NoReplayHistory),
+    (200, 'success', [], capture.NoReplayHistory),
+    (200, 'error', [], capture.RadarUnavailable),
+    (503, 'success', [], httpx.HTTPStatusError),
+    (200, 'success', [None], ValueError),
+])
+async def test_only_absent_history_offers_observation(http_status, radar_status, rows, expected):
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda _: httpx.Response(http_status, json=trace_of(rows))
+    )) as client:
+        with pytest.raises(expected) as caught:
+            await capture.capture_recent(client, SharedRadar(radar_status), 'abcdef')
+    assert type(caught.value) is expected

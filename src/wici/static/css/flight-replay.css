@@ -63,3 +63,15 @@
   .fr-hud {left: 8px; bottom: 25px}
   #flight-replay-status {flex-basis: 100%; margin-left: 0}
 }
+.aircraft-replay-form {margin: 10px 0; display: grid; gap: 5px}
+.aircraft-replay-form > div, #aircraft-replay-recent, .ar-header, .ar-actions {display: flex; flex-wrap: wrap; align-items: center; gap: 8px}
+.aircraft-replay-form input {width: 9em; min-height: 40px; text-transform: uppercase}
+#aircraft-replay-dialog {width: min(490px, calc(100vw - 26px)); max-height: 90dvh; overflow: auto; padding: 20px; border: 1px solid var(--control-line); border-radius: 12px; color: var(--ink); background: var(--paper); box-shadow: 0 16px 64px #00152155}
+#aircraft-replay-dialog::backdrop {background: #0a2131b8}
+.ar-header {justify-content: space-between; flex-wrap: nowrap}
+.ar-header h2 {font-size: 18px; margin: 0; overflow-wrap: anywhere}
+#aircraft-replay-dialog button {min-height: 44px; white-space: normal; overflow-wrap: anywhere}
+#aircraft-replay-message {margin: 15px 0 8px}
+#aircraft-replay-counts {margin: 4px 0 9px; color: var(--muted); font-variant-numeric: tabular-nums}
+#aircraft-replay-background {color: var(--muted); font-size: 13px}
+#aircraft-replay-dialog [hidden] {display: none}

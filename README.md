@@ -112,7 +112,7 @@ Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostęp
 
 ### Odtwarzanie lotu z radarem w 3D
 
-Wybierz **Sytuacja → Warstwy → Lotnictwo → Odtwórz lot z radarem w 3D**. Zobaczysz zapisany odcinek przelotu, ślad samolotu i obraz opadów z tego okresu. Przesuwaj suwak w obie strony i przełączaj się między widokiem całej trasy a kamerą podążającą za samolotem. Pierwsze nagranie w nowej instalacji można przygotować poleceniem `uv run --locked python scripts/capture_flight_replay.py`. [Przygotowanie nagrania, źródła i znaczenie czasu](docs/flight-replay.md).
+Włącz **Sytuacja → Warstwy → Lotnictwo → Samoloty**, kliknij ikonę na mapie i wybierz **Odtwórz ostatni odcinek w 3D**. W tym samym panelu możesz wpisać sześć znaków ICAO i wybrać **Przygotuj odcinek 3D**. WICI wyszuka pozycje nad Polską i odpowiadające im klatki radaru. Jeśli brak wspólnej historii, wybierz **Zbieraj od teraz**. Po zamknięciu panelu postęp znajdziesz w Lotnictwie pod **Sprawdź stan**. Osobny przycisk **Otwórz zapisany lot z radarem w 3D** otwiera wcześniej przygotowane nagranie. [Obsługa odtwarzacza, zbieranie i znaczenie czasu](docs/flight-replay.md).
 
 ### Samoloty i statki — zapis tras i odtwarzanie
 

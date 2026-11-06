@@ -183,3 +183,109 @@ test('3D replay fits a mobile viewport and a missing episode leaves the map reac
     await env.stop();
   }
 });
+
+const picker = '#aircraft-replay-dialog';
+const revision = 'b'.repeat(20);
+const replayUrl = icao => `/api/flight-replay/aircraft/${icao}/episode?revision=${revision}`;
+async function manualEntry(page) {
+  await page.locator('#layer-panel').evaluate(element => {element.open = true;});
+  await page.locator('.layer-group').filter({has:page.locator('#aircraft-replay-icao')}).evaluate(group => {group.open = true;});
+}
+async function pickFromForm(page, icao) {
+  await manualEntry(page);
+  await page.locator('#aircraft-replay-icao').fill(icao);
+  await page.locator('#aircraft-replay-submit').click();
+}
+async function installSelected(page, icao, label, requested) {
+  const path = replayUrl(icao);
+  const selected = {...episode, label, frames:frames.map(frame => ({...frame, tiles:frame.tiles.map(tile => ({...tile,
+    url:`/api/flight-replay/tiles/${icao}/${revision}/${frame.time}/${tile.z}/${tile.x}/${tile.y}.png`}))}))};
+  await page.route(url => url.pathname === `/api/flight-replay/aircraft/${icao}/episode`, async route => {
+    requested.push(new URL(route.request().url()).pathname + new URL(route.request().url()).search);
+    await route.fulfill({json:selected});
+  });
+  await page.route(`**/api/flight-replay/tiles/${icao}/**`, route => route.fulfill({contentType:'image/png', body:solidTile(24,86,195)}));
+  return path;
+}
+
+test('aircraft popup prepares the selected callsign and reopens its collecting job into the correct 3D episode', {timeout:60000}, async () => {
+  const env = await environment({name:'selected-aircraft-replay'}), {page} = env;
+  try {
+    const icao = '48abcd', callsign = 'TEST3D', calls = [], requested = [];
+    const address = await installSelected(page, icao, 'TEST3D · wybrana trasa', requested);
+    let statusReads = 0;
+    await page.route(/\/api\/flight-replay\/aircraft\/48abcd\/(prepare|collect|status)(\?|$)/, async route => {
+      const req = route.request(), url = new URL(req.url()), action = url.pathname.split('/').at(-1);
+      calls.push({action, method:req.method(), token:req.headers()['x-csrf-token'], body:req.postDataJSON(), query:url.searchParams.get('callsign')});
+      const response = action === 'prepare' ? {status:'no_history', message:'Brak śladu historycznego.'} :
+        action === 'collect' || ++statusReads === 1 ? {status:'collecting', message:'Trwa zbieranie.', points:2, frames:1} :
+        {status:'ready', episode_url:address};
+      await route.fulfill({json:{icao,callsign,...response}});
+    });
+    await page.locator('.aircraft-marker').first().click();
+    await page.getByRole('button',{name:'Odtwórz ostatni odcinek w 3D',exact:true}).click();
+    const collect = page.getByRole('button', {name:'Zbieraj od teraz', exact:true});
+    await collect.waitFor();
+    assert.equal(await page.locator(picker).getAttribute('data-state'), 'no_history');
+    assert.deepEqual(calls.map(call => call.action), ['prepare']);
+    await collect.evaluate(button => {button.click(); button.click();});
+    await page.locator(`${picker}[data-state="collecting"]`).waitFor();
+    assert.match(await page.locator('#aircraft-replay-counts').innerText(), /Pozycje: 2/);
+    await page.locator('#aircraft-replay-close').click();
+    await manualEntry(page);
+    await page.getByRole('button',{name:'Sprawdź stan: TEST3D · 48ABCD',exact:true}).click();
+    await page.locator('#flight-replay-dialog[open]').waitFor(); await ready(page);
+    assert.deepEqual(requested, [address]);
+    assert.equal(await page.locator('#flight-replay-title').innerText(), 'TEST3D · wybrana trasa');
+    assert.deepEqual(calls.map(call => call.action), ['prepare','collect','status','status']);
+    const csrf = await page.evaluate(() => state.health.csrf_token);
+    assert.ok(csrf);
+    for (const call of calls.slice(0,2)) {
+      assert.equal(call.method,'POST'); assert.deepEqual(call.body,{callsign}); assert.equal(call.token,csrf);
+    }
+    for (const call of calls.slice(2)) {assert.equal(call.method,'GET'); assert.equal(call.query,callsign);}
+    assert.equal(await page.locator('#aircraft-replay-recent button').count(),0);
+    await page.locator('#flight-replay-close').click();
+    assert.equal(await page.locator('#aircraft-replay-submit').evaluate(button => button === document.activeElement), true);
+    await env.clean();
+  } finally {await env.stop();}
+});
+
+test('manual ICAO rejects malformed input, isolates a late previous request and requires an explicit older-recording choice', {timeout:60000}, async () => {
+  const env = await environment({name:'manual-aircraft-replay'}), {page} = env;
+  let release;
+  try {
+    const current = '48abce', address = replayUrl(current), requested = [], calls = [];
+    await installSelected(page, current, 'Starszy odcinek 48ABCE', requested);
+    let started;
+    const firstStarted = new Promise(resolve => {started = resolve;});
+    const held = new Promise(resolve => {release = resolve;});
+    await page.route(/\/api\/flight-replay\/aircraft\/[0-9a-f]+\/prepare$/, async route => {
+      const icao = new URL(route.request().url()).pathname.split('/').at(-2);
+      calls.push({icao, body:route.request().postDataJSON()});
+      if (icao === '123abc') {
+        started(); await held;
+        await route.fulfill({json:{icao,status:'ready',episode_url:replayUrl(icao)}}).catch(() => {}); return;
+      }
+      await route.fulfill({json:{icao,status:'unavailable',message:'Źródło chwilowo niedostępne.',saved_label:'Archiwum',saved_end:start,
+        saved_episode_url:address}});
+    });
+    await pickFromForm(page, 'ABCDEF7');
+    assert.equal(await page.locator('#aircraft-replay-icao').evaluate(input => input.validity.valid), false);
+    assert.equal(await page.locator(picker).isVisible(),false);
+    await pickFromForm(page,'123ABC'); await firstStarted;
+    await page.locator('#aircraft-replay-close').click();
+    await pickFromForm(page, current.toUpperCase());
+    await page.locator(`${picker}[data-state="unavailable"]`).waitFor(); release();
+    assert.deepEqual(calls, [{icao:'123abc',body:{}},{icao:current,body:{}}]);
+    assert.equal(await page.locator('#aircraft-replay-collect').isVisible(),false);
+    assert.equal(await page.locator('#flight-replay-dialog').isVisible(),false);
+    const saved = page.locator('#aircraft-replay-saved');
+    assert.match(await saved.innerText(), /Archiwum.*UTC/);
+    await saved.click(); await ready(page);
+    assert.deepEqual(requested,[address]);
+    assert.equal(await page.locator('#flight-replay-title').innerText(), 'Starszy odcinek 48ABCE');
+    await page.locator('#flight-replay-close').click();
+    await env.clean();
+  } finally {release?.(); await env.stop();}
+});

@@ -297,6 +297,7 @@ async function reload(){
  }catch(err){error(err);}finally{loading=false;$('refresh').disabled=false;}
 }
 $('flight-replay-open')?.addEventListener('click', event => window.WiciFlightReplay.open(event.currentTarget));
+window.WiciAircraftReplay?.init(api);
 const notices=el('a','Oznaczenia i warunki dostawców danych');notices.href='/notices';document.querySelector('footer').append(el('br'),notices);
 reload();setInterval(reload,60000);
 

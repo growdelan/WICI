@@ -45,6 +45,9 @@ const response={ok:true,json:async()=>({items:[item],stale:false,status:'ready',
  assert.ok(popup.children[2].textContent.includes('adsb.fi'));
  for(const value of ['LOT3JK','SP-LIO','E75S','800 km/h','2 s'])assert.ok(texts.includes(value));
  const follow=popup.children[3];assert.equal(follow.textContent,'Podążaj w 3D');assert.equal(follow.disabled,false);
+ const replayCalls=[];context.window.WiciAircraftReplay={open(...selection){replayCalls.push(selection);}};
+ const replay=created[0].popup().children[4];
+ assert.equal(replay.textContent,'Odtwórz ostatni odcinek w 3D');
  follow.focus();[...intervals.values()][0].fn();assert.equal(doc.activeElement,follow);assert.equal(created[0].popup(),popup);
  follow.listeners.click();assert.equal(followCalls.open.length,1);assert.equal(followCalls.open[0][0],item);assert.equal(followCalls.open[0][1],followCalls.update[0][0]);assert.equal(followCalls.open[0][2],follow);
  assert.equal(followCalls.open[0][3],created[0].getPopup());
@@ -65,6 +68,9 @@ const response={ok:true,json:async()=>({items:[item],stale:false,status:'ready',
  assert.equal(created[0].element.title,'LOT9ZZ');assert.equal(created[0].tooltip().textContent,'LOT9ZZ');
  assert.equal(doc.activeElement,follow);assert.equal(created[0].content,popup);assert.equal(popup.children[3],follow);
  assert.equal(popup.children[0].textContent,'LOT9ZZ');
+ assert.equal(created[0].popup().children[4],replay);
+ replay.listeners.click();
+ assert.deepEqual(replayCalls,[[latestItem.hex,latestItem.id,replay]]);
  follow.listeners.click();assert.equal(followCalls.open.at(-1)[0],latestItem);assert.equal(followCalls.open.at(-1)[1],latestSnapshot);
  latestItem.altitude_m=null;[...intervals.values()][0].fn();assert.equal(follow.disabled,true);
  const opened=followCalls.open.length;follow.listeners.click();assert.equal(followCalls.open.length,opened);
