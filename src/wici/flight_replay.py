@@ -13,6 +13,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from wici.flight_orthophoto import OrthophotoUnavailable
+
 Timestamp = Annotated[int, Field(strict=True, gt=0, le=4102444800)]
 Name = Annotated[str, Field(min_length=1, max_length=300)]
 MAX_MANIFEST = 4 * 1024 * 1024
@@ -190,10 +192,29 @@ def create_replay_router(root: Path, demo: bool):
         if demo:
             raise HTTPException(404, 'Zapis rzeczywistego lotu jest dostępny w trybie zwykłym WICI.')
 
+    def public_episode(request, snapshot):
+        return JSONResponse({**snapshot.public,
+                             'orthophoto_enabled': getattr(request.app.state, 'flight_orthophoto', None) is not None})
+
     @router.get('')
     def replay(request: Request):
         check_access(request)
-        return JSONResponse(store.load().public)
+        return public_episode(request, store.load())
+
+    @router.get('/orthophoto/{z}/{x}/{y}.jpg')
+    async def orthophoto(request: Request, z: int, x: int, y: int):
+        check_access(request)
+        service = getattr(request.app.state, 'flight_orthophoto', None)
+        if service is None:
+            raise HTTPException(404, 'Ortofotomapa wyłączona.')
+        try:
+            image = await service.tile(z, x, y)
+        except OrthophotoUnavailable as exc:
+            raise HTTPException(503, str(exc), headers={'Retry-After': str(exc.retry_in)}) from None
+        if image is None:
+            raise HTTPException(404, 'Brak kafla ortofotomapy w tym miejscu lub powiększeniu.')
+        body, mime = image
+        return Response(body, media_type=mime)
 
     @router.get('/tiles/{revision}/{time}/{z}/{x}/{y}.png')
     def tile(request: Request, revision: str, time: int, z: int, x: int, y: int):
@@ -218,7 +239,7 @@ def create_replay_router(root: Path, demo: bool):
     @router.get('/aircraft/{icao}/episode')
     def selected_episode(request: Request, icao: AircraftId, revision: Revision):
         check_access(request)
-        return JSONResponse(request.app.state.replay_requests.store(icao.lower()).at_revision(revision).public)
+        return public_episode(request, request.app.state.replay_requests.store(icao.lower()).at_revision(revision))
 
     @router.get('/tiles/{icao}/{revision}/{time}/{z}/{x}/{y}.png')
     def selected_tile(request: Request, icao: AircraftId, revision: Revision, time: int, z: int, x: int, y: int):

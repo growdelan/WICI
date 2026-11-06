@@ -55,6 +55,10 @@ enabled = true
 [sources.aircraft]
 enabled = true
 
+# Ortofotomapa GUGiK w odtwarzaczu lotu. Kafle zbliżeń na żądanie, tylko w trybie live.
+[sources.flight_orthophoto]
+enabled = true
+
 # Ukraina: publiczne alerty NEPTUN bez klucza; odczyt tylko przy aktywnej warstwie.
 # Przełącznik na mapie jest domyślnie wyłączony. Brak archiwizacji; demo offline.
 [sources.ukraine]

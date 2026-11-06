@@ -21,28 +21,196 @@ const episode = {
   points, frames, demo: false,
 };
 
-function solidTile(red, green, blue) {
+function solidTile(red, green, blue, alpha = 255) {
   const png = new PNG({width: 256, height: 256});
   for (let offset = 0; offset < png.data.length; offset += 4) {
     png.data[offset] = red;
     png.data[offset + 1] = green;
     png.data[offset + 2] = blue;
-    png.data[offset + 3] = 255;
+    png.data[offset + 3] = alpha;
   }
   return PNG.sync.write(png);
 }
 
-async function installEpisode(page) {
+async function installEpisode(page, recording = episode, firstScan = solidTile(255, 0, 240)) {
   const tiles = new Map([
-    [frames[0].tiles[0].url, solidTile(255, 0, 240)],
+    [frames[0].tiles[0].url, firstScan],
     [frames[1].tiles[0].url, solidTile(30, 255, 0)],
   ]);
-  await page.route(/\/api\/flight-replay(?:\?|$)/, route => route.fulfill({json: episode}));
+  await page.route(/\/api\/flight-replay(?:\?|$)/, route => route.fulfill({json: recording}));
   await page.route('**/api/flight-replay/tiles/**', route => {
     const body = tiles.get(new URL(route.request().url()).pathname);
     return body ? route.fulfill({contentType: 'image/png', body}) : route.fulfill({status: 404});
   });
 }
+
+// Okęcie, Poland. The first radar scan is clear, the second entirely green.
+// The colour of the ground under a clear scan identifies the rendered layer.
+const epwa = {lat: 52.1657, lon: 20.9671};
+const approach = Array.from({length: 13}, (_, i) => ({
+  time: start + 30 * i, lat: epwa.lat + .02 * (12 - i), lon: epwa.lon + .04 * (12 - i),
+  alt_m: 110 + 100 * (12 - i), heading: 210,
+}));
+
+async function airportScene(page, enabled, available) {
+  const requests = [];
+  const jpeg = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#08d7ff'; ctx.fillRect(0, 0, 256, 256);
+    return canvas.toDataURL('image/jpeg').split(',')[1];
+  });
+  const photo = Buffer.from(jpeg, 'base64'), base = solidTile(255, 105, 0);
+  await page.route('**/static/geo/flight-satellite/**', route => route.fulfill({contentType:'image/png', body:base}));
+  await page.route('**/api/flight-replay/orthophoto/**', route => {
+    requests.push(new URL(route.request().url()).pathname);
+    return available ? route.fulfill({contentType:'image/jpeg', body:photo}) :
+      route.fulfill({status:503, headers:{'Retry-After':'60'}, json:{detail:'Źródło chwilowo niedostępne'}});
+  });
+  await installEpisode(page, {...episode, points:approach, demo:!enabled, orthophoto_enabled:enabled}, solidTile(0, 0, 0, 0));
+  return requests;
+}
+
+async function viewAirport(page, height) {
+  // Reposition the real overview camera to a reproducible extent on the runway.
+  await page.evaluate(({lat, lon, height}) => {
+    const view = window.__vehicleViewers.at(-1);
+    view.camera.setView({destination:Cesium.Cartesian3.fromDegrees(lon,lat,height),
+      orientation:{heading:0, pitch:-Math.PI / 2, roll:0}});
+    view.scene.requestRender();
+  }, {...epwa, height});
+}
+
+async function checkSurface(page, color) {
+  const canvas = page.locator('#flight-replay-scene canvas');
+  const deadline = Date.now() + 18000;
+  let fraction;
+  do {
+    const png = PNG.sync.read(await canvas.screenshot());
+    let sampled = 0, matching = 0;
+    for (let row = Math.floor(png.height * .2); row < png.height * .8; row += 6) {
+      for (let col = Math.floor(png.width * .2); col < png.width * .8; col += 6) {
+        const offset = 4 * (row * png.width + col);
+        const r = png.data[offset], g = png.data[offset + 1], b = png.data[offset + 2];
+        const cyan = g > r + 70 && b > r + 70, orange = r > g + 50 && g > b + 25;
+        matching += Number(color === 'cyan' ? cyan : orange);
+        sampled++;
+      }
+    }
+    fraction = matching / sampled;
+    if (fraction > .7) return;
+    await page.waitForTimeout(100);
+  } while (Date.now() < deadline);
+  assert.fail(`Expected ${color} ground over EPWA; observed ${Math.round(100 * fraction)}% of the central canvas`);
+}
+
+function checkAirportRequests(requests) {
+  assert.ok(requests.length, 'The close camera must load orthoimagery');
+  let onAirport = false;
+  for (const path of requests) {
+    const match = /^\/api\/flight-replay\/orthophoto\/(\d+)\/(\d+)\/(\d+)\.jpg$/.exec(path);
+    assert.ok(match, path);
+    const [level, x, y] = match.slice(1).map(Number), side = 2 ** level;
+    assert.ok(level >= 11 && level <= 19 && x < side && y < side, path);
+    const airportX = Math.floor((epwa.lon + 180) / 360 * side);
+    const airportY = Math.floor((1 - Math.asinh(Math.tan(epwa.lat * Math.PI / 180)) / Math.PI) / 2 * side);
+    if (x === airportX && y === airportY) onAirport = true;
+  }
+  assert.ok(onAirport, 'At least one requested XYZ tile must contain EPWA');
+}
+
+const basemap = '#flight-replay-basemap';
+const atBasemap = (page, state) => page.locator(`${basemap}[data-state="${state}"]`).waitFor();
+
+test('returning to EPWA reuses the visible orthophotos without fetching the same tiles again', {timeout:90000}, async () => {
+  const env = await environment({name:'flight-replay-orthophoto-return', viewport:{width:960,height:720}}), {page} = env;
+  try {
+    const requests = await airportScene(page, true, true);
+    await openReplay(page); await ready(page);
+    await viewAirport(page, 1200); await checkSurface(page, 'cyan');
+    // Let Cesium finish refining the close view before recording its working set.
+    const settled = () => page.waitForFunction(() => window.__vehicleViewers.at(-1).scene.globe.tilesLoaded);
+    await settled();
+    checkAirportRequests(requests);
+    const countLayers = () => page.evaluate(() => window.__vehicleViewers.at(-1).imageryLayers.length);
+    const closeLayerCount = await countLayers();
+    const loaded = new Set(requests), repeated = [];
+    await page.route('**/api/flight-replay/orthophoto/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      if (!loaded.has(path)) return route.fallback();
+      repeated.push(path);
+      // A previously displayed area must also work if another download would fail.
+      await route.fulfill({status:404});
+    });
+
+    const slider = page.locator('#flight-replay-time');
+    await slider.press('End'); await checkRadarPixels(page, 'green');
+    await slider.press('Home'); await checkSurface(page, 'cyan'); await settled();
+    assert.deepEqual(repeated, [], 'Seeking the radar must preserve the ground under a stationary camera');
+    await viewAirport(page, 14000); await atBasemap(page, 'local'); await settled();
+    assert.equal(await countLayers(), closeLayerCount - 1, 'A wide camera must release the orthophoto layer');
+    await checkSurface(page, 'orange');
+    await viewAirport(page, 1200);
+    await page.waitForFunction(() => ['orthophoto','partial','unavailable'].includes(
+      document.querySelector('#flight-replay-basemap').dataset.state));
+    await settled();
+    assert.deepEqual(repeated, [], 'Returning to the same viewport must reuse previously fetched XYZ');
+    await checkSurface(page, 'cyan');
+    assert.equal(await countLayers(), closeLayerCount, 'Returning must attach only one orthophoto layer');
+    await page.keyboard.press('Escape'); await checkReturned(page); await env.clean();
+  } finally {await env.stop();}
+});
+
+test('LIVE approach to EPWA loads close orthophotos below both radar scans and releases them in overview', {timeout:90000}, async () => {
+  const env = await environment({name:'flight-replay-orthophoto', viewport:{width:1100,height:760}}), {page} = env;
+  try {
+    const requests = await airportScene(page, true, true);
+    await openReplay(page); await ready(page); await atBasemap(page, 'local');
+    await viewAirport(page, 14000); await checkSurface(page, 'orange');
+    assert.deepEqual(requests, [], 'A wide view must not request orthophotos');
+
+    await viewAirport(page, 1200); await atBasemap(page, 'orthophoto'); await checkSurface(page, 'cyan');
+    checkAirportRequests(requests);
+    assert.equal(new URL(await page.locator(`${basemap} a`).getAttribute('href')).hostname, 'www.geoportal.gov.pl');
+    const slider = page.locator('#flight-replay-time');
+    await slider.press('End'); await checkAircraft(page, approach.at(-1)); await checkRadarPixels(page, 'green');
+    await slider.press('Home'); await checkSurface(page, 'cyan');
+    await page.context().setOffline(true);
+    await atBasemap(page, 'offline'); await checkSurface(page, 'orange');
+    await page.context().setOffline(false);
+    await atBasemap(page, 'orthophoto'); await checkSurface(page, 'cyan');
+    await viewAirport(page, 14000); await atBasemap(page, 'local'); await checkSurface(page, 'orange');
+
+    // End on the low aircraft and switch between camera modes via the controls.
+    await slider.press('End'); await page.locator('#flight-replay-follow').click();
+    await atBasemap(page, 'orthophoto'); await checkRadarPixels(page, 'green');
+    await page.locator('#flight-replay-overview').click(); await atBasemap(page, 'local');
+    await page.keyboard.press('Escape'); await checkReturned(page); await env.clean();
+  } finally {await env.stop();}
+});
+
+test('unavailable EPWA orthophotos reveal the local ground and DEMO stays local after reopening', {timeout:90000}, async () => {
+  const env = await environment({name:'flight-replay-orthophoto-fallback', viewport:{width:1100,height:760}}), {page} = env;
+  try {
+    const requests = await airportScene(page, true, false);
+    await openReplay(page); await ready(page); await viewAirport(page, 1200);
+    await atBasemap(page, 'unavailable'); await checkSurface(page, 'orange');
+    assert.ok(requests.length);
+    await page.locator('#flight-replay-time').press('End');
+    await checkRadarPixels(page, 'green'); await page.locator('#flight-replay-close').click(); await checkReturned(page);
+
+    env.feed.live = false;
+    await page.evaluate(() => loadHealth());
+    assert.equal(await page.evaluate(() => state.health.mode), 'demo');
+    const demoRequests = await airportScene(page, false, true);
+    await openReplay(page); await ready(page); await viewAirport(page, 1200); await atBasemap(page, 'local');
+    await checkSurface(page, 'orange');
+    assert.equal(new URL(await page.locator(`${basemap} a`).getAttribute('href')).hostname, 'esa-worldcover.org');
+    assert.deepEqual(demoRequests, []);
+    await page.keyboard.press('Escape'); await checkReturned(page); await env.clean();
+  } finally {await env.stop();}
+});
 
 async function openReplay(page) {
   const button = page.locator('#flight-replay-open');
@@ -108,9 +276,10 @@ test('3D replay seeks a flight and visible radar in both directions and returns 
   const {page} = env;
   try {
     await installEpisode(page);
-    const mapState = () => page.evaluate(() => ({
-      center: [state.map.getCenter().lat, state.map.getCenter().lng], zoom: state.map.getZoom(),
-    }));
+    const mapState = () => page.evaluate(() => {
+      const {x, y} = state.map.project(state.map.getCenter());
+      return {x, y, zoom:state.map.getZoom()};
+    });
     const originalMap = await mapState();
     await openReplay(page);
     await ready(page);
@@ -145,7 +314,11 @@ test('3D replay seeks a flight and visible radar in both directions and returns 
     assert.equal(await page.locator('#flight-replay-dialog').getAttribute('data-playing'), 'false');
     await page.keyboard.press('Escape');
     await checkReturned(page);
-    assert.deepEqual(await mapState(), originalMap);
+    const restored = await mapState();
+    assert.equal(restored.zoom, originalMap.zoom);
+    // Leaflet may round a restored centre to display pixels when resizing the map.
+    assert.ok(Math.abs(restored.x - originalMap.x) <= .5 && Math.abs(restored.y - originalMap.y) <= .5,
+      `The map moved after closing replay: ${JSON.stringify({originalMap, restored})}`);
     await env.clean();
   } finally {
     await env.stop();
