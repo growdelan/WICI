@@ -17,6 +17,7 @@ from wici.buses import CityBusService
 from wici.config import ROOT, Config
 from wici.demo import DEMO_NOW, seed
 from wici.effis import EffisService
+from wici.flight_replay import create_replay_router
 from wici.gddkia import GddkiaService
 from wici.gfm import GFMService, GFMUnavailable
 from wici.gfm_monitor import GFMMonitor, view_bbox
@@ -179,6 +180,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
 
     app = FastAPI(title='WICI',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
     app.include_router(create_workspace_router())
+    app.include_router(create_replay_router(root, demo))
 
     @app.middleware('http')
     async def security(request,call_next):

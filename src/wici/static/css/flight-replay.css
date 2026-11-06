@@ -1,0 +1,65 @@
+#flight-replay-dialog {
+  color-scheme: dark;
+  width: min(1340px, 96vw); max-width: 96vw; height: min(920px, 94dvh); max-height: 94dvh;
+  padding: 0; overflow: auto; overscroll-behavior: contain;
+  background: #10202c; color: #eef6f4; border: 1px solid #526873; border-radius: 14px;
+  box-shadow: 0 20px 100px #00111bd9;
+}
+#flight-replay-dialog[open] {display: flex; flex-direction: column}
+#flight-replay-dialog::backdrop {background: #051421db; backdrop-filter: blur(3px)}
+#flight-replay-dialog button, #flight-replay-dialog select {
+  color: #e7eeec; background: #182f3b; border: 1px solid #627884; border-radius: 6px;
+  min-height: 44px; padding: 7px 15px; font: inherit; font-size: 14px; font-weight: 600;
+}
+#flight-replay-dialog button:enabled:hover, #flight-replay-dialog select:enabled:hover {background: #264553}
+#flight-replay-dialog button:disabled, #flight-replay-dialog select:disabled {opacity: .55}
+#flight-replay-dialog button[aria-pressed="true"], #flight-replay-dialog #flight-replay-play {background: #b2efda; color: #102a2a; border-color: #b2efda}
+#flight-replay-dialog :focus-visible {outline: 3px solid #ffc780; outline-offset: 3px}
+.fr-header, .fr-deck {padding: 14px 22px; flex: none}
+.fr-header, .fr-time-row, .fr-controls, .fr-hud, .fr-view {display: flex; align-items: center; gap: 12px}
+.fr-header, .fr-time-row {justify-content: space-between}
+.fr-header {border-bottom: 1px solid #526873}
+.fr-header h2 {color: #fafcfb; margin: 0; font-size: clamp(17px, 2.2vw, 23px); overflow-wrap: anywhere}
+.fr-header button {flex: none}
+.fr-section {color: #9fd3c8; margin: 0 0 3px; font-size: 12px; font-weight: 600; letter-spacing: .04em}
+.fr-viewport {position: relative; flex: 1 0 210px; min-height: 210px; overflow: hidden; background: #0a1825}
+#flight-replay-scene, #flight-replay-scene .cesium-viewer, #flight-replay-scene .cesium-widget {position: absolute; inset: 0; width: 100%; height: 100%}
+#flight-replay-scene .cesium-widget-credits {max-width: calc(100% - 22px); background: #0a1825bf; font-size: 10px}
+.fr-view, .fr-hud {position: absolute; z-index: 1; background: #0c2130ed; border: 1px solid #5c7683; border-radius: 9px; box-shadow: 0 4px 14px #07142040}
+.fr-view {top: 14px; right: 16px; gap: 2px; padding: 3px}
+#flight-replay-dialog .fr-view button {background: transparent; border: none; padding-inline: 12px}
+#flight-replay-dialog .fr-view button[aria-pressed="true"] {background: #b2efda; color: #102a2a}
+.fr-hud {left: 16px; bottom: 28px; padding: 8px 13px; gap: 18px; pointer-events: none}
+.fr-hud span, .fr-controls label, .fr-time-row span, .fr-sources {font-size: 12px; color: #bdd0d6}
+.fr-hud span, .fr-hud strong {display: block}
+.fr-hud strong, #flight-replay-clock, #flight-replay-radar-time {font-variant-numeric: tabular-nums}
+.fr-hud strong {color: #e9f5f1; font-size: 15px; font-weight: 650}
+.fr-deck {border-top: 1px solid #526873}
+.fr-time-row {flex-wrap: wrap; gap: 4px 12px}
+#flight-replay-clock {font-size: 17px; color: #f2faf7}
+#flight-replay-radar-time {color: #b8e8dc}
+.fr-slider {position: relative; display: block; margin: 4px 0; height: 34px; background: linear-gradient(0deg, #29445460, transparent)}
+.fr-slider svg {position: absolute; width: 100%; height: 28px; left: 0; top: 0; pointer-events: none; overflow: visible}
+.fr-slider path {stroke: #76bba9; fill: none; stroke-width: 1.3; vector-effect: non-scaling-stroke}
+#flight-replay-marks {stroke: #edbf76; stroke-width: 2}
+#flight-replay-elapsed {font-size: 13px; font-variant-numeric: tabular-nums; color: #d1e1e3}
+#flight-replay-time {position: relative; width: 100%; height: 100%; min-height: 0; margin: 0; opacity: .96; accent-color: #b0edd7; cursor: pointer; background: transparent}
+#flight-replay-time::-webkit-slider-runnable-track {height: 4px; border-radius: 2px; background: #79909995}
+#flight-replay-time::-webkit-slider-thumb {margin-top: -6px}
+.fr-controls {gap: 10px; flex-wrap: wrap}
+.fr-controls label {display: flex; align-items: center; gap: 4px}
+#flight-replay-status {font-size: 13px; color: #d3e1e1; margin-left: auto}
+.fr-sources {margin: 8px 0 0; line-height: 1.4; overflow-wrap: anywhere}
+.fr-sources a {color: #afe6d8; text-decoration: underline}
+.fr-note {margin-top: 4px; color: #c5d8db; font-size: 12px}
+.fr-note summary {color: #c6dfdf; cursor: pointer}
+.fr-note p {margin: 5px 0 0; line-height: 1.45}
+#flight-replay-dialog[data-state="error"] #flight-replay-status {color: #ffd2a0}
+@media (max-width: 650px) {
+  #flight-replay-dialog {margin: 0; border: 0; border-radius: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh}
+  .fr-header, .fr-deck {padding: 9px 12px}
+  .fr-viewport {min-height: 150px; flex-basis: 150px}
+  .fr-view {right: 8px; top: 8px}
+  .fr-hud {left: 8px; bottom: 25px}
+  #flight-replay-status {flex-basis: 100%; margin-left: 0}
+}

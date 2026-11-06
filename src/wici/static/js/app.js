@@ -296,6 +296,7 @@ async function reload(){
   if(results.every(result=>result.status==='fulfilled'))$('global-status').textContent='';
  }catch(err){error(err);}finally{loading=false;$('refresh').disabled=false;}
 }
+$('flight-replay-open')?.addEventListener('click', event => window.WiciFlightReplay.open(event.currentTarget));
 const notices=el('a','Oznaczenia i warunki dostawców danych');notices.href='/notices';document.querySelector('footer').append(el('br'),notices);
 reload();setInterval(reload,60000);
 

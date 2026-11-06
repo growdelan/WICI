@@ -110,6 +110,10 @@ Przybliż miejsce i wybierz **Widok 3D** po prawej stronie mapy. Możesz przesuw
 
 Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostępną wysokością i wybierz **Podążaj w 3D**. Kamera zewnętrzna i pierwsza osoba poruszają się wraz z samolotem; powrót lub Escape zachowuje kadr i warstwy Atlasu. Silnik Cesium jest lokalny i nie wymaga kluczy. Podstawowy globus zawiera lokalne granice Polski; OpenStreetMap można włączyć osobno. Widok doładowuje teren NMT / LiDAR GUGiK, bryły budynków OSM i miejskie drzewa Warszawy; brak danych oznacza jawną powierzchnię zastępczą. Animacja korzysta z opóźnionych raportów i ograniczonej predykcji, a utrata świeżych danych zatrzymuje ruch. [Obsługa, dokładność i weryfikacja](docs/aircraft3d.md).
 
+### Odtwarzanie lotu z radarem w 3D
+
+Wybierz **Sytuacja → Warstwy → Lotnictwo → Odtwórz lot z radarem w 3D**. Zobaczysz zapisany odcinek przelotu, ślad samolotu i obraz opadów z tego okresu. Przesuwaj suwak w obie strony i przełączaj się między widokiem całej trasy a kamerą podążającą za samolotem. Pierwsze nagranie w nowej instalacji można przygotować poleceniem `uv run --locked python scripts/capture_flight_replay.py`. [Przygotowanie nagrania, źródła i znaczenie czasu](docs/flight-replay.md).
+
 ### Samoloty i statki — zapis tras i odtwarzanie
 
 W zakładce **Analiza** samoloty i statki mają własne karty, wyszukiwanie po identyfikatorach oraz trwałą listę obserwowanych. Możesz rozpocząć zapis w karcie i porównać do pięciu zapisanych tras na wspólnej mapie, osi czasu oraz wykresach prędkości i wysokości. Obserwowanie nie uruchamia nagrywania. [Obsługa, zakres danych i ograniczenia](docs/analysis-moving-objects.md).
