@@ -20,6 +20,8 @@ window.WiciFlightReplay = (() => {
   function release(run) {
     run.abort.abort();
     run.radarAbort?.abort();
+    run.stopOrthophoto?.(); run.stopOrthophoto = null;
+    $('basemap').hidden = true;
     pause(run);
     run.removeError?.();
     if (run.viewer && !run.viewer.isDestroyed()) {
@@ -126,6 +128,10 @@ window.WiciFlightReplay = (() => {
         pixelOffset:new C.Cartesian2(0,-36), fillColor:color('#ffe8bb'),outlineColor:color('#15232a'),
         outlineWidth:4, style:C.LabelStyle.FILL_AND_OUTLINE}});
     setView(run, 'overview');
+    run.stopOrthophoto = window.WiciReplayOrthophoto.attach(C, viewer, {
+      enabled:run.data.orthophoto_enabled === true && !run.data.demo,
+      emptyTile:run.emptyTile, decode:decodeTileImage, report:basemap
+    });
   }
   function setView(run, mode) {
     if (!run.viewer) return;
@@ -226,33 +232,48 @@ window.WiciFlightReplay = (() => {
     const p = $('sources'); p.replaceChildren();
     if (data.demo) p.append('Dane syntetyczne · ');
     for (const [label, name, href] of [['Lot', data.flight_source, data.flight_source_url], ['Radar', data.radar_source, data.radar_source_url]]) {
+      if (label === 'Radar') p.append(' · ');
       p.append(`${label}: `);
       if (href && /^https:\/\//i.test(href)) {
         const link = document.createElement('a'); link.href = href; link.textContent = name;
         link.target = '_blank'; link.rel = 'noopener noreferrer'; p.append(link);
       } else p.append(name || 'nie podano');
-      p.append(' · ');
     }
-    const satellite = document.createElement('a');
-    satellite.href = 'https://esa-worldcover.org/en/data-access';
-    satellite.target = '_blank'; satellite.rel = 'noopener noreferrer';
-    satellite.textContent = 'Podkład satelitarny z 2021 r.';
-    p.append(satellite);
     $('note').hidden = false;
-    $('note').querySelector('p').textContent = [data.note,
+    const note = $('note').querySelector('p');
+    note.textContent = [data.note,
       '© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium.',
       'Granice: PRG / GUGiK. Podkład ogólny: Natural Earth.'].filter(Boolean).join(' ');
+    if (data.orthophoto_enabled && !data.demo) note.append(' Przy zbliżeniu kamery WICI doładowuje ortofotomapę GUGiK. Data nalotu zależy od miejsca i jest niezależna od czasu lotu i radaru.');
+  }
+  function basemap(state) {
+    const info = $('basemap');
+    if (!info.hidden && info.dataset.state === state) return;
+    const photo = state === 'orthophoto' || state === 'partial';
+    const link = document.createElement('a');
+    link.href = photo ? 'https://www.geoportal.gov.pl/pl/dane/ortofotomapa-orto/' : 'https://esa-worldcover.org/en/data-access';
+    link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.textContent = photo ? 'Ortofotomapa GUGiK' : 'Mozaika satelitarna ESA z 2021 r.';
+    const detail = {orthophoto:' · data zdjęć jest niezależna od daty lotu.',
+      partial:' · w lukach mozaika ESA z 2021 r. Daty zdjęć są niezależne od daty lotu.',
+      loading:' · wczytywanie zdjęć lotniczych.', unavailable:' · zdjęcia lotnicze chwilowo niedostępne.',
+      offline:' · tryb offline.'};
+    info.replaceChildren('Podkład: ',link,detail[state] || '');
+    info.dataset.state = state; info.hidden = false;
+  }
+  async function decodeTileImage(blob) {
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const image = new Image(); image.src = objectUrl; await image.decode();
+      return image;
+    } finally {URL.revokeObjectURL(objectUrl);}
   }
   async function readTile(tile, signal) {
     const url = new URL(tile.url, location.href);
     if (url.origin !== location.origin || !url.pathname.startsWith('/api/flight-replay/tiles/')) throw Error('Nieprawidłowa ścieżka kafla.');
     const res = await fetch(url, {signal});
     if (!res.ok) throw Error('Brak kafla radaru.');
-    const blob = await res.blob(), objectUrl = URL.createObjectURL(blob);
-    try {
-      const image = new Image(); image.src = objectUrl; await image.decode();
-      return {tile, image};
-    } finally {URL.revokeObjectURL(objectUrl);}
+    return {tile, image:await decodeTileImage(await res.blob())};
   }
   function addRadar(run, items) {
     const C = window.Cesium, scheme = new C.WebMercatorTilingScheme();
@@ -322,6 +343,7 @@ window.WiciFlightReplay = (() => {
     controls.forEach(id => { $(id).disabled = true; });
     $('time').min = '0'; $('time').max = '1'; $('time').value = '0'; $('time').removeAttribute('aria-valuetext');
     $('speed').value = '10'; $('profile').removeAttribute('d'); $('marks').removeAttribute('d'); $('sources').replaceChildren();
+    $('basemap').hidden = true; $('basemap').replaceChildren(); delete $('basemap').dataset.state;
     setText('elapsed', '');
     $('note').hidden = true; $('note').open = false;
     for (const id of ['clock', 'altitude', 'heading']) setText(id, '—');

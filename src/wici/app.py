@@ -17,6 +17,7 @@ from wici.buses import CityBusService
 from wici.config import ROOT, Config
 from wici.demo import DEMO_NOW, seed
 from wici.effis import EffisService
+from wici.flight_orthophoto import FlightOrthophoto
 from wici.flight_replay import create_replay_router
 from wici.gddkia import GddkiaService
 from wici.gfm import GFMService, GFMUnavailable
@@ -102,6 +103,8 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             app.state.lightning = LightningService(network, repo.clock, config.timeout_seconds, enabled=config.enabled('lightning'), demo=demo)
             app.state.meteors = MeteorService(network, repo.clock, demo=demo)
             app.state.radar = RadarService(network, repo.clock, config.timeout_seconds, enabled=config.enabled('radar'), demo=demo)
+            app.state.flight_orthophoto = (FlightOrthophoto(network, repo.clock, config.timeout_seconds)
+                if not demo and config.enabled('flight_orthophoto') else None)
             if not demo:
                 replay_requests = ReplayRequests(directory / 'flight-replay', network, app.state.aircraft,
                                                  app.state.radar, repo.clock)
