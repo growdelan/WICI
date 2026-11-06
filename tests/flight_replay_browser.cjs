@@ -123,6 +123,45 @@ function checkAirportRequests(requests) {
 const basemap = '#flight-replay-basemap';
 const atBasemap = (page, state) => page.locator(`${basemap}[data-state="${state}"]`).waitFor();
 
+test('returning to EPWA reuses the visible orthophotos without fetching the same tiles again', {timeout:90000}, async () => {
+  const env = await environment({name:'flight-replay-orthophoto-return', viewport:{width:960,height:720}}), {page} = env;
+  try {
+    const requests = await airportScene(page, true, true);
+    await openReplay(page); await ready(page);
+    await viewAirport(page, 1200); await checkSurface(page, 'cyan');
+    // Let Cesium finish refining the close view before recording its working set.
+    const settled = () => page.waitForFunction(() => window.__vehicleViewers.at(-1).scene.globe.tilesLoaded);
+    await settled();
+    checkAirportRequests(requests);
+    const countLayers = () => page.evaluate(() => window.__vehicleViewers.at(-1).imageryLayers.length);
+    const closeLayerCount = await countLayers();
+    const loaded = new Set(requests), repeated = [];
+    await page.route('**/api/flight-replay/orthophoto/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      if (!loaded.has(path)) return route.fallback();
+      repeated.push(path);
+      // A previously displayed area must also work if another download would fail.
+      await route.fulfill({status:404});
+    });
+
+    const slider = page.locator('#flight-replay-time');
+    await slider.press('End'); await checkRadarPixels(page, 'green');
+    await slider.press('Home'); await checkSurface(page, 'cyan'); await settled();
+    assert.deepEqual(repeated, [], 'Seeking the radar must preserve the ground under a stationary camera');
+    await viewAirport(page, 14000); await atBasemap(page, 'local'); await settled();
+    assert.equal(await countLayers(), closeLayerCount - 1, 'A wide camera must release the orthophoto layer');
+    await checkSurface(page, 'orange');
+    await viewAirport(page, 1200);
+    await page.waitForFunction(() => ['orthophoto','partial','unavailable'].includes(
+      document.querySelector('#flight-replay-basemap').dataset.state));
+    await settled();
+    assert.deepEqual(repeated, [], 'Returning to the same viewport must reuse previously fetched XYZ');
+    await checkSurface(page, 'cyan');
+    assert.equal(await countLayers(), closeLayerCount, 'Returning must attach only one orthophoto layer');
+    await page.keyboard.press('Escape'); await checkReturned(page); await env.clean();
+  } finally {await env.stop();}
+});
+
 test('LIVE approach to EPWA loads close orthophotos below both radar scans and releases them in overview', {timeout:90000}, async () => {
   const env = await environment({name:'flight-replay-orthophoto', viewport:{width:1100,height:760}}), {page} = env;
   try {

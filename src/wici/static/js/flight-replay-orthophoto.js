@@ -1,7 +1,8 @@
 'use strict';
 window.WiciReplayOrthophoto = (() => {
   const CLOSE_HEIGHT = 8000, FAR_HEIGHT = 10000;
-  const FIRST_ZOOM = 11, LAST_ZOOM = 19, CONCURRENCY = 2, STARTS_PER_MINUTE = 180;
+  const FIRST_ZOOM = 11, LAST_ZOOM = 19, CONCURRENCY = 4, STARTS_PER_MINUTE = 180;
+  const CACHE_SIZE = 96; // At most 24 MiB of decoded 256×256 RGBA pixels per open viewer.
 
   function attach(C, viewer, {enabled, emptyTile, decode, report}) {
     report('local');
@@ -9,8 +10,14 @@ window.WiciReplayOrthophoto = (() => {
     const rectangle = C.Rectangle.fromDegrees(13.8,48.8,24.4,55);
     const scheme = new C.WebMercatorTilingScheme();
     const credit = new C.Credit('Ortofotomapa · GUGiK / Geoportal');
+    const photos = new Map();
+    // Cesium's TileImagery uses a ready ancestor when a child's texture is
+    // discarded. A real transparent tile still exposes ESA at coverage edges.
+    const missing = document.createElement('canvas');
+    missing.width = missing.height = 1;
+    const discardMissing = {isReady:() => true, shouldDiscardImage:image => image === missing};
     const listeners = new AbortController();
-    let batch = null, retryAt = 0, serviceRetryAt = 0, retryTimer = 0, wakeTimer = 0, disposed = false;
+    let batch = null, retained = null, retryAt = 0, serviceRetryAt = 0, retryTimer = 0, wakeTimer = 0, redraw = 0, disposed = false;
     let nextReport = 0, reported = 'local';
     const starts = [];
     const camera = viewer.camera, scene = viewer.scene;
@@ -26,25 +33,45 @@ window.WiciReplayOrthophoto = (() => {
       group.dirty = false;
       group.matrix = C.Matrix4.clone(camera.viewMatrix,group.matrix);
       const footprint = camera.computeViewRectangle();
-      let photos = false, gaps = false;
+      let showing = false, gaps = false;
       if (footprint) for (const outcome of group.outcomes.values()) {
         if (!outcome.coverage || !C.Rectangle.simpleIntersection(footprint,outcome.bounds)) continue;
-        if (outcome.coverage !== 'empty') photos = true;
+        if (outcome.coverage !== 'empty') showing = true;
         if (outcome.coverage !== 'full') gaps = true;
-        if (photos && gaps) break;
+        if (showing && gaps) break;
+      }
+      if (retained && footprint && !showing) for (const outcome of retained.outcomes.values()) {
+        if ((outcome.coverage === 'full' || outcome.coverage === 'partial') && C.Rectangle.simpleIntersection(footprint,outcome.bounds)) {
+          showing = true; break;
+        }
       }
       if (Date.now() < retryAt) gaps = true;
-      if (photos) status(gaps ? 'partial' : 'orthophoto');
+      if (showing) status(gaps ? 'partial' : 'orthophoto');
       else if (gaps) status('unavailable');
       else status(group.pending.size ? 'loading' : 'local');
     }
-    function detach() {
-      if (!batch) return;
-      const group = batch; batch = null;
+    function detach(keepVisible = false) {
+      if (!batch && !retained) return;
       clearTimeout(wakeTimer); wakeTimer = 0;
-      for (const request of group.pending) request.abort();
-      viewer.imageryLayers.remove(group.layer,true);
-      scene.requestRender();
+      if (batch) {
+        const group = batch; batch = null;
+        for (const request of group.pending) request.abort();
+        if (keepVisible && !retained && group.hasPhoto) retained = group;
+        else viewer.imageryLayers.remove(group.layer,true);
+        scene.requestRender();
+      }
+      if (retained && !keepVisible) {
+        viewer.imageryLayers.remove(retained.layer,true); retained = null;
+        scene.requestRender();
+      }
+    }
+    function wakeAfterHit() {
+      // A decoded image bypasses Cesium's network scheduler, including its
+      // requestCompletedEvent. Wake a stationary camera after the promise settles.
+      if (!redraw) redraw = requestAnimationFrame(() => {
+        redraw = 0;
+        if (batch && !disposed) scene.requestRender();
+      });
     }
     function backoff(seconds, fromService = false) {
       const delay = Math.max(2, Math.min(3600, Number.isFinite(seconds) ? seconds : 30)) * 1000;
@@ -55,9 +82,10 @@ window.WiciReplayOrthophoto = (() => {
       clearTimeout(retryTimer);
       retryTimer = setTimeout(() => {
         retryAt = serviceRetryAt = 0;
-        // Transparent substitutes are cached by Cesium. A fresh layer also
-        // retries them after the provider recovers, without reopening the dialog.
-        detach(); sync();
+        // Cesium retains INVALID imagery. Refresh it while the old, working
+        // textures remain underneath until the replacement has reached the GPU.
+        if (batch && wanted(batch)) {detach(true); add();}
+        sync();
       },delay);
     }
     function coverage(group, image, blob) {
@@ -82,15 +110,26 @@ window.WiciReplayOrthophoto = (() => {
       }
       return photo ? 'full' : 'empty';
     }
-    async function download(group, x, y, level, bounds) {
-      const request = new AbortController(), key = level + '/' + x + '/' + y;
-      const outcome = {bounds,coverage:null,credits:[]};
+    function trackTile(group, key, bounds, coverage) {
+      const outcome = {bounds,coverage,credits:coverage && coverage !== 'empty' ? [credit] : []};
+      if (coverage) group.accepted = true;
+      if (outcome.credits.length) group.hasPhoto = true;
       group.outcomes.set(key,outcome);
       if (group.outcomes.size > 512) group.outcomes.delete(group.outcomes.keys().next().value);
-      group.pending.add(request); group.dirty = true; nextReport = 0;
+      group.dirty = true; nextReport = 0;
+      return outcome;
+    }
+    async function download(group, key, bounds) {
+      const request = new AbortController();
+      const outcome = trackTile(group,key,bounds,null);
+      group.pending.add(request);
       const timer = setTimeout(() => request.abort(),18000);
       try {
         const response = await fetch('/api/flight-replay/orthophoto/' + key + '.jpg',{signal:request.signal});
+        if (response.status === 404 || response.status === 204) {
+          outcome.coverage = 'empty'; group.accepted = true;
+          return emptyTile;
+        }
         if (!response.ok) {
           if (response.status === 429 || response.status >= 500) {
             const header = response.headers.get('Retry-After');
@@ -103,14 +142,18 @@ window.WiciReplayOrthophoto = (() => {
         const blob = await response.blob(), image = await decode(blob);
         if (batch !== group) return emptyTile;
         outcome.coverage = coverage(group,image,blob);
-        if (outcome.coverage !== 'empty') outcome.credits.push(credit);
-        return image;
+        group.accepted = true;
+        if (outcome.coverage !== 'empty') {outcome.credits.push(credit); group.hasPhoto = true;}
+        const tile = {image:outcome.coverage === 'empty' ? emptyTile : image, coverage:outcome.coverage};
+        photos.set(key,tile);
+        if (photos.size > CACHE_SIZE) photos.delete(photos.keys().next().value);
+        return tile.image;
       } catch (error) {
         if (batch === group) {
           if (error instanceof TypeError || error.name === 'AbortError') backoff(30);
           outcome.coverage = 'empty';
         }
-        return emptyTile;
+        return missing;
       } finally {
         clearTimeout(timer); group.pending.delete(request);
         if (batch === group) {group.dirty = true; nextReport = 0; scene.requestRender();}
@@ -120,18 +163,28 @@ window.WiciReplayOrthophoto = (() => {
       return !document.hidden && navigator.onLine !== false && camera.positionCartographic.height < FAR_HEIGHT && batch === group;
     }
     function add() {
-      const group = batch = {pending:new Set(), outcomes:new Map(),layer:null,dirty:true,matrix:null};
+      const group = batch = {pending:new Set(), outcomes:new Map(),layer:null,dirty:true,matrix:null,hasPhoto:false,accepted:false};
       const provider = {
-        tilingScheme:scheme,rectangle,minimumLevel:0,maximumLevel:LAST_ZOOM,
-        tileWidth:256,tileHeight:256,hasAlphaChannel:true,errorEvent:new C.Event(),
+        tilingScheme:scheme,rectangle,minimumLevel:FIRST_ZOOM,maximumLevel:LAST_ZOOM,
+        tileWidth:256,tileHeight:256,hasAlphaChannel:true,errorEvent:new C.Event(),tileDiscardPolicy:discardMissing,
         getTileCredits(x,y,level) {return group.outcomes.get(level + '/' + x + '/' + y)?.credits;},
         requestImage(x,y,level) {
-          // Starting the provider at z11 across Poland would create thousands
-          // of level-zero imagery tiles. Lower quadtree levels are local blanks.
-          if (level < FIRST_ZOOM || !wanted(group) || Date.now() < retryAt) return Promise.resolve(emptyTile);
-          if (group.pending.size >= CONCURRENCY) return undefined;
+          // During error recovery Cesium can also walk the imagery parent
+          // chain below the WMTS range. No network call is needed there.
+          if (level < FIRST_ZOOM) return Promise.resolve(emptyTile);
+          if (retained === group) return Promise.resolve(missing);
+          if (!wanted(group)) return Promise.resolve(emptyTile);
           const bounds = scheme.tileXYToRectangle(x,y,level);
           if (!C.Rectangle.simpleIntersection(rectangle,bounds)) return Promise.resolve(emptyTile);
+          const key = level + '/' + x + '/' + y, cached = photos.get(key);
+          if (cached) {
+            photos.delete(key); photos.set(key,cached);
+            trackTile(group,key,bounds,cached.coverage);
+            wakeAfterHit();
+            return Promise.resolve(cached.image);
+          }
+          if (Date.now() < retryAt) return Promise.resolve(missing);
+          if (group.pending.size >= CONCURRENCY) return undefined;
           const now = Date.now();
           while (starts.length && starts[0] + 60000 <= now) starts.shift();
           if (starts.length >= STARTS_PER_MINUTE) {
@@ -139,11 +192,14 @@ window.WiciReplayOrthophoto = (() => {
             return undefined;
           }
           starts.push(now);
-          return download(group,x,y,level,bounds);
+          return download(group,key,bounds);
         }
       };
-      // Natural Earth and ESA are the first two layers; radar is always above imagery.
-      group.layer = viewer.imageryLayers.addImageryProvider(provider,2);
+      // Restrict z11 imagery to already-refined terrain. Asking a world-level
+      // terrain tile for every z11 tile covering Poland would allocate thousands
+      // of textures. A level-9 terrain tile only overlaps a few orthophotos here.
+      group.layer = new C.ImageryLayer(provider,{minimumTerrainLevel:9});
+      viewer.imageryLayers.add(group.layer,retained ? 3 : 2);
       nextReport = 0; scene.requestRender();
     }
     function sync() {
@@ -160,12 +216,18 @@ window.WiciReplayOrthophoto = (() => {
       detach(); sync(); scene.requestRender();
     }
     const removeUpdate = scene.preUpdate.addEventListener(sync);
+    const removeRender = scene.postRender.addEventListener(() => {
+      if (!retained || !batch?.accepted || batch.pending.size || !scene.globe.tilesLoaded) return;
+      viewer.imageryLayers.remove(retained.layer,true); retained = null;
+      batch.dirty = true; nextReport = 0; scene.requestRender();
+    });
     window.addEventListener('online',networkChange,{signal:listeners.signal});
     window.addEventListener('offline',networkChange,{signal:listeners.signal});
     document.addEventListener('visibilitychange',sync,{signal:listeners.signal});
     sync();
     return () => {
-      disposed = true; clearTimeout(retryTimer); removeUpdate(); listeners.abort(); detach();
+      disposed = true; clearTimeout(retryTimer); cancelAnimationFrame(redraw);
+      removeUpdate(); removeRender(); listeners.abort(); detach(); photos.clear();
     };
   }
   return {attach};
