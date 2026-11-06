@@ -18,6 +18,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Szybsze przetwarzanie i odświeżanie (v0.37.1):** zoptymalizowano odczyty katalogu, komunikatów, grafu i teczek, monitoring, API oraz dokładne testy geometrii. Atlas i warstwy transportu zachowują niezmienione elementy mapy. Poprawiono też dostępność zamknięcia okienka IODA na telefonie. Zachowane są precyzja danych, geometria, historia i częstotliwość odczytów. [Pomiary i weryfikacja](docs/performance-audit.md).
 
+**Odtwarzanie lotów w 3D (v0.38.0).** Wybierz samolot na mapie lub wpisz jego ICAO, żeby obejrzeć ostatni dostępny odcinek nad Polską. Możesz cofać czas i śledzić samolot na tle opadów z chwili przelotu. Gdy brakuje historii, wybierz **Zbieraj od teraz**. [Instrukcja odtwarzania](docs/flight-replay.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
