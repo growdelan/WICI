@@ -535,7 +535,9 @@ window.WiciWorkspace = (() => {
     motionView = M?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_COMPARE'}), select: selectObject, range: compareDay, fit: () => mapView.fitTracks?.(replayData)});
     alertsView = A?.view(timelineHost, {remove: toggleCompare, clear: () => dispatch({type: 'CLEAR_REGION_COMPARE'}), select: selectObject, range: compareDay, cursor: at => dispatch({type: 'SET_CURSOR', at}), fit: () => mapView.fitRegions?.(alertContext())});
     mapView = window.WiciWorkspaceMap({markerStyle: 'symbol', map: settings.map, geometries: settings.geometries, select: ref => selectObject(ref, undefined, graphView?.getVersion?.(ref), {fetchSensors: !graphView?.getVisibleData?.().nodes.some(node => node.ref === ref)}), narrow(aggregate) {chooseRegion(aggregate.province); dispatch({type: 'SET_QUERY', patch: {types: [aggregate.type]}}); mapView.show({areas: [{admin_code: aggregate.province}]});}});
-    cardView = window.WiciObjectCard(cardHost, {rule: object => rulesView?.open({object}), editArea: id => areasView?.open(id), graph: object => openGraph({seed_refs: [object.ref]}), pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
+    cardView = window.WiciObjectCard(cardHost, {
+      replayAircraft: health().mode === 'live' ? window.WiciAircraftReplay?.open : null,
+      rule: object => rulesView?.open({object}), editArea: id => areasView?.open(id), graph: object => openGraph({seed_refs: [object.ref]}), pin: () => dossiers?.pin(), capture: () => {dossiers?.open(); dossiers?.capture('object');}, close: closeCard, select: selectObject, watch: toggleWatch, compare: toggleCompare, record, replaySession(session, ref) {
       const lower = Date.parse(session.first_position_at || session.started_at), upper = Date.parse(session.last_position_at || session.stopped_at || now());
       if (!Number.isFinite(lower) || !Number.isFinite(upper)) return;
       if (!store.getState().comparedRefs.includes(ref)) toggleCompare(ref);

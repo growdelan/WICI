@@ -39,6 +39,15 @@ window.WiciAircraft = (() => {
       view.follow=button;view.box.append(button);
     }
     if(view.follow)view.follow.disabled=!canFollow(item);
+    if(window.WiciAircraftReplay && !view.replay){
+      const button=node('button','Odtwórz ostatni odcinek w 3D');button.type='button';
+      button.addEventListener('click',()=>window.WiciAircraftReplay.open(marker.aircraft.hex,marker.aircraft.id,button));
+      view.replay=button;view.box.append(button);
+      if(!/^[0-9a-f]{6}$/i.test(item.hex)){
+        button.disabled=true;
+        view.box.append(node('small','Źródło nie podało adresu ICAO potrzebnego do odtworzenia.'));
+      }
+    }
     if(window.WiciTracking&&!view.tracking){
       view.tracking=window.WiciTracking.button('aircraft',()=>marker.aircraft);
       view.box.append(view.tracking);

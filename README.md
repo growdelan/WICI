@@ -18,6 +18,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Szybsze przetwarzanie i odświeżanie (v0.37.1):** zoptymalizowano odczyty katalogu, komunikatów, grafu i teczek, monitoring, API oraz dokładne testy geometrii. Atlas i warstwy transportu zachowują niezmienione elementy mapy. Poprawiono też dostępność zamknięcia okienka IODA na telefonie. Zachowane są precyzja danych, geometria, historia i częstotliwość odczytów. [Pomiary i weryfikacja](docs/performance-audit.md).
 
+**Odtwarzanie lotów w 3D (v0.38.0).** Wybierz samolot na mapie lub wpisz jego ICAO, żeby obejrzeć ostatni dostępny odcinek nad Polską. Możesz cofać czas i śledzić samolot na tle opadów z chwili przelotu. Gdy brakuje historii, wybierz **Zbieraj od teraz**. [Instrukcja odtwarzania](docs/flight-replay.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
@@ -109,6 +111,10 @@ Przybliż miejsce i wybierz **Widok 3D** po prawej stronie mapy. Możesz przesuw
 ### Samolot — śledzenie w 3D
 
 Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostępną wysokością i wybierz **Podążaj w 3D**. Kamera zewnętrzna i pierwsza osoba poruszają się wraz z samolotem; powrót lub Escape zachowuje kadr i warstwy Atlasu. Silnik Cesium jest lokalny i nie wymaga kluczy. Podstawowy globus zawiera lokalne granice Polski; OpenStreetMap można włączyć osobno. Widok doładowuje teren NMT / LiDAR GUGiK, bryły budynków OSM i miejskie drzewa Warszawy; brak danych oznacza jawną powierzchnię zastępczą. Animacja korzysta z opóźnionych raportów i ograniczonej predykcji, a utrata świeżych danych zatrzymuje ruch. [Obsługa, dokładność i weryfikacja](docs/aircraft3d.md).
+
+### Odtwarzanie lotu z radarem w 3D
+
+Włącz **Sytuacja → Warstwy → Lotnictwo → Samoloty**, kliknij ikonę na mapie i wybierz **Odtwórz ostatni odcinek w 3D**. W tym samym panelu możesz wpisać sześć znaków ICAO i wybrać **Przygotuj odcinek 3D**. WICI wyszuka pozycje nad Polską i odpowiadające im klatki radaru. Jeśli brak wspólnej historii, wybierz **Zbieraj od teraz**. Po zamknięciu panelu postęp znajdziesz w Lotnictwie pod **Sprawdź stan**. Osobny przycisk **Otwórz zapisany lot z radarem w 3D** otwiera wcześniej przygotowane nagranie. [Obsługa odtwarzacza, zbieranie i znaczenie czasu](docs/flight-replay.md).
 
 ### Samoloty i statki — zapis tras i odtwarzanie
 

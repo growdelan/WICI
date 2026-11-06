@@ -9,6 +9,9 @@
 <script defer src="/static/js/bus-motion.js"></script>
 <script defer src="/static/js/buildings3d.js"></script>
 <script defer src="/static/js/scene3d.js"></script>
+<script defer src="/static/js/flight-replay-data.js"></script>
+<script defer src="/static/js/flight-replay.js"></script>
+<script defer src="/static/js/aircraft-replay.js"></script>
 <script defer src="/static/js/atlas3d.js"></script>
 <script defer src="/static/js/aircraft3d.js"></script>
 <script src="/static/js/theme.js"></script>
@@ -23,6 +26,7 @@
 <link rel="stylesheet" href="/static/css/graph.css">
 <link rel="stylesheet" href="/static/css/monitor.css">
 <link rel="stylesheet" href="/static/css/explorer.css">
+<link rel="stylesheet" href="/static/css/flight-replay.css">
 <script defer src="/static/vendor/leaflet/leaflet.js"></script><script defer src="/static/js/region.js"></script><script defer src="/static/js/requests.js"></script><script defer src="/static/js/weather.js"></script><script defer src="/static/js/hydro.js"></script><script defer src="/static/js/gfm-auto.js"></script><script defer src="/static/js/sentinel2.js"></script><script defer src="/static/js/sentinel5p.js"></script><script defer src="/static/js/gfm.js"></script><script defer src="/static/js/gios.js"></script><script defer src="/static/js/radar.js"></script><script defer src="/static/js/lightning.js"></script><script defer src="/static/js/ukraine.js"></script><script defer src="/static/js/position-quality.js"></script><script defer src="/static/js/tracking.js"></script><script defer src="/static/js/aircraft.js"></script><script defer src="/static/js/buses.js"></script><script defer src="/static/js/ships.js"></script><script defer src="/static/js/trains.js"></script><script defer src="/static/js/imagery.js"></script><script defer src="/static/js/ioda.js"></script><script defer src="/static/js/layers.js"></script><script defer src="/static/js/atlas.js"></script><script defer src="/static/js/workspace-sources.js"></script><script defer src="/static/js/workspace-store.js"></script><script defer src="/static/js/workspace-table.js"></script><script defer src="/static/js/workspace-motion.js"></script><script defer src="/static/js/workspace-alerts.js"></script><script defer src="/static/js/workspace-map.js"></script><script defer src="/static/js/workspace-timeline.js"></script><script defer src="/static/js/object-card.js"></script><script defer src="/static/js/workspace-views.js"></script><script defer src="/static/js/workspace-dossier-relations.js"></script><script defer src="/static/js/workspace-dossiers.js"></script><script defer src="/static/vendor/cytoscape/cytoscape.min.js"></script><script defer src="/static/js/workspace-graph.js"></script><script defer src="/static/js/workspace-areas.js"></script><script defer src="/static/js/workspace-rules.js"></script><script defer src="/static/js/workspace-events.js"></script><script defer src="/static/js/workspace-controller.js"></script><script defer src="/static/js/app.js"></script>
 </head>
 <body>
@@ -308,8 +312,16 @@
 <details class="layer-group"><summary>Lotnictwo</summary><div class="layer-group-body"><section class="aircraft-controls" aria-label="Samoloty nad Polską">
 <label class="check"><input type="checkbox" id="aircraft-enabled"> <strong>Samoloty</strong></label>
 <p>Pomarańczowe: oznaczone jako wojskowe w adsb.fi. Niebieskie: pozostałe.</p>
+<button id="flight-replay-open" type="button">Otwórz zapisany lot z radarem w 3D</button>
+<form id="aircraft-replay-form" class="aircraft-replay-form">
+  <label for="aircraft-replay-icao">Ostatni odcinek samolotu · ICAO</label>
+  <div><input id="aircraft-replay-icao" type="text" required pattern="[0-9A-Fa-f]{6}" title="Sześć znaków od 0 do 9 i od A do F" placeholder="np. 48ADA9" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="aircraft-replay-hint">
+    <button type="submit" id="aircraft-replay-submit">Przygotuj odcinek 3D</button></div>
+  <small id="aircraft-replay-hint">Wpisz sześć znaków adresu ICAO (0–9, A–F).</small>
+</form>
+<div id="aircraft-replay-recent" aria-label="Wcześniej wybrane samoloty"></div>
 <p id="aircraft-status" role="status" aria-live="polite">Warstwa samolotów wyłączona.</p>
-<small>Kliknij samolot, aby zobaczyć jego dane, wybrać „Śledź trasę” lub „Podążaj w 3D”. Zapis trasy i odtwarzanie historii są dostępne w panelu „Trasy obserwacji”. Śledzenie oferuje kamerę zewnętrzną i pierwszą osobę dla pozycji do 30 s z dostępną wysokością. Odświeżanie co 10 sekund na widocznej mapie.</small>
+<small>Kliknij ikonę samolotu i wybierz „Odtwórz ostatni odcinek w 3D”, aby zobaczyć jego zarejestrowaną trasę z radarem. W tym samym oknie znajdziesz „Śledź trasę” i „Podążaj w 3D”. Zapis trasy i odtwarzanie historii są dostępne w panelu „Trasy obserwacji”. Śledzenie oferuje kamerę zewnętrzną i pierwszą osobę dla pozycji do 30 s z dostępną wysokością. Odświeżanie co 10 sekund na widocznej mapie.</small>
 <details class="layer-info"><summary>Opis i źródło</summary><small>Bieżące pozycje w granicach Polski, niezależne od dnia publikacji. Identyfikator lotu to znak wywoławczy; może różnić się od numeru rejsu na bilecie. Wysokość barometryczna, prędkość względem ziemi. Niepełne pokrycie ADS-B/MLAT; brak punktu nie oznacza braku samolotu. Pozycje starsze niż 2 minuty znikają. Warstwa pozycji jest bieżąca. Osobny opcjonalny kolektor zapisuje ograniczoną historię wskaźników jakości.</small>
 <small>Źródło: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> · użytek osobisty, niekomercyjny · <a href="https://github.com/adsbfi/opendata" target="_blank" rel="noopener noreferrer">Warunki API</a></small></details>
 <hr>
@@ -412,6 +424,55 @@
       <p id="aircraft3d-description">Wirtualny widok z pozycji samolotu. Animacja opóźniona o 12 s, krótka predykcja do 5 s; wstrzymywana przy braku aktualnych danych. Wysokość barometryczna jest przybliżeniem położenia nad powierzchnią. Kurs względem ziemi wyznacza kierunek kamery; przechylenie i pochylenie kadłuba są nieznane. Teren: NMT / LiDAR GUGiK; drzewa: miejska baza Warszawy, przy zbliżeniu. Budynki: uproszczone bryły OSM z przybliżonymi wysokościami. Brak danych oznacza powierzchnię zastępczą.</p>
       <p>Pozycje: <a id="aircraft3d-source" href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a><span id="aircraft3d-source-note"> · użytek osobisty, niekomercyjny</span>. Granice: PRG / GUGiK. <span id="aircraft3d-model-note">Model samolotu: schematyczny, nie przedstawia konkretnego typu.</span> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> — po włączeniu podkładu. <a href="/notices" target="_blank" rel="noopener noreferrer">Licencje</a>.</p>
     </details>
+  </div>
+</dialog>
+<dialog id="aircraft-replay-dialog" aria-labelledby="aircraft-replay-title">
+  <div class="ar-header"><h2 id="aircraft-replay-title">Ostatni odcinek w 3D</h2>
+    <button id="aircraft-replay-close" type="button" autofocus>Zamknij</button></div>
+  <p id="aircraft-replay-message" role="status" aria-live="polite"></p>
+  <p id="aircraft-replay-counts" hidden></p>
+  <p id="aircraft-replay-background" hidden>Możesz zamknąć to okno. Dopóki serwer WICI działa, przygotowanie trwa. Stan sprawdzisz w warstwie Lotnictwo.</p>
+  <div class="ar-actions">
+    <button id="aircraft-replay-collect" type="button" hidden>Zbieraj od teraz</button>
+    <button id="aircraft-replay-retry" type="button" hidden>Sprawdź ponownie</button>
+    <button id="aircraft-replay-saved" type="button" hidden></button>
+  </div>
+</dialog>
+<dialog id="flight-replay-dialog" aria-labelledby="flight-replay-title" data-state="loading">
+  <header class="fr-header">
+    <div><p class="fr-section">Lotnictwo · odtworzenie 3D</p><h2 id="flight-replay-title">Lot z radarem opadów</h2></div>
+    <button id="flight-replay-close" type="button" autofocus>Wróć do mapy</button>
+  </header>
+  <div class="fr-viewport">
+    <div id="flight-replay-scene" aria-label="Trasa lotu i radar opadów na globusie 3D"></div>
+    <div class="fr-view" role="group" aria-label="Widok kamery">
+      <button type="button" id="flight-replay-overview" aria-pressed="true">Cała trasa</button>
+      <button type="button" id="flight-replay-follow" aria-pressed="false">Podążaj</button>
+    </div>
+    <div class="fr-hud" aria-label="Pozycja samolotu">
+      <div><span>Wysokość</span><strong id="flight-replay-altitude">—</strong></div>
+      <div><span>Kurs</span><strong id="flight-replay-heading">—</strong></div>
+    </div>
+  </div>
+  <div class="fr-deck">
+    <div class="fr-time-row">
+      <div><span id="flight-replay-date"></span> <strong id="flight-replay-clock">—</strong></div>
+      <span id="flight-replay-radar-time">Radar · —</span>
+    </div>
+    <label class="fr-slider" aria-label="Czas odtworzenia">
+      <svg viewBox="0 0 1000 32" preserveAspectRatio="none" aria-hidden="true"><path id="flight-replay-profile"></path><path id="flight-replay-marks"></path></svg>
+      <input type="range" id="flight-replay-time" aria-label="Czas odtworzenia" disabled>
+    </label>
+    <div class="fr-controls">
+      <button type="button" id="flight-replay-play" aria-pressed="false" disabled>Odtwórz</button>
+      <span id="flight-replay-elapsed" title="Czas od początku / długość zapisu"></span>
+      <label>Tempo <select id="flight-replay-speed" aria-label="Tempo odtwarzania" disabled>
+        <option value="1">1×</option><option value="5">5×</option><option value="10" selected>10×</option><option value="30">30×</option><option value="60">60×</option><option value="120">120×</option>
+      </select></label>
+      <span id="flight-replay-status" role="status"></span>
+    </div>
+    <p class="fr-sources" id="flight-replay-sources"></p>
+    <details class="fr-note" id="flight-replay-note" hidden><summary>O zapisie</summary><p></p></details>
   </div>
 </dialog>
 </body>
