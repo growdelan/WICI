@@ -20,6 +20,8 @@ Zakładka **Analiza** łączy katalog komunikatów, wodowskazów IMGW, stacji GI
 
 **Odtwarzanie lotów w 3D (v0.38.0).** Wybierz samolot na mapie lub wpisz jego ICAO, żeby obejrzeć ostatni dostępny odcinek nad Polską. Możesz cofać czas i śledzić samolot na tle opadów z chwili przelotu. Gdy brakuje historii, wybierz **Zbieraj od teraz**. [Instrukcja odtwarzania](docs/flight-replay.md).
 
+**Noc meteorów nad Polską (v0.39.0).** Odtwórz 265 trajektorii z nocy 4/5 listopada 2026 r. i zobacz w zwolnieniu meteor nad Nysą. Możesz też wskazać własne miejsce obserwacji lub wczytać inną noc z archiwum Global Meteor Network. [Obsługa odtwarzacza meteorów](docs/meteors.md).
+
 Obejrzyj [film prezentujący, czym jest WICI](https://www.youtube.com/watch?v=zIEp2ceINj4).
 
 Opcjonalna warstwa NEPTUN rozszerza widok o Ukrainę: obszary alarmów oraz doniesienia o dronach, rakietach i innych zagrożeniach.
