@@ -25,6 +25,7 @@ from wici.gios import GiosService
 from wici.hydro import HydroService
 from wici.imagery import ImageryService, ImageryUnavailable
 from wici.lightning import LightningService, LightningUnavailable
+from wici.meteors import FEATURED_NIGHT, MeteorService, MeteorUnavailable
 from wici.moving_ingestion import MovingIngestion
 from wici.position_quality import PositionQuality
 from wici.radar import RadarService, RadarUnavailable
@@ -99,6 +100,7 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             app.state.tracking = tracking
             tracking.start()
             app.state.lightning = LightningService(network, repo.clock, config.timeout_seconds, enabled=config.enabled('lightning'), demo=demo)
+            app.state.meteors = MeteorService(network, repo.clock, demo=demo)
             app.state.radar = RadarService(network, repo.clock, config.timeout_seconds, enabled=config.enabled('radar'), demo=demo)
             if not demo:
                 replay_requests = ReplayRequests(directory / 'flight-replay', network, app.state.aircraft,
@@ -320,6 +322,16 @@ def create_app(demo=False, root=ROOT, config=None, client=None):
             return await app.state.lightning.point(time,lat,lon)
         except LightningUnavailable as exc:
             return JSONResponse({'detail':str(exc)},status_code=503)
+    @app.get('/api/meteors/night')
+    async def meteor_night(request: Request, date: CivilDate = FEATURED_NIGHT):
+        if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':
+            return JSONResponse({'detail': 'Niedozwolone pochodzenie'}, status_code=403)
+        if date != FEATURED_NIGHT and not config.enabled('meteors'):
+            return JSONResponse({'detail': 'Pobieranie nocy GMN jest wyłączone w konfiguracji WICI.'}, status_code=503)
+        try:
+            return await app.state.meteors.night(date)
+        except MeteorUnavailable as exc:
+            return JSONResponse({'detail': str(exc)}, status_code=503)
     @app.get('/api/radar')
     async def radar(request:Request):
         if request.headers.get('sec-fetch-site', 'same-origin') != 'same-origin':

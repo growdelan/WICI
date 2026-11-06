@@ -9,6 +9,8 @@
 <script defer src="/static/js/bus-motion.js"></script>
 <script defer src="/static/js/buildings3d.js"></script>
 <script defer src="/static/js/scene3d.js"></script>
+<script defer src="/static/js/meteor-scene.js"></script>
+<script defer src="/static/js/meteor-night.js"></script>
 <script defer src="/static/js/flight-replay-data.js"></script>
 <script defer src="/static/js/flight-replay.js"></script>
 <script defer src="/static/js/aircraft-replay.js"></script>
@@ -27,6 +29,7 @@
 <link rel="stylesheet" href="/static/css/monitor.css">
 <link rel="stylesheet" href="/static/css/explorer.css">
 <link rel="stylesheet" href="/static/css/flight-replay.css">
+<link rel="stylesheet" href="/static/css/meteor-night.css">
 <script defer src="/static/vendor/leaflet/leaflet.js"></script><script defer src="/static/js/region.js"></script><script defer src="/static/js/requests.js"></script><script defer src="/static/js/weather.js"></script><script defer src="/static/js/hydro.js"></script><script defer src="/static/js/gfm-auto.js"></script><script defer src="/static/js/sentinel2.js"></script><script defer src="/static/js/sentinel5p.js"></script><script defer src="/static/js/gfm.js"></script><script defer src="/static/js/gios.js"></script><script defer src="/static/js/radar.js"></script><script defer src="/static/js/lightning.js"></script><script defer src="/static/js/ukraine.js"></script><script defer src="/static/js/position-quality.js"></script><script defer src="/static/js/tracking.js"></script><script defer src="/static/js/aircraft.js"></script><script defer src="/static/js/buses.js"></script><script defer src="/static/js/ships.js"></script><script defer src="/static/js/trains.js"></script><script defer src="/static/js/imagery.js"></script><script defer src="/static/js/ioda.js"></script><script defer src="/static/js/layers.js"></script><script defer src="/static/js/atlas.js"></script><script defer src="/static/js/workspace-sources.js"></script><script defer src="/static/js/workspace-store.js"></script><script defer src="/static/js/workspace-table.js"></script><script defer src="/static/js/workspace-motion.js"></script><script defer src="/static/js/workspace-alerts.js"></script><script defer src="/static/js/workspace-map.js"></script><script defer src="/static/js/workspace-timeline.js"></script><script defer src="/static/js/object-card.js"></script><script defer src="/static/js/workspace-views.js"></script><script defer src="/static/js/workspace-dossier-relations.js"></script><script defer src="/static/js/workspace-dossiers.js"></script><script defer src="/static/vendor/cytoscape/cytoscape.min.js"></script><script defer src="/static/js/workspace-graph.js"></script><script defer src="/static/js/workspace-areas.js"></script><script defer src="/static/js/workspace-rules.js"></script><script defer src="/static/js/workspace-events.js"></script><script defer src="/static/js/workspace-controller.js"></script><script defer src="/static/js/app.js"></script>
 </head>
 <body>
@@ -64,6 +67,7 @@
   </aside>
   <section class="map-panel" aria-label="Mapa obszarów publikacji">
     <div id="map" tabindex="0" aria-label="Interaktywna mapa sytuacji"></div>
+    <div id="meteor-night-map-prompt" hidden><span role="status">Wskaż na mapie miejsce obserwacji nieba.</span><button id="meteor-night-pick-center" type="button">Użyj środka mapy</button><button id="meteor-night-pick-cancel" type="button">Anuluj</button></div>
     <div id="atlas3d-scene" aria-label="Mapa 3D terenu, budynków i drzew" hidden></div>
     <button id="atlas3d-toggle" type="button" aria-pressed="false" aria-controls="atlas3d-scene">Widok 3D</button>
     <aside id="atlas3d-info" hidden><p>Przybliż kółkiem lub gestem. Obrót: Ctrl + przeciągnięcie / dwa palce. Teren, budynki i drzewa; pozostałe warstwy dostępne w 2D.</p><p id="atlas3d-imagery"></p><p id="atlas3d-status" role="status" aria-live="polite"></p></aside>
@@ -309,6 +313,10 @@
 <details class="layer-info"><summary>Opis i źródło</summary><small>NEPTUN jest agregatorem. Alarmy oficjalne są przekazywane pośrednio; doniesienie nie potwierdza uderzenia. Punkt oznacza zgłoszoną, niekiedy przybliżoną lokalizację, bez przewidywania ruchu. Doniesienia obszarowe i niemapowalne są dostępne na liście bez sztucznego punktu. Punkty starsze niż 7 minut znikają. Po utracie świeżości alarmy stają się szare, a punkty doniesień są ukrywane. Brak oznaczeń nie oznacza braku zagrożenia. Granice pochodzą z serwisu NEPTUN.</small></details>
 <small>Dane: <a href="https://neptun.in.ua/" target="_blank" rel="noopener noreferrer">NEPTUN</a> · <a href="https://neptun.in.ua/developers" target="_blank" rel="noopener noreferrer">Opis API</a></small>
 </section></div></details>
+<details id="meteor-night-group" class="layer-group"><summary>Nocne niebo</summary><div class="layer-group-body">
+  <button id="meteor-night-open" type="button">Odtwórz noc meteorów w 3D</button>
+  <small>Zobacz, kiedy i na jakiej wysokości przeleciały meteory nad Polską. Noc 4/5 listopada 2026 r. jest zapisana lokalnie.</small>
+</div></details>
 <details class="layer-group"><summary>Lotnictwo</summary><div class="layer-group-body"><section class="aircraft-controls" aria-label="Samoloty nad Polską">
 <label class="check"><input type="checkbox" id="aircraft-enabled"> <strong>Samoloty</strong></label>
 <p>Pomarańczowe: oznaczone jako wojskowe w adsb.fi. Niebieskie: pozostałe.</p>
@@ -425,6 +433,55 @@
       <p>Pozycje: <a id="aircraft3d-source" href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a><span id="aircraft3d-source-note"> · użytek osobisty, niekomercyjny</span>. Granice: PRG / GUGiK. <span id="aircraft3d-model-note">Model samolotu: schematyczny, nie przedstawia konkretnego typu.</span> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> — po włączeniu podkładu. <a href="/notices" target="_blank" rel="noopener noreferrer">Licencje</a>.</p>
     </details>
   </div>
+</dialog>
+<dialog id="meteor-night-dialog" aria-labelledby="meteor-night-title">
+  <header class="mn-header">
+    <div class="mn-heading"><svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="10" cy="29" r="3" fill="currentColor"/><path d="M14 26 34 6M9 23l9-9m0 12 8-8" stroke="currentColor" stroke-linecap="round" stroke-width="1.6"/></svg>
+      <div><h2 id="meteor-night-title">Noc meteorów</h2><span id="meteor-night-subtitle">Trajektorie z obserwacji Global Meteor Network</span></div></div>
+    <button type="button" id="meteor-night-close" autofocus>Wróć do mapy</button>
+  </header>
+  <div class="mn-layout">
+    <section class="mn-player" aria-label="Odtwarzacz meteorów">
+      <div class="mn-viewport">
+        <div id="meteor-night-scene" aria-label="Rekonstrukcja trajektorii meteorów w 3D"></div>
+        <div class="mn-modes" role="group" aria-label="Widok nieba">
+          <button type="button" id="meteor-night-night" aria-pressed="true">Cała noc</button>
+          <button type="button" id="meteor-night-trajectory" aria-pressed="false">Trajektoria</button>
+          <button type="button" id="meteor-night-ground" aria-pressed="false">Z ziemi</button>
+        </div>
+        <div id="meteor-night-scene-note" role="status"></div>
+        <div id="meteor-night-legend" hidden><span>Linie · trasy z całej nocy</span><span>Punkt w ruchu · czas przelotu</span><small>Podświetlenie trasy przez 3 minuty ułatwia odnalezienie zjawiska.</small></div>
+      </div>
+      <div class="mn-timeline">
+        <div class="mn-clock-row"><strong id="meteor-night-clock">—</strong><span id="meteor-night-interval"></span></div>
+        <div class="mn-ruler"><svg viewBox="0 0 1000 12" preserveAspectRatio="none" aria-hidden="true"><path id="meteor-night-marks"></path></svg>
+          <input type="range" id="meteor-night-time" aria-label="Czas odtworzenia" disabled></div>
+        <div class="mn-transport"><button id="meteor-night-play" type="button" aria-pressed="false" disabled>Odtwórz</button>
+          <label>Tempo <select id="meteor-night-speed" disabled></select></label><span id="meteor-night-play-note"></span></div>
+      </div>
+    </section>
+    <aside class="mn-catalog" aria-label="Katalog meteorów i ustawienia obserwatora">
+      <form id="meteor-night-form"><label for="meteor-night-date">Data początku nocy</label><div><input id="meteor-night-date" type="date" required value="2026-11-04" aria-describedby="meteor-night-date-hint">
+        <button id="meteor-night-load" type="submit">Wczytaj</button></div>
+        <small id="meteor-night-date-hint">Noc obejmuje okres od południa do południa czasu polskiego.</small></form>
+      <p id="meteor-night-status" role="status" aria-live="polite"></p>
+      <button type="button" id="meteor-night-example" hidden>Otwórz zapisaną noc 4/5 listopada</button>
+      <button type="button" id="meteor-night-featured" hidden><strong>Meteor nad Nysą</strong><span></span></button>
+      <section class="mn-event"><h3 id="meteor-night-event-title">Wybrany meteor</h3><dl>
+        <div><dt>Wysokość</dt><dd id="meteor-night-height">—</dd></div><div><dt>Czas lotu</dt><dd id="meteor-night-duration">—</dd></div>
+        <div><dt>Prędkość początkowa</dt><dd id="meteor-night-velocity">—</dd></div><div><dt>Jasność absolutna</dt><dd id="meteor-night-magnitude">—</dd></div>
+      </dl></section>
+      <div class="mn-observer"><label for="meteor-night-observer">Miejsce obserwacji</label>
+        <select id="meteor-night-observer"><option value="nysa">Nysa</option><option value="warszawa">Warszawa</option><option value="krakow">Kraków</option><option value="gdansk">Gdańsk</option><option value="poznan">Poznań</option></select>
+        <button id="meteor-night-pick" type="button">Wskaż na mapie</button>
+        <button id="meteor-night-nearest" type="button" aria-describedby="meteor-night-distance-hint" disabled>Najbliższy początek</button>
+        <small id="meteor-night-distance-hint">Odległość do punktu na ziemi pod początkiem trajektorii.</small>
+        <span id="meteor-night-direction"></span></div>
+      <div class="mn-events"><h3 id="meteor-night-list-title">Meteory tej nocy</h3><ul id="meteor-night-list" aria-labelledby="meteor-night-list-title"></ul></div>
+    </aside>
+  </div>
+  <footer class="mn-footer"><span>Rekonstrukcja 3D z pomiarów początku i końca zjawiska. Ruch pomiędzy nimi jest przybliżony.</span>
+    <span><a id="meteor-night-source" href="https://globalmeteornetwork.org/" target="_blank" rel="noopener noreferrer">Global Meteor Network</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></span></footer>
 </dialog>
 <dialog id="aircraft-replay-dialog" aria-labelledby="aircraft-replay-title">
   <div class="ar-header"><h2 id="aircraft-replay-title">Ostatni odcinek w 3D</h2>
