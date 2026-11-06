@@ -94,6 +94,12 @@ Wspólny widok obsługuje samoloty i autobusy. Schematyczne modele WICI w `stati
 
 Granice obwodów/rejonów są pobierane na żądanie z udokumentowanych plików GeoJSON NEPTUN i przechowywane wyłącznie w pamięci. Nie są dołączone do dystrybucji WICI. Pliki nie określają odrębnej licencji ani pochodzenia granic; ogólne warunki zachowują prawa dostawców kartografii. WICI nie przypisuje tym plikom domniemanej licencji OSM ani CC. Logo i SDK NEPTUN nie są kopiowane. [Zakres integracji](docs/ukraine.md).
 
+## Global Meteor Network — noc meteorów
+
+© Global Meteor Network i uczestnicy sieci. Współrzędne, wysokości i czas trwania pochodzą z publicznych rekonstrukcji trajektorii GMN udostępnionych na CC BY 4.0. WICI filtruje obserwacje według czasu i początku nad Polską, wybiera pola katalogowe oraz interpoluje położenie pomiędzy końcami zarejestrowanego odcinka. Do pakietu włączono opracowany wyciąg dla nocy 4/5 listopada 2026 r. Efekt świetlny i widok z miejsca obserwatora generuje WICI. [Dane, autorstwo i publikacje zespołu GMN](https://globalmeteornetwork.org/data/) · [Archiwum trajektorii](https://globalmeteornetwork.org/data/traj_summary_data/) · [Licencja CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Metody rekonstrukcji opisali Vida i in. w [Estimating trajectories of meteors (2020)](https://academic.oup.com/mnras/article/491/2/2688/5626361) oraz [The Global Meteor Network – Methodology and first results (2021)](https://doi.org/10.1093/mnras/stab2008).
+
 ## Lokalne nagranie lotu i radaru
 
 Wybór samolotu na mapie, wpisanie ICAO lub skrypt `scripts/capture_flight_replay.py` pozwala przygotować prywatny zapis do późniejszego odtwarzania w WICI. Historyczne pozycje, wysokości i kurs pochodzą z [adsb.lol](https://www.adsb.lol/about), dane na [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). W opcji „Zbieraj od teraz” pozycje, wysokości barometryczne i kurs pochodzą z adsb.fi na warunkach opisanych poniżej. Z tego źródła pochodzi także lista kandydatów w automatycznym trybie skryptu. **Weather data by [RainViewer](https://www.rainviewer.com/)** — osobisty lub edukacyjny użytek na [warunkach API](https://www.rainviewer.com/api.html). Klatki kompozytu są zapisywane na dysku w lokalnym nagraniu. Nagrania lotów i radaru są przechowywane lokalnie u użytkownika.

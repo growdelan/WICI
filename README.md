@@ -55,7 +55,7 @@ Aby obejrzeć aplikację na danych demonstracyjnych, uruchom zamiast powyższej 
 uv run --locked python -m wici --demo
 ```
 
-Demo używa danych syntetycznych i nie łączy się z dostawcami. Po zainstalowaniu zależności działa offline, zapisuje dane osobno i korzysta z tego samego adresu. Przed zmianą trybu zatrzymaj poprzednią instancję.
+Demo używa danych syntetycznych dla bieżącej sytuacji i zawiera jeden oznaczony, rzeczywisty zapis nocy meteorów. Po zainstalowaniu zależności działa offline, zapisuje dane osobno i korzysta z tego samego adresu. Przed zmianą trybu zatrzymaj poprzednią instancję.
 
 Sentinel-2: „Warstwy mapy → Sentinel-2 — przed / po” pozwala wskazać punkt w Polsce, wyszukać obserwacje L2A i porównać dwa wybrane terminy suwakiem RGB 10 m. Osobne zakresy dat dla „przed” i „po” umożliwiają porównanie różnych lat, np. 2020 i 2026; każdy zakres obejmuje do 366 dni. Obszar 2/4/6 km, maski jakości i NoData. Domyślnie pokazuje pełny zasięg katalogowy; częściowe obserwacje można odsłonić filtrem, a rzeczywiste braki obrazu są podane procentowo przy suwaku. Wymaga bezpłatnego klienta OAuth CDSE w lokalnej sekcji `[sources.sentinel2]`; demo zawiera jawnie syntetyczne obrazy i działa offline. [Konfiguracja i ograniczenia](docs/sentinel2.md), [raport implementacji](docs/sentinel2-implementation.md).
 
@@ -88,6 +88,7 @@ W polu **„Obszar danych”** wybierz województwo albo **„Cała Polska”**.
 | Kolej PolishTrainsGTFS | Stacje, kursy, opóźnienia, trasy i wyraźnie oznaczone szacowane pozycje | Nie |
 | Autobusy: Szczecin, Kraków, Poznań, Warszawa | Bieżące pozycje, wybór miasta i linii, szczegóły oraz wiek danych | Tylko Warszawa |
 | Samoloty adsb.fi | Bieżące pozycje i dostępne dane lotów nad Polską; cache i odświeżanie 10 s, użytek osobisty i niekomercyjny | Nie |
+| Noc meteorów nad Polską | Trasy z Global Meteor Network, przyspieszony przegląd nocy i odtwarzanie pojedynczego przelotu w 3D z wybranego miejsca | Nie |
 | Ukraina — alerty NEPTUN | Obszary alarmów oraz osobno doniesienia o dronach i innych zagrożeniach, z czasem i źródłem | Nie |
 | Jakość pozycji / GNSS | Opcjonalne lokalne agregaty jakości ADS-B; pośredni sygnał, bez diagnozy przyczyny | Nie |
 | Statki AISStream | Bieżące pozycje i dostępne dane jednostek na Bałtyku i w cieśninach duńskich z Kattegatem | Tak, opcjonalny |
@@ -115,6 +116,10 @@ Włącz warstwę **Samoloty** w Lotnictwie, kliknij świeżą pozycję z dostęp
 ### Odtwarzanie lotu z radarem w 3D
 
 Włącz **Sytuacja → Warstwy → Lotnictwo → Samoloty**, kliknij ikonę na mapie i wybierz **Odtwórz ostatni odcinek w 3D**. W tym samym panelu możesz wpisać sześć znaków ICAO i wybrać **Przygotuj odcinek 3D**. WICI wyszuka pozycje nad Polską i odpowiadające im klatki radaru. Jeśli brak wspólnej historii, wybierz **Zbieraj od teraz**. Po zamknięciu panelu postęp znajdziesz w Lotnictwie pod **Sprawdź stan**. Osobny przycisk **Otwórz zapisany lot z radarem w 3D** otwiera wcześniej przygotowane nagranie. [Obsługa odtwarzacza, zbieranie i znaczenie czasu](docs/flight-replay.md).
+
+### Noc meteorów nad Polską
+
+W **Sytuacja → Warstwy → Nocne niebo** wybierz **Odtwórz noc meteorów w 3D**. Przewiń całą noc albo wybierz **Meteor nad Nysą**, żeby obejrzeć w zwolnieniu 4,08 sekundy jego przelotu. Przełącz na **Z ziemi** i wskaż na mapie własne miejsce obserwacji. Dołączona noc z 4 na 5 listopada 2026 r. działa offline. Inne zakończone noce WICI pobiera na żądanie z Global Meteor Network. [Obsługa i pochodzenie obserwacji](docs/meteors.md).
 
 ### Samoloty i statki — zapis tras i odtwarzanie
 

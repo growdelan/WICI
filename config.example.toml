@@ -43,6 +43,10 @@ enabled = true
 [sources.lightning]
 enabled = true
 
+# Inne noce GMN pobierane na żądanie. Dołączona noc jest dostępna offline.
+[sources.meteors]
+enabled = true
+
 # Katalog Copernicus EMS, tylko dla miejsca wybranego na mapie.
 [sources.imagery]
 enabled = true
